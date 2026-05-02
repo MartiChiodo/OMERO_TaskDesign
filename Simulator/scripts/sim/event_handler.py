@@ -11,7 +11,6 @@ from Simulator.scripts.core.entities import Order, Event, Task, Visit
 from Simulator.scripts.core.warehouse import Warehouse
 from Simulator.scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationPickingStatus, EventType
 from Simulator.scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
-from Simulator.scripts.sim.utils import sample_sku
 from Simulator.scripts.core.queues import PriorityQueue
 
 TIME_LIMIT_AT_WS = 400
@@ -46,7 +45,7 @@ def arrival_order(event: Event, state, sim) -> None:
             order_size = sim.RANDOM_GENERATOR.geometric(p=sim.config.order_gen_config[2]) + 2
 
         sku_list = [
-            sample_sku(sim.RANDOM_GENERATOR, state.warehouse.num_skus)
+            _sample_sku(sim.RANDOM_GENERATOR, state.warehouse.num_skus)
             for _ in range(order_size)
         ]
 
@@ -770,3 +769,13 @@ def run_optimizer(event: Event, state, sim) -> None:
 def _count_closed(state) -> int:
     """Count closed orders in the system. O(n) — consider a dedicated counter."""
     return sum(1 for o in state.orders_in_system if o.status == OrderStatus.CLOSED)
+
+def _sample_sku(gen, N):
+    """
+    Sample a SKU index from a truncated normal distribution over [0, N).
+    """
+    while True:
+        id_s = int(gen.normal(0.5 * N, N/6))
+        if 0 <= id_s < N:
+            return id_s
+        

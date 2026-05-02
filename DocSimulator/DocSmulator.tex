@@ -80,16 +80,20 @@ The project is organised on four logical levels: \texttt{core} (shared entities 
 \textbf{Path} & \textbf{Role} \\
 \midrule
 \texttt{run\_simulation.py}          & Entry point: configures logging, builds the warehouse, starts the simulation \\
-\texttt{config.py}                   & Centralised numerical parameters \\
+\texttt{experiments.csv}             & Centralised numerical parameters \\
 \texttt{scripts/core/enums.py}       & Enumerations for discrete states and event types \\
 \texttt{scripts/core/entities.py}    & Dataclasses for \texttt{Order}, \texttt{Pod}, \texttt{Robot}, \texttt{Workstation} and \texttt{Task}. \\
 \texttt{scripts/core/queues.py}      & Generic priority queue (min-heap with O(1) lookup) \\
 \texttt{scripts/core/warehouse.py}   & Physical layout and generation, distance utilities \\
 \texttt{scripts/sim/Simulator.py}    & Main DES engine: clock, event loop, dispatch table \\
 \texttt{scripts/sim/event\_handler.py} & Handler function for each event type \\
-\texttt{scripts/opt/policies.py}     & Greedy assignment policies \\
 \texttt{scripts/stat/StatManager.py} & Main collector of KPIs \\
 \texttt{scripts/stat/core.py}        & Dataclasses to support the collection of KPIs \\
+\texttt{scripts/opt/policies.py}     & Greedy assignment policies \\
+\texttt{scripts/opt/OptManager.py}   & The class \texttt{OptManager} controls the optimisation process: precomputes the time-space network and converts binary variables in \texttt{Task} objects\\
+\texttt{scripts/opt/opt\_solver.py}   & Definition of the optimization solver \\
+\texttt{scripts/opt/local\_search.py} & Definition of the local search algorithm used by the otimization solver\\
+\texttt{scripts/opt/stage2\_data.py}  & Dataclass for the second stage of the optimization process \\
 \bottomrule
 \end{tabularx}
 \caption{Folder and file structure of the project.}
@@ -337,6 +341,7 @@ The \texttt{Simulator} class owns the immutable configuration, the random genera
 \texttt{state}                & \texttt{SimulatorState}           & Mutable state of the current run (rebuilt on every \texttt{run()} call) \\
 \texttt{STAT\_MANAGER}        & \texttt{StatManager}              & KPI collector (also rebuilt on every \texttt{run()} call) \\
 \texttt{\_warehouse\_factory} & \texttt{Callable[[], Warehouse]}  & Factory invoked once per \texttt{run()} to produce a pristine warehouse \\
+\texttt{OPT\_MANAGER}         & \texttt{OptManager}               & Optimization manager (also rebuilt on every \texttt{run()} call), which precomputes the time-space network and provides the interface to the optimizer. \\
 \bottomrule
 \end{tabularx}
 
@@ -378,10 +383,6 @@ Each \texttt{EventType} is associated with a handler function with signature \te
 & \texttt{Task}
 & Releases tasks, if optimizer is enabled all \texttt{RELEASE\_TASk} events will be scheduled at the end of the optimization; otherwise events will be scheduled when tasks are designed. \\
 
-\texttt{RUN\_OPTIMIZER}    
-& \todo 
-& Invokes the optimiser to assign backlog orders and generate tasks. \\
-
 \texttt{START\_TASK}       
 & \texttt{None} 
 & Verify that among the released tasks there is at least one that can be started (i.e., whose corresponding pod is idle). If so, assign an idle robot (if available) to it and set both the robot and the pod to \texttt{BUSY}. \\
@@ -405,6 +406,10 @@ Each \texttt{EventType} is associated with a handler function with signature \te
 \texttt{RETURN\_POD}       
 & \texttt{Task} 
 & Returns the pod to its \texttt{storage\_location}, sets robot and pod to \texttt{IDLE} and enables new tasks to start. \\
+
+\texttt{RUN\_OPTIMIZER}    
+& \texttt{None} 
+& Invokes the optimiser to assign backlog orders and generate tasks. To mantain coherence between simulation and optimization, active tasks are considered as completed while released tasks not yet allocated are overwritten. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -426,6 +431,25 @@ The following flowcharts illustrate the dependencies between events and the over
 \caption{Graph showing the relationship between events when \texttt{optimization\_enabled = True}. Arrows indicate which event will be scheduled next.}
 \end{figure}
 
+
+% ─────────────────────────────────────────────────────────────────────────────
+\newpage \clearpage
+\section{KPIs Collection}
+The main objective of this simulator is to evaluate two different optimization approaches in a controlled and reproducible environment; hence, several relevant statistics must be collected.
+
+The collected statistics are grouped into three categories:
+\begin{itemize}
+    \item \texttt{ResourceTracker}: this type of statistic measures the state frequency of a given entity over time. It is used, for example, for both robots and workstations, and captures respectively the robot utilization rate and the workstation picking time ratio.
+    \item \texttt{OrderFlowTracker}: this statistic captures the average order flow time, grouped by order size, from the \texttt{BACKLOG} state to the \texttt{CLOSED} state.
+    \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation.
+\end{itemize}
+
+Finally, all statistics can be aggregated to compute global performance indicators and support system-level analysis.
+
+
+
+\newpage
+\section{Optimization Approaches}
 \subsection{Greedy Policies}
 
 \subsubsection{Assignment Order-Workstation}
@@ -470,27 +494,22 @@ First, this policy does not allow tasks with multiple visits to be defined, as i
 Second, in this policy the while loop continues until the number of designed tasks reaches the maximum number of tasks that can be generated. This is due to the fact that the number of released and active tasks per workstation is limited by \texttt{WS\_RELEASED\_TASK\_CAPACITY}. This design choice is intended to prevent overcrowding near the workstation in scenarios where the number of robots significantly exceeds the system's processing capacity (a large fleet of robots serving a small number of slow workstations, for istance), which would otherwise lead to unnecessary congestion.
 
 
-% ─────────────────────────────────────────────────────────────────────────────
-\newpage \clearpage
-\section{KPIs Collection}
-The main objective of this simulator is to evaluate two different optimization approaches in a controlled and reproducible environment; hence, several relevant statistics must be collected.
+\subsection{Global optimization model}
 
-The collected statistics are grouped into three categories:
+The model is a static optimization problem split into two stages: the first stage assigns orders to workstations and pods to orders, while the second stage designs tasks and schedules them over a time-space network. The two stages are connected by the decision variables of the first stage, which are used as input parameters for the second stage.
+
+\subsubsection{Time-space network}
+\todo
+
+\subsubsection{First stage: Order-Workstation and Order-Item-Pod Assignments}
+The decision variables of the first stage are:
 \begin{itemize}
-    \item \texttt{ResourceTracker}: this type of statistic measures the state frequency of a given entity over time. It is used, for example, for both robots and workstations, and captures respectively the robot utilization rate and the workstation picking time ratio.
-    \item \texttt{OrderFlowTracker}: this statistic captures the average order flow time, grouped by order size, from the \texttt{BACKLOG} state to the \texttt{CLOSED} state.
-    \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation.
+    \item $z_{mw} = 1$ if order $m$ is assigned to workstation $w$, $0$ otherwise.
+    \item $x_{imp} = 1$ if item $i$ of order $m$ is assigned to pod $p$, $0$ otherwise.
+    \item $y_{wp} = 1$ if pod $p$ is assigned to workstation $w$, $0$ otherwise.
 \end{itemize}
 
-Finally, all statistics can be aggregated to compute global performance indicators and support system-level analysis.
-
-
-
-\newpage
-Just some private notes ... 
-\section{Decomposition}
-
-\paragraph{First stage: Order-Workstation and Order-Item-Pod Assignments}
+In the code implementation, the variable $x_{imp}$ has only 2 dimensions to reduce the number of unused variables as not all items $i$ are required by order $m$. A bijective map $(i, m) \rightarrow im$ is been used to keep track of the correspondence between the two representations.
 
 \begin{align}
     \min \quad 
@@ -511,19 +530,37 @@ Just some private notes ...
 \end{align}
 
 where $\mathcal{M}_0 \subset \mathcal{M}$ is a subset of orders whose workstation is already assigned by the warehouse state.
+Constraints \eqref{M1_Constr4} and \eqref{M1_Constr5} are needed to enforce balance between workstation worloads; the parameters $\overline{I}$ and $\underline{I}$ can be tuned to control the maximum allowed imbalance, or even removed to allow any feasible solution. At the moment,  $\overline{I} = \frac{num\_orders}{4} * 1.5$ and $\overline{I} = \frac{num\_orders}{4} * 0.5$.
 
-\paragraph{Second stage: Task Design and Scheduling}
+This optimization problem is solved using Gurobi.
+
+\subsubsection{Second stage: Task Design and Scheduling}
+The decision variables of the second stage are:
+\begin{itemize}
+    \item $x_{imt} = 1$ if item $i$ of order $m$ is picked by time $t$, $0$ otherwise.
+    \item $f_{mt} = 1$ if at least $1$ item of order $m$ has been picked by time $t-1$, $0$ otherwise.
+    \item $g_{mt} = 1$ if order $m$ is completed by time $t-1$, $0$ otherwise.
+    \item $v_{mt} = 1$ if order $m$ is open at time $t$, $0$ otherwise.
+    \item $y_{pa} = 1$ if arc $a$ in the time-space network is selected for pod $p$, $0$ otherwise.
+\end{itemize}
+
+As before, the variable $x_{imt}$ has only 2 dimensions to reduce the number of unused variables as not all items $i$ are required by order $m$. A bijective map $(i, m) \rightarrow im$ is been used to keep track of the correspondence between the two representations.
+Moreover, the variable $y_{pa}$ is defined only for the pods $p$ that have been assigned to a workstation in the first stage, to reduce the number of unused variables.
+
 \begin{align}
     \max \quad
-    & \sum_{t \in \mathcal{T}} \sum_{m \in \mathcal{M}} g_{mt} \label{M2_Obj} \\[4pt]
+    & \sum_{t \in \mathcal{T}} \sum_{m \in \mathcal{M}} g_{mt} 
+    + 0.5 * \sum_{i \in \mathcal{I}} \sum_{m \in \mathcal{M}} x_{imT}
+    - 0.5 * \sum_{m \in \mathcal{M}} \beta_m(1 - g_{mT})
+    \label{M2_Obj} \\[4pt]
     \text{s.t.} \quad
-    & \sum_{m \in \mathcal{M}(w)} v_{mt} \ge C_w
+    & \sum_{m \in \mathcal{M}(w)} v_{mt} \le C_w
      \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T} \label{M2_Constr1} \\
     & \sum_{m \in \mathcal{M}(w)} \sum_{i \in \mathcal{I}_m}
     \delta^{\text{item}} (x_{imt} - x_{im,t-1})
     + \sum_{p \in \mathcal{P}} \sum_{a \in \mathcal{A}^+_{N(w,t)}}
     \delta^{\text{pod}} y_{pa}
-    \ge \Delta
+    \le \Delta
      \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T} \setminus \{0\}
     \label{M2_Constr2} \\
     & \sum_{a \in \mathcal{A}^+_{N_p^0}} y_{pa} = 1
@@ -552,13 +589,17 @@ where $\mathcal{M}_0 \subset \mathcal{M}$ is a subset of orders whose workstatio
      \qquad \forall m \in \mathcal{M}_0 \label{IC}
 \end{align}
 
-Observations:
+The objective function \eqref{M2_Obj} consists of 3 terms: the first one minimize the completion time of all orders (since $g$ is a cumulative variable, the earlier an order is completed the more terms $g_{mt}$ will be equal to $1$); the second one maximize the number of picked items at the end of the time horizon (this term is needed to encourage picking items for an order even if it won't be closed by the end); the third one penalizes uncompleted orders at the end of the time horizon, with a weight $\beta_m$ proportional to the difference between the order's arrival time and its completion time (this term is needed to ensure that orders won't be left in the backlog). \\
+Constraints \eqref{IC} and \eqref{Enforcing_IC} are needed for enforcing the initial conditions given by the orders already opened at workstations, for these orders the variable $f_{mt}$ loses its meaning as it is set to $1$ before any items is picked.
+
+This optimization problem is solved using a customized local search algorithm whose neighborhood generation mechanism solely relies on perturbing the matrix $x_{imt}$. The neighborhood structure is based on 3 moves:
 \begin{itemize}
-    \item Constraints \eqref{IC} and \eqref{Enforcing_IC} are needed for enforcing the initial conditions given by the orders already opened at workstations.
-    \item All the variables are cumulative.
+    \item \textbf{Anticipating item picking.} A single item is picked earlier.
+    \item \textbf{Anticipating order picking.} All items of an order are picked earlier.
+    \item \textbf{Orders swaps.} Two orders assigned to the same workstation swap their position in the picking sequence.
 \end{itemize}
-
-
+The created neighborhood is not explored exhaustively, but a random subset of neighbors is generated at each iteration and the best improving solution is selected. This is done to speed up the optimization process: every time a new $x_{imt}$ is created, the others variable need to be update accordingly to maintain feasibility, and this can be computationally expensive especially in the reconstruction of $y_{pa}$ as feasible pod trajectories need to be defined. \\
+The algorithm stops after a fixed number of iterations without improvements.
 
 \newpage
 \printbibliography

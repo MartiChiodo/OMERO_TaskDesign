@@ -118,8 +118,8 @@ def solve_by_decomposition(OptManager, sim, state):
     # x2[i,m,t] = 1 if item i of order m has been picked by time t (cumulative)
     # y2[p,a]   = 1 if pod p traverses arc a in the time-space network
     # v2[m,t]   = 1 if order m is actively being picked at time t
-    # f2[m,t]   = 1 if all items of order m are ready by t (triggers opening)
-    # g2[m,t]   = 1 if order m completes at t (all items picked simultaneously)
+    # f2[m,t]   = 1 if at least one item of order m is picked by time t (triggers opening)
+    # g2[m,t]   = 1 if all items of order m are picked by time t-1 (triggers closing)
     x2 = model2.addVars(len(relevant_pairs_for_x), OptManager.N_TIME, vtype=gb.GRB.BINARY)
     y2 = model2.addVars(len(from_RelPod_to_PodId), n_a, vtype=gb.GRB.BINARY)
     v2 = model2.addVars(n_orders, OptManager.N_TIME, vtype=gb.GRB.BINARY)
@@ -143,8 +143,7 @@ def solve_by_decomposition(OptManager, sim, state):
                 pod_arrivals = gb.quicksum(
                     OptManager.DELTA_POD * y2[rel_p, a]
                     for rel_p in range(len(from_RelPod_to_PodId))
-                    for a in OptManager.outgoing_arc_idx[(w_pos, t)]
-                    if a < len(OptManager.travelling_arcs))
+                    for a in OptManager.outgoing_arc_idx[(w_pos, t)])
                 model2.addLConstr(
                     item_work + pod_arrivals,
                     gb.GRB.LESS_EQUAL, OptManager.TIME_UNIT, name='EC14')

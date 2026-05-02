@@ -20,9 +20,9 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [1,2,3,4,5,6,7,8,9,10,11,12]
+    EXPERIMENT_IDS = [14]
     SEED = 293874
-    OPTIM = False
+    OPTIM = True
 
     for EXPERIMENT_ID in EXPERIMENT_IDS:
         cfg = load_experiment(EXPERIMENT_ID)
