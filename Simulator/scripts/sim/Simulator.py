@@ -173,7 +173,7 @@ class Simulator:
         state    = self.state
         dispatch = self.build_dispatch()
 
-        state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = 30))
+        state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = 50))
         if self.config.optimization_enabled:
             state.future_events.push(Event(time=60, type=EventType.RUN_OPTIMIZER))
 

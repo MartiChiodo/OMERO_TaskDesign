@@ -197,7 +197,7 @@ class StatManager:
         )
         return lines
     
-    def format_backlog_orders_table(orders_in_system, end_time) -> list[str]:
+    def format_backlog_orders_table(self,orders_in_system, end_time) -> list[str]:
         lines = []
         lines.append(f"\n{'=' * 60}\n  BACKLOG ORDERS \n{'=' * 60}")
         lines.append(f"  {'Size':<8} {'Closed':>8} {'Avg Flow (sec)':>17}")
@@ -210,8 +210,7 @@ class StatManager:
                 backlog[o.order_size][0] += 1
                 backlog[o.order_size][1] += (end_time - o.arrival_time)
             else:
-                backlog[o.order_size][0] = 1
-                backlog[o.order_size][1] = (end_time - o.arrival_time)
+                backlog[o.order_size] = [1, (end_time - o.arrival_time)]
 
         sizes = backlog.keys()
         for size in sizes:

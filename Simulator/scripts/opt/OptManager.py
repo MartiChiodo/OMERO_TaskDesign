@@ -9,11 +9,16 @@ import numpy as np
 from Simulator.scripts.core.warehouse import Warehouse
 from Simulator.scripts.core.enums import OrderStatus
 
+from Simulator.scripts.opt.local_search_stage1 import local_search_stage1
+from Simulator.scripts.opt.local_search_stage2 import local_search_stage2
+from Simulator.scripts.opt.stage2_data import build_stage2_data
+from Simulator.scripts.opt.utils import convert_OptSol_to_SimObj
+
 
 ### CONSTANTS
-OBATCH_SIZE = 70    # max orders pulled from the backlog per optimisation cycle
+OBATCH_SIZE = 100   # max orders pulled from the backlog per optimisation cycle
 TIME_UNIT   = 30    # seconds per discrete time period
-N_TIME      = 70    # number of discrete periods in the scheduling horizon
+N_TIME      = 100   # number of discrete periods in the scheduling horizon
 
 
 class OptManager:
@@ -237,11 +242,63 @@ class OptManager:
                               start time, per workstation.
         tasks               : list[Task]
         """
-        from Simulator.scripts.opt.opt_solver import optimizer_solver
-        from Simulator.scripts.opt.utils import convert_OptSol_to_SimObj
 
-        st2_data, x, v, y = optimizer_solver(self, state)
+        logging.info("Solving stage 1 ... ")
+        orders, orders_items = self.extract_orders(state)
+        n_orders = len(orders)
+        relevant_pairs_for_x = [(i, m) for m in range(n_orders) for i in orders_items[m]]
+        items_of_order: dict[int, list[int]] = {m: [] for m in range(n_orders)}
+        for im, (_, m) in enumerate(relevant_pairs_for_x):
+            items_of_order[m].append(im)
 
+        if n_orders == 0:
+            return
+
+        ### STAGE 1
+        x1, z1 = local_search_stage1(orders, relevant_pairs_for_x, self, state, self.n_workstations)
+        logging.info("Stage 1 solved.")
+
+        # Extract stage-1 solution: map each order to its workstation and each (item, order) to its pod
+        orders_by_workstation = [set() for _ in range(self.n_workstations)] # workstation index w → order index m
+        order_to_ws_m: dict[int, int] = {}   # order index m → workstation index w
+        pod_of_item = {}  # (sku, order_idx) -> pod_idx
+
+        for im, (i,m) in enumerate(relevant_pairs_for_x):
+            for w in range(self.n_skus):
+                if z1[m, w] > 0.5:
+                    orders_by_workstation[w].add(m)
+                    order_to_ws_m[m] = w
+                    break
+            for p in self.pod_indices_by_sku[i]:
+                if x1[im, p] > 0.5:
+                    pod_of_item[im] = p
+                    break
+
+        from_RelPod_to_PodId = list(set(pod_of_item.values()))
+        from_PodId_to_RelPod = {id_p:rel_p for rel_p, id_p in enumerate(from_RelPod_to_PodId)}
+
+
+        ### STAGE 2: SCHEDULING
+        logging.info("Solving stage 2 ... ")
+        st2_data =  build_stage2_data(
+                OptManager = self,
+                state = state,
+                orders = orders,
+                orders_items= orders_items,
+                relevant_pairs_for_x = relevant_pairs_for_x,
+                items_of_order = items_of_order, 
+                orders_by_workstation= orders_by_workstation,
+                order_to_ws_m = order_to_ws_m,
+                pod_of_item = pod_of_item,
+                from_RelPod_to_PodId = from_RelPod_to_PodId,
+                from_PodId_to_RelPod = from_PodId_to_RelPod
+            )
+        
+        sol =  local_search_stage2(st2_data)
+        x, f, g, v, y = sol
+        logging.info("Stage 2 solved.")
+
+        # Extracting tasks from stage 2 solution
         orders, ordered_orders_by_w, tasks = convert_OptSol_to_SimObj(st2_data, x, v, y)
 
         return orders, ordered_orders_by_w, tasks

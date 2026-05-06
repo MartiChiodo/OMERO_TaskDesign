@@ -20,8 +20,8 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [14]
-    SEED = 293874
+    EXPERIMENT_IDS = [1]
+    SEED = 343310
     OPTIM = True
 
     for EXPERIMENT_ID in EXPERIMENT_IDS:
@@ -32,7 +32,7 @@ def main():
             logging.root.removeHandler(handler)
 
         logging.basicConfig(
-            filename=os.path.join(os.path.dirname(__file__), f"output/logs/logs_{EXPERIMENT_ID}_Seed{SEED}.log"),
+            filename=os.path.join(os.path.dirname(__file__), f"output/logs/logs_{EXPERIMENT_ID}_Seed{SEED}_Opt{OPTIM}.log"),
             encoding="utf-8",
             level=logging.DEBUG,
             datefmt="%H:%M:%S",

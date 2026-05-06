@@ -23,6 +23,7 @@ class Stage2Data:
     orders_by_workstation : list[set[int]]   ws_idx -> set of order indices.
     order_to_ws           : dict[int, int]   order_idx -> ws_idx.
     pod_of_item           : dict[int, int]   im -> pod_id.
+    items_by_pod          : dict[int, list[int]] pod_id -> [im1, im2, ...]
     from_RelPod_to_PodId  : list[int]        rel_p -> pod_id.
     from_PodId_to_RelPod  : dict[int, int]   pod_id -> rel_p.
 
@@ -49,6 +50,7 @@ class Stage2Data:
     orders_by_workstation: list
     order_to_ws:           dict
     pod_of_item:           dict
+    items_by_pod:          dict
     from_RelPod_to_PodId:  list
     from_PodId_to_RelPod:  dict
 
@@ -122,6 +124,11 @@ def build_stage2_data(
     for ws in state.warehouse.workstations:
         opened_ids |= set(ws.opened_orders)
 
+    items_by_pod: dict[int, list[int]] = {}
+    for im, _ in enumerate(relevant_pairs_for_x):
+        p_id = pod_of_item[im]
+        items_by_pod.setdefault(p_id, []).append(im)
+
     return Stage2Data(
         orders                = orders,
         orders_items          = orders_items,
@@ -131,6 +138,7 @@ def build_stage2_data(
         orders_by_workstation = orders_by_workstation,
         order_to_ws           = order_to_ws_m,
         pod_of_item           = pod_of_item,
+        items_by_pod          = items_by_pod,
         from_RelPod_to_PodId  = from_RelPod_to_PodId,
         from_PodId_to_RelPod  = from_PodId_to_RelPod,
         current_time          = state.current_time,

@@ -13,7 +13,7 @@ from Simulator.scripts.core.enums import OrderStatus, RobotStatus, PodStatus, Wo
 from Simulator.scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
 from Simulator.scripts.core.queues import PriorityQueue
 
-TIME_LIMIT_AT_WS = 400
+TIME_LIMIT_AT_WS = 200
 
 def arrival_order(event: Event, state, sim) -> None:
     """
@@ -223,8 +223,8 @@ def start_task(event: Event, state, sim) -> None:
                 for o in v.orders
             )
             if not valid:
-                logging.debug("Task %i blocked: no open orders yet.  [released tasks = %i]",
-                            candidate.task_id, len(state.released_tasks))
+                logging.debug("Task %i blocked: no orders in %s is open yet.  [released tasks = %i]",
+                            candidate.task_id, {v.workstation_id : [o for o in v.orders] for v in candidate.stops}, len(state.released_tasks))
                 skipped_t.append(candidate)
                 continue   # passa al prossimo candidato
 

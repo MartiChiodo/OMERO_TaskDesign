@@ -4,13 +4,12 @@ from Simulator.scripts.core.entities import Task, Visit
 def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
 
     n_orders = len(data.orders)
-    relevant_pairs_for_x = [(i, m) for m in range(n_orders) 
-                            for i in data.orders_items[m]]
+    relevant_pairs_for_x = data.relevant_pairs_for_x
 
 
     ### Step 1: extract workstation assignments and order start times 
 
-    orders_by_workstation = data.orders_by_workstation
+    orders_by_workstation =  [lst.copy() for lst in data.orders_by_workstation]
     order_start_time: dict[int, int] = {}
 
     for m in range(n_orders):
@@ -65,8 +64,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
     pick_at: dict[tuple[int, int, int], dict] = defaultdict(
         lambda: {"items": set(), "orders": set()}
     )
-    for (i, m), p_id in item_to_pod.items():
-        t = item_to_time.get((i, m))
+    for im, p_id in item_to_pod.items():
+        i, m = relevant_pairs_for_x[im]
+        t = item_to_time.get((i,m))
         if t is None:
             continue
         w = order_to_ws.get(m)
@@ -105,12 +105,12 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                 # Pod arrives at a workstation but there was idle time → close current trip as a Task
                 stops = []
                 for t_arr, w_idx in current_stops:
-                    data = pick_at.get((p_id, t_arr, w_idx))
-                    if data and data["items"]:
+                    pick_data = pick_at.get((p_id, t_arr, w_idx))
+                    if pick_data and pick_data["items"]:
                         stops.append(Visit(
                             workstation_id=w_idx,
-                            orders=data["orders"],
-                            items=data["items"],
+                            orders=pick_data["orders"],
+                            items=pick_data["items"],
                         ))
                 if stops:
                     pr = None
@@ -135,12 +135,12 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                 # Pod returns to storage → close current trip as a Task
                 stops = []
                 for t_arr, w_idx in current_stops:
-                    data = pick_at.get((p_id, t_arr, w_idx))
-                    if data and data["items"]:
+                    pick_data = pick_at.get((p_id, t_arr, w_idx))
+                    if pick_data and pick_data["items"]:
                         stops.append(Visit(
                             workstation_id=w_idx,
-                            orders=data["orders"],
-                            items=data["items"],
+                            orders=pick_data["orders"],
+                            items=pick_data["items"],
                         ))
                 if stops:
                     pr = None
@@ -162,12 +162,12 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         if current_stops:
             stops = []
             for t_arr, w_idx in current_stops:
-                data = pick_at.get((p_id, t_arr, w_idx))
-                if data and data["items"]:
+                pick_data = pick_at.get((p_id, t_arr, w_idx))
+                if pick_data and pick_data["items"]:
                     stops.append(Visit(
                         workstation_id=w_idx,
-                        orders=data["orders"],
-                        items=data["items"],
+                        orders=pick_data["orders"],
+                        items=pick_data["items"],
                     ))
             if stops:
                 pr = None
@@ -199,4 +199,4 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
     for new_id, task in enumerate(tasks):
         task.task_id = data.state.task_counter + new_id
 
-    return ordered_orders_by_w, tasks
+    return data.orders, ordered_orders_by_w, tasks
