@@ -13,7 +13,7 @@ from Simulator.scripts.core.enums import OrderStatus, RobotStatus, PodStatus, Wo
 from Simulator.scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
 from Simulator.scripts.core.queues import PriorityQueue
 
-TIME_LIMIT_AT_WS = 200
+TIME_LIMIT_AT_WS = 300
 
 def arrival_order(event: Event, state, sim) -> None:
     """
@@ -218,7 +218,7 @@ def start_task(event: Event, state, sim) -> None:
 
         if sim.config.optimization_enabled:
             valid = any(
-                o in state.warehouse.workstations[v.workstation_id].opened_orders
+                o in state.warehouse.workstations[v.workstation_id].opened_orders.union(state.warehouse.workstations[v.workstation_id].order_buffer[:2])
                 for v in candidate.stops
                 for o in v.orders
             )
@@ -226,7 +226,7 @@ def start_task(event: Event, state, sim) -> None:
                 logging.debug("Task %i blocked: no orders in %s is open yet.  [released tasks = %i]",
                             candidate.task_id, {v.workstation_id : [o for o in v.orders] for v in candidate.stops}, len(state.released_tasks))
                 skipped_t.append(candidate)
-                continue   # passa al prossimo candidato
+                continue   # passa al prossimo candidato 
 
         pod = state.warehouse.get_pod(candidate.pod_id)
         if pod.status == PodStatus.IDLE:
@@ -400,8 +400,6 @@ def end_picking(event: Event, state, sim) -> None:
     logging.debug("Task should have served orders %s, found open orders %s.",
                   completed_visit.orders, workstation.opened_orders)
 
-    task.stops.pop(0) # ended task 
-
     # Drain picking buffer 
     if workstation.picking_buffer:
         
@@ -472,6 +470,39 @@ def end_picking(event: Event, state, sim) -> None:
                         next_task_id, workstation.workstation_id, len(workstation.picking_buffer))
 
 
+    
+
+    # Update order states 
+    completed_orders = []
+    list_o = list(completed_visit.orders)
+    for order_id in list_o:
+        if order_id in workstation.opened_orders:
+            completed_visit.orders.remove(order_id)
+            order = state.orders_in_system.get(order_id)
+            if order is None:
+                continue
+
+            # Updating statistics
+            if sim.STAT_MANAGER.WARM_UP <= state.current_time:
+                sim.STAT_MANAGER.throughput += len(order.items_pending and completed_visit.items)
+
+            order.items_pending -= completed_visit.items
+            assert len(order.items_pending) >= 0, (
+                f"Order {order_id} has negative pending items after picking"
+            )
+            if len(order.items_pending) == 0:
+                completed_orders.append(order_id)
+                state.future_events.push(Event(
+                    time=state.current_time,
+                    type=EventType.CLOSE_ORDER,
+                    info=order
+                ))
+
+    # If some orders that should be served was not I re-schedule the Visit
+    task.stops[0] = completed_visit
+    if len(task.stops[0].orders) == 0 :
+        task.stops.pop(0)
+ 
     # Schedule next stop or pod return
     if len(task.stops) == 0:
         pod = state.warehouse.get_pod(task.pod_id)
@@ -501,29 +532,6 @@ def end_picking(event: Event, state, sim) -> None:
         ))
         logging.debug("Task %i heading to workstation %i.", task.task_id, next_visit.workstation_id)
 
-    # Update order states 
-    completed_orders = []
-    for order_id in completed_visit.orders:
-        if order_id in workstation.opened_orders:
-            order = state.orders_in_system.get(order_id)
-            if order is None:
-                continue
-
-            # Updating statistics
-            if sim.STAT_MANAGER.WARM_UP <= state.current_time:
-                sim.STAT_MANAGER.throughput += len(order.items_pending and completed_visit.items)
-
-            order.items_pending -= completed_visit.items
-            assert len(order.items_pending) >= 0, (
-                f"Order {order_id} has negative pending items after picking"
-            )
-            if len(order.items_pending) == 0:
-                completed_orders.append(order_id)
-                state.future_events.push(Event(
-                    time=state.current_time,
-                    type=EventType.CLOSE_ORDER,
-                    info=order
-                ))
 
     # Skip redesign if any order closed: close_order will handle it
     if completed_orders:

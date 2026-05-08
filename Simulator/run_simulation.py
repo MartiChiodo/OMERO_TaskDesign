@@ -20,7 +20,7 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [1]
+    EXPERIMENT_IDS = [2]
     SEED = 343310
     OPTIM = True
 

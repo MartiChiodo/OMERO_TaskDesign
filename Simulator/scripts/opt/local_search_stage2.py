@@ -228,16 +228,22 @@ def build_solution(x: np.ndarray, d) -> tuple:
             prev_loc, prev_t = ws_loc, arrive_t
 
         # Path is ended with idle arcs at storage location
+        # Return to storage
         if prev_loc != storage_loc:
-            arc_id, arc = find_arc_departing_after(prev_loc, prev_t, storage_loc, d.OptManager.N_TIME - 1)
-            if arc_id is None:
-                infeasible_pods.append((p_rel, prev_loc, prev_t, storage_loc, d.OptManager.N_TIME - 1))
+            arc, id_arc = None, None
+            for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
+                a = d.OptManager.all_arcs[id_a]
+                if a[1][0] == storage_loc:
+                    arc, id_arc = a, id_a
+                    break
+
+            if arc is not None:
+                y[p_rel, id_arc] = 1
+                add_idle_arcs(y, p_rel, storage_loc, arc[1][1], T - 1)
             else:
-                add_idle_arcs(y, p_rel, prev_loc, prev_t, arc[0][1])
-                y[p_rel, arc_id] = 1
-                add_idle_arcs(y, p_rel, storage_loc, arc[1][1], d.OptManager.N_TIME - 1)
+                add_idle_arcs(y, p_rel, prev_loc, prev_t, T - 1)
         else:
-            add_idle_arcs(y, p_rel, storage_loc, prev_t, d.OptManager.N_TIME - 1)
+            add_idle_arcs(y, p_rel, storage_loc, prev_t, T - 1)
 
     return x, f, g, v, y
 
@@ -325,11 +331,18 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
 
     # Return to storage
     if prev_loc != storage_loc:
-        arc_id, arc = find_arc(prev_loc, prev_t, storage_loc, T - 1)
-        if arc_id is not None:
-            add_idle_arcs(prev_loc, prev_t, arc[0][1])
-            y_row[arc_id] = 1
+        arc, id_arc = None, None
+        for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
+            a = d.OptManager.all_arcs[id_a]
+            if a[1][0] == storage_loc:
+                arc, id_arc = a, id_a
+                break
+
+        if arc is not None:
+            y_row[id_arc] = 1
             add_idle_arcs(storage_loc, arc[1][1], T - 1)
+        else:
+            add_idle_arcs(prev_loc, prev_t, T - 1)
     else:
         add_idle_arcs(storage_loc, prev_t, T - 1)
 
@@ -479,6 +492,43 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
                 viols.setdefault('f_active_only_if_picked', []).append(
                     {'m': m, 'times': bad.tolist()})
 
+    
+    ### Computing simultaneosly active pods 
+    T = d.OptManager.N_TIME
+    n_pods = y.shape[0]
+    active = np.zeros(T, dtype=int)
+
+    storage_positions = set(d.OptManager._L)
+
+    for rel_p in range(n_pods):
+        # initial position at t=0 is storage
+        pod_id = d.from_RelPod_to_PodId[rel_p]
+        current_loc = d.warehouse.pods[pod_id].storage_location
+
+        # pod outside at t=0?
+        if current_loc not in storage_positions:
+            active[0] += 1
+
+        for a_idx, val in enumerate(y[rel_p]):
+            if val < 0.5:
+                continue
+
+            src, dst = d.OptManager.all_arcs[a_idx]
+            dst_loc, dst_t = dst
+
+            current_loc = dst_loc
+            if current_loc not in storage_positions:
+                active[dst_t] += 1
+
+    # EC_NEW: limit simultaneous pods outside storage
+    bad = np.where(active > len(d.OptManager._warehouse.robots))[0]
+    if bad.size:
+        viols['MAX_ACTIVE_PODS'] = {
+            'times': bad.tolist(),
+            'values': active[bad].tolist()
+        }
+
+
     return len(viols) == 0, viols
 
 
@@ -500,10 +550,12 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
     scheduled = np.zeros(n_im, dtype=bool)
 
     # Force-schedule items belonging to already-open orders
+    max_t0 = 0
     for m, order in enumerate(d.orders):
         if order.order_id in d.opened_order_ids:
             for im in d.items_of_order[m]:
                 t0 = max(int(d.earliest_t[im]), 1)
+                max_t0 = max(max_t0, t0)
                 x[im, t0:] = 1
                 scheduled[im] = True
 
@@ -566,7 +618,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
                 batches.append([m])
 
         # Process batches sequentially; each batch starts after the previous one ends
-        batch_start_t = 0
+        batch_start_t = max_t0
         for batch in batches:
 
             # Collect all unscheduled items grouped by pod

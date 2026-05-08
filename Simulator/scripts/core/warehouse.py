@@ -307,8 +307,8 @@ class Warehouse:
 
     def travel_time(
         self,
-        position_a: int,
-        position_b: int,
+        position_a,
+        position_b,
         random_generator: Generator | None = None,
     ) -> float:
         """
@@ -321,9 +321,9 @@ class Warehouse:
         nominal_time = self.manhattan_distance(position_a, position_b) / self.robot_speed
 
         if random_generator is not None:
-            # Noise is drawn from a Beta(2,5) with support [0, 0.5*nominal_time]
-            # Mean is 2/(2+5)*0.5*nominal_time = 0.14286*nominal_time
-            noise = random_generator.beta(a=2, b = 5)*0.5*nominal_time
+            # Noise is drawn from a Beta(2,10) with support [0, 0.5*nominal_time]
+            # Mean is 2/(2+10)*0.5*nominal_time = 0.0833*nominal_time
+            noise = random_generator.beta(a=2, b = 10)*0.5*nominal_time
             return nominal_time + noise
 
         return nominal_time

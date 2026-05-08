@@ -82,9 +82,10 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
 
         # Collect all arcs traversed by this pod, sorted by departure time
         traversed = sorted(
-            (src[1], src[0], dst[1], dst[0])          # (t_src, loc_src, t_dst, loc_dst)
+            [(src[1], src[0], dst[1], dst[0])          # (t_src, loc_src, t_dst, loc_dst)
             for a_idx, (src, dst) in enumerate(data.OptManager.all_arcs)
-            if y_sol[rel_p, a_idx] > 0.5
+            if y_sol[rel_p, a_idx] > 0.5],
+            key= lambda k : k[0]
         )
 
         # Walk the trajectory and split into trips.
@@ -93,46 +94,16 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         current_stops: list[tuple[int, int]] = []   # (t_arrival, w_idx)
         in_trip = False
 
-        for t_src, _, t_dst, loc_dst in traversed:
+        for id, (t_src, _, t_dst, loc_dst) in enumerate(traversed):
 
-            if loc_dst in workstation_positions and t_dst - t_src <= 1:
+            if loc_dst in workstation_positions:
                 # Pod arrives at a workstation
                 w_idx = pos_to_ws[loc_dst]
                 current_stops.append((t_dst, w_idx))
                 in_trip = True
 
-            elif loc_dst in workstation_positions and t_dst - t_src > 1:
-                # Pod arrives at a workstation but there was idle time → close current trip as a Task
-                stops = []
-                for t_arr, w_idx in current_stops:
-                    pick_data = pick_at.get((p_id, t_arr, w_idx))
-                    if pick_data and pick_data["items"]:
-                        stops.append(Visit(
-                            workstation_id=w_idx,
-                            orders=pick_data["orders"],
-                            items=pick_data["items"],
-                        ))
-                if stops:
-                    pr = None
-                    for i,m in [(i,m) for i,m in relevant_pairs_for_x if i in stops[0].items and data.orders[m].order_id in stops[0].orders]:
-                        pr = item_to_time.get((i, m))
-                        if not pr == None:
-                            break 
-                    tasks.append(Task(
-                        task_id=None,
-                        pod_id=p_id,
-                        robot_id=None,
-                        stops=stops,
-                        priority=pr,
-                    ))
-
-                # Begin new trip
-                w_idx = pos_to_ws[loc_dst]
-                current_stops = [(t_dst, w_idx)]
-                in_trip = True
-
             elif loc_dst in storage_positions and in_trip:
-                # Pod returns to storage → close current trip as a Task
+                # Pod returns to storage to stay → close current trip as a Task
                 stops = []
                 for t_arr, w_idx in current_stops:
                     pick_data = pick_at.get((p_id, t_arr, w_idx))
@@ -183,20 +154,21 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                     priority=pr,
                 ))
 
-    # Assigning priority to task
+    # Assigning priority to tasks
     for task in tasks:
-        t_picking =  task.priority
+        t_firstpicking =  task.priority
         ws = data.state.warehouse.workstations[task.stops[0].workstation_id]
         pod = data.state.warehouse.pods[task.pod_id]
-        pr = (t_picking * data.OptManager.TIME_UNIT - 0.5*data.state.warehouse.travel_time(
+        pr = (t_firstpicking * data.OptManager.TIME_UNIT - 0.25*data.state.warehouse.travel_time(
                 data.state.warehouse.cell2coord(ws.position),
                 data.state.warehouse.cell2coord(pod.storage_location)
-            ))/data.OptManager.N_TIME
+            ))
         task.priority = pr
 
-    # Sorting tasks according to priority
+    # Sorting tasks according to priority + mapping priority in a better interval
     tasks.sort(key=lambda t: t.priority)
     for new_id, task in enumerate(tasks):
         task.task_id = data.state.task_counter + new_id
+        task.priority = new_id / (len(tasks) -1) * 500
 
     return data.orders, ordered_orders_by_w, tasks
