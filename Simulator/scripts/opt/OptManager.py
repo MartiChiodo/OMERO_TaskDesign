@@ -16,9 +16,9 @@ from Simulator.scripts.opt.utils import convert_OptSol_to_SimObj
 
 
 ### CONSTANTS
-OBATCH_SIZE = 100   # max orders pulled from the backlog per optimisation cycle
+OBATCH_SIZE = 300   # max orders pulled from the backlog per optimisation cycle
 TIME_UNIT   = 30    # seconds per discrete time period
-N_TIME      = 100   # number of discrete periods in the scheduling horizon
+N_TIME      = 150   # number of discrete periods in the scheduling horizon
 
 
 class OptManager:
@@ -121,7 +121,7 @@ class OptManager:
                 if l1 == l2:
                     continue
                 travel_dt[(l1, l2)] = int(np.ceil(
-                    1.1 * warehouse.travel_time(
+                    1.2 * warehouse.travel_time(
                         warehouse.cell2coord(l1),
                         warehouse.cell2coord(l2),
                         None,
@@ -255,7 +255,7 @@ class OptManager:
             return
 
         ### STAGE 1
-        x1, z1 = local_search_stage1(orders, relevant_pairs_for_x, self, state, self.n_workstations)
+        x1, z1 = local_search_stage1(orders, orders_items, relevant_pairs_for_x, self, state, self.n_workstations)
         logging.info("Stage 1 solved.")
 
         # Extract stage-1 solution: map each order to its workstation and each (item, order) to its pod

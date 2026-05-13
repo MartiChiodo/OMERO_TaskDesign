@@ -3,7 +3,7 @@ import numpy as np
 import logging
 
 
-def check_constraints(orders, OptManager, relevant_pairs_for_x,
+def check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
                       x: np.ndarray, y: np.ndarray, z: np.ndarray) -> bool:
     """
     x[im, p] = 1 if pod p retrieves item im
@@ -31,9 +31,14 @@ def check_constraints(orders, OptManager, relevant_pairs_for_x,
             return False
 
     # EC11: workload balance
-    lower_I = len(orders) / n_w * 0.5
-    upper_I = len(orders) / n_w * 1.5
-    ws_loads = z.sum(axis=0)               # shape (n_w,)
+    # EC11: workload balance (in termini di SKU)
+    sku_per_order = np.array([len(orders_items[m]) for m in range(len(orders))])  # shape (n_orders,)
+    total_skus = sku_per_order.sum()
+
+    lower_I = total_skus / n_w * 0.75
+    upper_I = total_skus / n_w * 1.25
+
+    ws_loads = sku_per_order @ z          # shape (n_w,)  —  SKU totali per worker
     if (ws_loads > upper_I + 1e-6).any() or (ws_loads < lower_I - 1e-6).any():
         return False
 
@@ -151,9 +156,8 @@ def build_initial_solution(orders, relevant_pairs_for_x, OptManager, state, rng)
     return z, x, y
 
 
-
 def local_search_stage1(
-    orders, relevant_pairs_for_x,
+    orders, orders_items, relevant_pairs_for_x,
     OptManager, state, n_w: int,
 ) -> tuple[dict, dict]:
     """
@@ -175,7 +179,7 @@ def local_search_stage1(
     # Initial solution
     print("\n[ls_stage1] Building initial solution …")
     z0, x0, y0 = build_initial_solution(orders, relevant_pairs_for_x, OptManager, state, rng)
-    while not check_constraints(orders, OptManager, relevant_pairs_for_x, x0, y0, z0):
+    while not check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x, x0, y0, z0):
         z0, x0, y0 = build_initial_solution(orders, relevant_pairs_for_x, OptManager, state, rng)
 
     best_sol = (x0, z0, y0)
@@ -231,7 +235,7 @@ def local_search_stage1(
                 sol_cand = _make_repod(best_sol, move[1], move[2], relevant_pairs_for_x)
 
             x, z, y = sol_cand
-            if check_constraints(orders, OptManager, relevant_pairs_for_x, x, y, z):
+            if check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x, x, y, z):
                 obj = compute_objective(y)
 
                 if obj < best_iter_obj:
@@ -267,7 +271,6 @@ def local_search_stage1(
     print(f"[ls_stage1] Final obj = {best_obj}")
     x, z, y = best_sol
     return x, z
-
 
 
 def _make_swap(sol, m1, m2, relevant_pairs_for_x):

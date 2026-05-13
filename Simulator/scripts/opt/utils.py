@@ -27,12 +27,6 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         else:
             order_start_time[m] = start_t
 
-    # Sort orders within each workstation by start time for downstream processing
-    ordered_orders_by_w = {
-        w: sorted(idxs, key=lambda m: order_start_time[m])
-        for w, idxs in enumerate(orders_by_workstation)
-    }
-
 
     ### Step 2: Retrieving lookups
 
@@ -94,7 +88,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         current_stops: list[tuple[int, int]] = []   # (t_arrival, w_idx)
         in_trip = False
 
-        for id, (t_src, _, t_dst, loc_dst) in enumerate(traversed):
+        for id, (t_src, loc_src, t_dst, loc_dst) in enumerate(traversed):
 
             if loc_dst in workstation_positions:
                 # Pod arrives at a workstation
@@ -102,7 +96,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                 current_stops.append((t_dst, w_idx))
                 in_trip = True
 
-            elif loc_dst in storage_positions and in_trip:
+            elif loc_dst in storage_positions and in_trip: # and traversed[min(id+1, len(traversed)-1)][1] in storage_positions :
                 # Pod returns to storage to stay → close current trip as a Task
                 stops = []
                 for t_arr, w_idx in current_stops:
@@ -157,18 +151,30 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
     # Assigning priority to tasks
     for task in tasks:
         t_firstpicking =  task.priority
-        ws = data.state.warehouse.workstations[task.stops[0].workstation_id]
-        pod = data.state.warehouse.pods[task.pod_id]
-        pr = (t_firstpicking * data.OptManager.TIME_UNIT - 0.25*data.state.warehouse.travel_time(
-                data.state.warehouse.cell2coord(ws.position),
-                data.state.warehouse.cell2coord(pod.storage_location)
-            ))
+        pod = data.warehouse.pods[task.pod_id]
+        ws = data.warehouse.workstations[task.stops[0].workstation_id]
+        pr = t_firstpicking * data.OptManager.TIME_UNIT - 0.25*(data.warehouse.travel_time(
+            data.warehouse.cell2coord(pod.storage_location),
+            data.warehouse.cell2coord(ws.position)
+        ))/data.OptManager.TIME_UNIT
         task.priority = pr
 
     # Sorting tasks according to priority + mapping priority in a better interval
     tasks.sort(key=lambda t: t.priority)
+    order_first_task = [data.OptManager.N_TIME]*len(data.orders)
     for new_id, task in enumerate(tasks):
         task.task_id = data.state.task_counter + new_id
-        task.priority = new_id / (len(tasks) -1) * 500
+        task.priority = new_id / (len(tasks) -1) * 500 if len(tasks) > 1 else 0
+        for m in [m  for m, o in enumerate(data.orders)
+                  if o.order_id in [id_o for v in task.stops for id_o in v.orders]]:
+            order_first_task[m] = min(order_first_task[m], task.priority)
+        
+
+
+    # Sort orders within each workstation by start time, tie broken by task
+    ordered_orders_by_w = {
+        w: sorted(idxs, key=lambda m: (order_start_time[m], order_first_task[m]))
+        for w, idxs in enumerate(orders_by_workstation)
+    }
 
     return data.orders, ordered_orders_by_w, tasks

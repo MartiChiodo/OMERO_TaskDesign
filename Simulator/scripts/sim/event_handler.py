@@ -6,14 +6,14 @@ Each handler has signature ``(event, state, sim)`` where:
 - *sim*   : Simulator       — immutable config (sim.config) and RNG (sim.RANDOM_GENERATOR).
 """
 
-import logging, time, copy
+import logging, time
 from Simulator.scripts.core.entities import Order, Event, Task, Visit
 from Simulator.scripts.core.warehouse import Warehouse
 from Simulator.scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationPickingStatus, EventType
 from Simulator.scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
 from Simulator.scripts.core.queues import PriorityQueue
 
-TIME_LIMIT_AT_WS = 300
+TIME_LIMIT_AT_WS = 600
 
 def arrival_order(event: Event, state, sim) -> None:
     """
@@ -94,7 +94,6 @@ def arrival_order(event: Event, state, sim) -> None:
     ))
 
 
-
 def open_order(event: Event, state, sim) -> None:
     """
     Open an order at its assigned workstation.
@@ -161,8 +160,15 @@ def open_order(event: Event, state, sim) -> None:
                     time=state.current_time,
                     type=EventType.START_TASK
                 ))
-
-
+        
+    # Trying to start a picking operation
+    if workstation.status == WorkstationPickingStatus.IDLE and workstation.picking_buffer:
+        state.future_events.push(Event(
+            time=state.current_time,
+            type=EventType.START_PICKING,
+            info=workstation.workstation_id
+        ))
+                
 
 def release_task(event: Event, state, sim) -> None:
     """
@@ -218,15 +224,16 @@ def start_task(event: Event, state, sim) -> None:
 
         if sim.config.optimization_enabled:
             valid = any(
-                o in state.warehouse.workstations[v.workstation_id].opened_orders.union(state.warehouse.workstations[v.workstation_id].order_buffer[:2])
+                o in state.warehouse.workstations[v.workstation_id].opened_orders.union(state.warehouse.workstations[v.workstation_id].order_buffer[:1])
                 for v in candidate.stops
                 for o in v.orders
             )
+
             if not valid:
                 logging.debug("Task %i blocked: no orders in %s is open yet.  [released tasks = %i]",
                             candidate.task_id, {v.workstation_id : [o for o in v.orders] for v in candidate.stops}, len(state.released_tasks))
                 skipped_t.append(candidate)
-                continue   # passa al prossimo candidato 
+                continue   # next candidate
 
         pod = state.warehouse.get_pod(candidate.pod_id)
         if pod.status == PodStatus.IDLE:
@@ -298,7 +305,6 @@ def start_task(event: Event, state, sim) -> None:
     )
     
 
-
 def arrival_pod_wst(event: Event, state, sim) -> None:
     """
     Handle pod arrival at a workstation.
@@ -320,17 +326,16 @@ def arrival_pod_wst(event: Event, state, sim) -> None:
     logging.debug("Pod %i arrived at workstation %i - status = %s",
                   task.pod_id, current_visit.workstation_id, workstation.status.name)
 
-    if workstation.status == WorkstationPickingStatus.IDLE \
-        and any(o in workstation.opened_orders for o in task.stops[0].orders):
+    workstation.picking_buffer[(task.task_id)] = state.current_time
+    logging.debug("Pod queued at workstation.    [picking_buffer = %s]",
+                      workstation.picking_buffer)
+    
+    if workstation.status == WorkstationPickingStatus.IDLE:
         state.future_events.push(Event(
             time=state.current_time,
             type=EventType.START_PICKING,
-            info=task
+            info=workstation.workstation_id
         ))
-    else:
-        workstation.picking_buffer[(task.task_id)] = state.current_time
-        logging.debug("Pod queued at workstation.    [picking_buffer = %s]",
-                      workstation.picking_buffer)
 
 
 def start_picking(event: Event, state, sim) -> None:
@@ -340,18 +345,30 @@ def start_picking(event: Event, state, sim) -> None:
     Sets workstation status to BUSY and schedules picking completion
     based on the number of items at this visit.
     """
-    task        = event.info
-    visit       = task.stops[0]
-    workstation = state.warehouse.get_workstation(visit.workstation_id)
+    workstation_id        = event.info
+    workstation = state.warehouse.get_workstation(workstation_id)
 
-    assert workstation.status == WorkstationPickingStatus.IDLE, (
-        f"Workstation {visit.workstation_id} should be IDLE before picking, "
-        f"got {workstation.status.name}"
-    )
-    assert task.task_id in state.active_tasks, (
-        f"Task {task.task_id} not found in active_tasks at start_picking"
-    )
+    # Race-condition guard: another START_PICKING already won, nothing to do
+    if workstation.status == WorkstationPickingStatus.BUSY:
+        return
 
+    # Find the oldest task in the buffer whose orders are currently open
+    task = None
+    for id_t, _ in sorted(workstation.picking_buffer.items(), key=lambda x: x[1]):
+        candidate = state.active_tasks.get(id_t)
+        if candidate is None:
+            continue
+        if any(o in workstation.opened_orders for o in candidate.stops[0].orders):
+            task = candidate
+            workstation.picking_buffer.pop(id_t)
+            break
+
+    if task is None:
+        # No task in buffer has a currently open order — nothing to start
+        logging.debug("start_picking: WS %i has no actionable task in buffer.", workstation_id)
+        return
+    
+    visit = task.stops[0]
     workstation.status = WorkstationPickingStatus.BUSY
     sim.STAT_MANAGER.update_statistic(
         type='WS_FREQ',
@@ -400,76 +417,6 @@ def end_picking(event: Event, state, sim) -> None:
     logging.debug("Task should have served orders %s, found open orders %s.",
                   completed_visit.orders, workstation.opened_orders)
 
-    # Drain picking buffer 
-    if workstation.picking_buffer:
-        
-        next_task_id = None
-        for id_t, t_arr in sorted(workstation.picking_buffer.items(), key=lambda x: x[1]):
-            if next_task_id is None:
-                t = state.active_tasks.get(id_t)
-
-                if any(o in workstation.opened_orders for o in t.stops[0].orders):
-                    next_task_id = id_t
-                    workstation.picking_buffer.pop(id_t)
-                    break
-
-        # Check if some pod got stuck in the buffer
-        for id_t, t_arr in list(workstation.picking_buffer.items()):
-            t = state.active_tasks.get(id_t)
-            if state.current_time - t_arr > TIME_LIMIT_AT_WS:
-
-                # Performing pop/remove I would do if Visit was done
-                t.stops.pop(0) # would be done in end_picking
-                workstation.picking_buffer.pop(id_t) # would be done in start_picking
-                workstation.active_tasks.discard(id_t) # would be done in end_picking
-
-                if len(t.stops) == 0: 
-                    pod_t = state.warehouse.pods[t.pod_id]
-                    travel_time = state.warehouse.travel_time(
-                        state.warehouse.cell2coord(workstation.position),
-                        state.warehouse.cell2coord(pod_t.storage_location),
-                        sim.RANDOM_GENERATOR
-                    )
-
-                    state.future_events.push(Event(
-                        time=state.current_time + travel_time,
-                        type=EventType.RETURN_POD,
-                        info=t
-                    ))
-                    logging.info("Task %i got stuck at workstation %i -> heading to the pod storage location.",
-                             id_t, workstation.workstation_id)
-                else:
-                    next_ws = state.warehouse.workstations[t.stops[0].workstation_id]
-                    travel_time = state.warehouse.travel_time(
-                        state.warehouse.cell2coord(workstation.position),
-                        state.warehouse.cell2coord(next_ws.position),
-                        sim.RANDOM_GENERATOR
-                    )
-
-                    state.future_events.push(Event(
-                        time=state.current_time + travel_time,
-                        type=EventType.ARRIVAL_POD_WST,
-                        info=t
-                    ))
-                    logging.info("Task %i got stuck at workstation %i -> heading to next workstation.",
-                             id_t, next_ws.workstation_id)
-
-
-
-        if next_task_id is not None:                
-            next_task = state.active_tasks.get(next_task_id)
-            assert next_task is not None, (
-                f"Task {next_task_id} in picking_buffer but not in active_tasks"
-            )
-            state.future_events.push(Event(
-                time=state.current_time,
-                type=EventType.START_PICKING,
-                info=next_task
-            ))
-            logging.debug("Dequeued task %i from picking buffer at workstation %i.   [buffer len = %i]",
-                        next_task_id, workstation.workstation_id, len(workstation.picking_buffer))
-
-
     
 
     # Update order states 
@@ -484,9 +431,11 @@ def end_picking(event: Event, state, sim) -> None:
 
             # Updating statistics
             if sim.STAT_MANAGER.WARM_UP <= state.current_time:
-                sim.STAT_MANAGER.throughput += len(order.items_pending and completed_visit.items)
+                picked_items = order.items_pending & completed_visit.items
+                sim.STAT_MANAGER.throughput += len(picked_items)
 
             order.items_pending -= completed_visit.items
+
             assert len(order.items_pending) >= 0, (
                 f"Order {order_id} has negative pending items after picking"
             )
@@ -532,12 +481,62 @@ def end_picking(event: Event, state, sim) -> None:
         ))
         logging.debug("Task %i heading to workstation %i.", task.task_id, next_visit.workstation_id)
 
+    
+    # Drain picking buffer 
+    if workstation.picking_buffer:
+        # Check if some pod got stuck in the buffer
+        for id_t, t_arr in list(workstation.picking_buffer.items()):
+            t = state.active_tasks.get(id_t)
+            if state.current_time - t_arr > TIME_LIMIT_AT_WS:
+
+                # Performing pop/remove I would do if Visit was done
+                t.stops.pop(0) # would be done in end_picking
+                workstation.picking_buffer.pop(id_t) # would be done in start_picking
+                workstation.active_tasks.discard(id_t) # would be done in end_picking
+
+                if len(t.stops) == 0: 
+                    pod_t = state.warehouse.pods[t.pod_id]
+                    travel_time = state.warehouse.travel_time(
+                        state.warehouse.cell2coord(workstation.position),
+                        state.warehouse.cell2coord(pod_t.storage_location),
+                        sim.RANDOM_GENERATOR
+                    )
+
+                    state.future_events.push(Event(
+                        time=state.current_time + travel_time,
+                        type=EventType.RETURN_POD,
+                        info=t
+                    ))
+                    logging.info("Task %i got stuck at workstation %i -> heading to the pod storage location.",
+                             id_t, workstation.workstation_id)
+                else:
+                    next_ws = state.warehouse.workstations[t.stops[0].workstation_id]
+                    travel_time = state.warehouse.travel_time(
+                        state.warehouse.cell2coord(workstation.position),
+                        state.warehouse.cell2coord(next_ws.position),
+                        sim.RANDOM_GENERATOR
+                    )
+
+                    state.future_events.push(Event(
+                        time=state.current_time + travel_time,
+                        type=EventType.ARRIVAL_POD_WST,
+                        info=t
+                    ))
+                    logging.info("Task %i got stuck at workstation %i -> heading to next workstation.",
+                             id_t, next_ws.workstation_id)
+
+
+
+        state.future_events.push(Event(
+                time=state.current_time,
+                type=EventType.START_PICKING,
+                info=workstation.workstation_id
+            ))
+            
+
 
     # Skip redesign if any order closed: close_order will handle it
-    if completed_orders:
-        return
-
-    if not sim.config.optimization_enabled:
+    if not sim.config.optimization_enabled and not completed_orders:
         st = time.time()
         new_tasks, state.task_counter = design_tasks_for_ws(
             workstation=workstation,
@@ -556,7 +555,7 @@ def end_picking(event: Event, state, sim) -> None:
                 ))
             logging.debug("Redesigned %i task(s) for workstation %i",
                           len(new_tasks), workstation.workstation_id)
-
+            
 
 def return_pod(event: Event, state, sim) -> None:
     """
@@ -655,37 +654,174 @@ def run_optimizer(event: Event, state, sim) -> None:
     """
     Execute one optimization cycle: design tasks, assign orders to workstations,
     schedule release events, and queue the next optimization run.
-    """
+    """      
 
-    # Release task stuck at picking buffer
-    for ws in state.warehouse.workstations:
-        for id_t in list(ws.picking_buffer.keys()):
-            t = state.active_tasks.get(id_t)
-            # Deleting next stops (for the sake of simplicity)
-            for v in t.stops:
-                state.warehouse.workstations[v.workstation_id].active_tasks.discard(id_t)
+    # Managing active tasks
+    for id_t, task in list(state.active_tasks.items()):
 
-            t.stops = [t.stops[0]]
-            available_order = t.stops[0].orders & ws.opened_orders
-            if len(available_order) == 0:
-                t.stops.pop(0)
-                ws.picking_buffer.pop(id_t)
+        # Ignore tasks already marked with no remaining stops
+        if len(task.stops) == 0:
+            continue
 
-                pod_t = state.warehouse.pods[t.pod_id]
+        # Store the workstation the pod was originally targeting before redesign
+        old_target_ws = state.warehouse.workstations[
+            task.stops[0].workstation_id
+        ]
+
+        
+        # Redesign task: remove stops whose orders are no open
+        original_ws_ids = {stop.workstation_id for stop in task.stops}
+
+        task.stops = [
+            stop
+            for stop in task.stops
+            if len(
+                stop.orders
+                & state.warehouse.workstations[
+                    stop.workstation_id
+                ].opened_orders
+            ) > 0
+        ]
+
+        new_ws_ids = {stop.workstation_id for stop in task.stops}
+
+        # Remove task from workstations no longer visited
+        for ws_id in original_ws_ids - new_ws_ids:
+            state.warehouse.workstations[ws_id].active_tasks.discard(id_t)
+
+
+        # CASE 1-3: task still has remaining stops
+        if len(task.stops) > 0:
+
+            new_target_ws = state.warehouse.workstations[
+                task.stops[0].workstation_id
+            ]
+
+            
+            # CASE 1: target unchanged
+            # Pod is still going to / waiting at the correct workstation.
+            # Keep current routing and scheduled events unchanged.
+            if old_target_ws.workstation_id == new_target_ws.workstation_id:
+                pass
+
+            # CASE 2: target changed, pod already at old workstation
+            # Remove from picking buffer and reroute directly.
+            elif id_t in old_target_ws.picking_buffer:
+
+                old_target_ws.picking_buffer.pop(id_t)
+
                 travel_time = state.warehouse.travel_time(
-                    state.warehouse.cell2coord(ws.position),
-                    state.warehouse.cell2coord(pod_t.storage_location),
-                    sim.RANDOM_GENERATOR
+                    state.warehouse.cell2coord(old_target_ws.position),
+                    state.warehouse.cell2coord(new_target_ws.position),
+                )
+
+                state.future_events.push(Event(
+                    time=state.current_time + travel_time,
+                    type=EventType.ARRIVAL_POD_WST,
+                    info=task,
+                ))
+
+            # CASE 3: target changed, pod still traveling
+            # Cancel old ARRIVAL event and replace with new destination.
+            else:
+                time_occ = None
+                ev_l = []
+
+                while len(state.future_events) > 0:
+                    e = state.future_events.pop()
+
+                    if (
+                        e.type == EventType.ARRIVAL_POD_WST
+                        and e.info.task_id == task.task_id
+                    ):
+                        time_occ = e.time
+                    else:
+                        ev_l.append(e)
+
+                for ev in ev_l:
+                    state.future_events.push(ev)
+
+                if time_occ is None:
+                    raise RuntimeError(
+                        f"No ARRIVAL_POD_WST found for task {task.task_id}"
+                    )
+
+                remaining_travel = time_occ - state.current_time
+
+                reroute_travel = state.warehouse.travel_time(
+                    state.warehouse.cell2coord(old_target_ws.position),
+                    state.warehouse.cell2coord(new_target_ws.position),
+                )
+
+                state.future_events.push(Event(
+                    time=state.current_time + remaining_travel + reroute_travel,
+                    type=EventType.ARRIVAL_POD_WST,
+                    info=task,
+                ))
+
+
+        # CASE 4-5: task has no remaining stops -> return pod to storage
+        else:
+            pod = state.warehouse.pods[task.pod_id]
+
+            # CASE 4: pod already at workstation
+            # Send directly back to storage.
+            if id_t in old_target_ws.picking_buffer:
+
+                old_target_ws.picking_buffer.pop(id_t)
+
+                travel_time = state.warehouse.travel_time(
+                    state.warehouse.cell2coord(old_target_ws.position),
+                    state.warehouse.cell2coord(pod.storage_location),
                 )
 
                 state.future_events.push(Event(
                     time=state.current_time + travel_time,
                     type=EventType.RETURN_POD,
-                    info=t
+                    info=task,
                 ))
+
+            # CASE 5: pod still traveling to workstation
+            # Cancel arrival and redirect to storage.
             else:
-                t.stops[0].orders = available_order
-                
+                time_occ = None
+                ev_l = []
+
+                while len(state.future_events) > 0:
+                    e = state.future_events.pop()
+
+                    if (
+                        e.type == EventType.ARRIVAL_POD_WST
+                        and e.info.task_id == task.task_id
+                    ):
+                        time_occ = e.time
+                    else:
+                        ev_l.append(e)
+
+                for ev in ev_l:
+                    state.future_events.push(ev)
+
+                if time_occ is None:
+                    raise RuntimeError(
+                        f"No ARRIVAL_POD_WST found for task {task.task_id}"
+                    )
+
+                remaining_to_old_ws = time_occ - state.current_time
+
+                travel_old_ws_to_storage = state.warehouse.travel_time(
+                    state.warehouse.cell2coord(old_target_ws.position),
+                    state.warehouse.cell2coord(pod.storage_location),
+                )
+
+                state.future_events.push(Event(
+                    time=state.current_time
+                    + remaining_to_old_ws
+                    + travel_old_ws_to_storage,
+                    type=EventType.RETURN_POD,
+                    info=task,
+                ))
+
+
 
     st = time.time()
     orders, ordered_orders_by_w, tasks = sim.OPT_MANAGER.solve_task_design_and_assignment(sim, state)

@@ -225,7 +225,11 @@ def build_solution(x: np.ndarray, d) -> tuple:
                         add_idle_arcs(y, p_rel, prev_loc, prev_t, arc[0][1])
                         y[p_rel, arc_id] = 1
 
-            prev_loc, prev_t = ws_loc, arrive_t
+            if arrive_t + 1 < d.OptManager.N_TIME:
+                add_idle_arcs(y, p_rel, ws_loc, arrive_t, arrive_t + 1)
+                prev_loc, prev_t = ws_loc, arrive_t + 1
+            else:
+                prev_loc, prev_t = ws_loc, arrive_t
 
         # Path is ended with idle arcs at storage location
         # Return to storage
@@ -327,7 +331,12 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
                 if arc_id is not None:
                     add_idle_arcs(prev_loc, prev_t, arc[0][1])
                     y_row[arc_id] = 1
-        prev_loc, prev_t = ws_loc, arrive_t
+
+        if arrive_t + 1 < d.OptManager.N_TIME:
+            add_idle_arcs(ws_loc, arrive_t, arrive_t + 1)
+            prev_loc, prev_t = ws_loc, arrive_t + 1
+        else:
+            prev_loc, prev_t = ws_loc, arrive_t
 
     # Return to storage
     if prev_loc != storage_loc:
@@ -353,13 +362,14 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
 
 def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
     T = x.shape[1]
-    picking_reward = float(f.sum())
-    backlog_penalty   = 0.5 * float(sum(
-        (d.current_time - d.arrival_times[m]) / d.OptManager.TIME_UNIT
-        * (1.0 - g[m, T - 1])
+    picking_reward = x[:, T-1].sum() 
+    backlog_penalty   = float(sum(
+        (d.current_time + t * d.OptManager.TIME_UNIT - d.arrival_times[m]) / (d.OptManager.TIME_UNIT * d.OptManager.N_TIME)
+        * (1.0 - g[m, t])
         for m in range(len(d.orders))
+        for t in range(1,T)
     ))
-    return picking_reward - backlog_penalty
+    return picking_reward - 0.5*backlog_penalty
 
 
 def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
@@ -384,11 +394,11 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             item_work = d.OptManager.DELTA_ITEM * (x[ims_w, t] - x[ims_w, t - 1]).sum()
             travel_arrivals = [
                 a for a in d.OptManager.incoming_arc_idx.get((ws_p, t), [])
-                # if a < n_travel
+                if a < n_travel
             ]
             pod_arrivals = d.OptManager.DELTA_POD * y[:, travel_arrivals].sum()
             total = float(item_work + pod_arrivals)
-            if total > d.OptManager.TIME_UNIT + 1e-6:
+            if total > 2*d.OptManager.TIME_UNIT + 1e-6:
                 ec14.append({'w': w, 't': t, 'value': total})
     if ec14:
         viols['EC14'] = ec14
@@ -422,7 +432,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             _, m   = d.relevant_pairs_for_x[im]
             ws_p   = d.ws_positions[d.order_to_ws[m]]
             rel_p  = d.from_PodId_to_RelPod[d.pod_of_item[im]]
-            t_arcs = d.OptManager.outgoing_arc_idx.get((ws_p, first_t), [])
+            t_arcs = d.OptManager.incoming_arc_idx.get((ws_p, first_t), [])
             if float(y[rel_p, t_arcs].sum()) < 1e-6:
                 ec18.append({'im': im, 't': first_t})
     if ec18:
@@ -501,31 +511,27 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     storage_positions = set(d.OptManager._L)
 
     for rel_p in range(n_pods):
-        # initial position at t=0 is storage
         pod_id = d.from_RelPod_to_PodId[rel_p]
-        current_loc = d.warehouse.pods[pod_id].storage_location
-
-        # pod outside at t=0?
-        if current_loc not in storage_positions:
-            active[0] += 1
 
         for a_idx, val in enumerate(y[rel_p]):
             if val < 0.5:
                 continue
 
             src, dst = d.OptManager.all_arcs[a_idx]
+            _, src_t = src
             dst_loc, dst_t = dst
 
-            current_loc = dst_loc
-            if current_loc not in storage_positions:
+            if not dst_loc == d.warehouse.pods[pod_id].storage_location:
                 active[dst_t] += 1
+                # intermediate timestep
+                for t in range(src_t + 1, dst_t):
+                    active[t] += 1
 
-    # EC_NEW: limit simultaneous pods outside storage
-    bad = np.where(active > len(d.OptManager._warehouse.robots))[0]
-    if bad.size:
-        viols['MAX_ACTIVE_PODS'] = {
-            'times': bad.tolist(),
-            'values': active[bad].tolist()
+    bad_t = np.where(active > len(d.warehouse.robots))[0]
+    if bad_t.size:
+        viols['max_active_pods'] = {
+            'times': bad_t.tolist(),
+            'values': active[bad_t].tolist()
         }
 
 
@@ -534,6 +540,24 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
 
 
 ### INITIAL SOLUTION BUILDER
+
+def find_feasible_pick_time(candidate_t: int, p_id: int, pod_busy: dict[int, set[int]],
+    T: int, max_shift: int = 10 ) -> int | None:
+    for shift in range(max_shift + 1):
+        # try candidate_t + shift
+        for t in [candidate_t + shift]:
+            if t < 1 or t >= T:
+                continue
+
+            busy = pod_busy[p_id]
+            if (
+                t not in busy
+                and (t - 1) not in busy
+                and (t + 1) not in busy
+            ):
+                return t
+
+    return None
 
 def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
     """
@@ -549,17 +573,11 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
     x         = np.zeros((n_im, T), dtype=np.float64)
     scheduled = np.zeros(n_im, dtype=bool)
 
-    # Force-schedule items belonging to already-open orders
-    max_t0 = 0
-    for m, order in enumerate(d.orders):
-        if order.order_id in d.opened_order_ids:
-            for im in d.items_of_order[m]:
-                t0 = max(int(d.earliest_t[im]), 1)
-                max_t0 = max(max_t0, t0)
-                x[im, t0:] = 1
-                scheduled[im] = True
+    pod_busy = {p: set() for p in d.from_RelPod_to_PodId}
 
-    for w, order_ids in enumerate(d.orders_by_workstation):
+    for w_id, order_ids in enumerate(d.orders_by_workstation):
+        ws = d.warehouse.workstations[w_id]
+
         # Skip workstations with nothing left to schedule
         pending_orders = [
             m for m in order_ids
@@ -617,8 +635,12 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
             if not placed:
                 batches.append([m])
 
+        # First batch to be served should be already opened orders at workstation
+        batch0 = [m for m in order_ids if d.orders[m].order_id in ws.opened_orders]
+        batches.insert(0, batch0)
+
         # Process batches sequentially; each batch starts after the previous one ends
-        batch_start_t = max_t0
+        batch_start_t = 0
         for batch in batches:
 
             # Collect all unscheduled items grouped by pod
@@ -634,14 +656,27 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
                 for p_id, ims in pod_to_ims.items()
             }
 
-            # Assign pick times: stagger pod arrivals by one slot to respect EC14
+            # Assign pick times: stagger pod arrivals by two slots to respect EC14
             next_free_t = batch_start_t
             pod_pick_t: dict[int, int] = {}
+
             for p_id in sorted(pod_to_ims, key=lambda p: pod_earliest_in_batch[p]):
-                t_pick = max(pod_earliest_in_batch[p_id], next_free_t)
-                if t_pick >= T:
+                theoretical_t = max(
+                    pod_earliest_in_batch[p_id],
+                    next_free_t,
+                )
+                t_pick = find_feasible_pick_time(
+                    candidate_t=theoretical_t,
+                    p_id=p_id,
+                    pod_busy=pod_busy,
+                    T=T,
+                )
+
+                if t_pick is None:
                     continue
+
                 pod_pick_t[p_id] = t_pick
+                pod_busy[p_id].add(t_pick)
                 next_free_t = t_pick + 1
 
             # Write x and mark items as scheduled
@@ -661,14 +696,15 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
 
 ### NEIGHBHOURS GENERATORS
 
-def _make_move_1(x, im, variation, first_one_idx, T):
-    t0    = int(first_one_idx[im])
-    t_new = t0 + variation
-    if t_new < 1 or t_new >= T:
-        return None
-    x_cand        = x.copy()
-    x_cand[im, :] = 0
-    x_cand[im, t_new:] = 1
+def _make_move_1(x, ims, variation, first_one_idx, T):
+    """Shift k item simultaneamente."""
+    x_cand = x.copy()
+    for im in ims:
+        t_new = int(first_one_idx[im]) + variation
+        if t_new < 0 or t_new >= T:
+            return None
+        x_cand[im, :] = 0
+        x_cand[im, t_new:] = 1
     return x_cand
 
 
@@ -699,6 +735,13 @@ def _make_move_3(x, ims1, ims2, first_one_idx, T):
         x_cand[im, :] = 0; x_cand[im, t:] = 1
     return x_cand
 
+def _make_move_4(x, im, t_new, T):
+    if t_new < 0 or t_new >= T:
+        return None
+    x_cand = x.copy()
+    x_cand[im, :] = 0
+    x_cand[im, t_new:] = 1
+    return x_cand
 
 ### LOCAL SEARCH
 
@@ -727,9 +770,14 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     print("\n[ls_stage2] Building initial solution …")
     x_current = build_initial_x(rng, d)
     _, f0, g0, v0, y0 = build_solution(x_current, d)
-    while not check_constraints((x_current, f0, g0, v0, y0), d):
+    feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
+    while not feasible:
+        print(f"[ls_stage2] violated = {list(viols.keys())}")
+        for k, v in viols.items():
+            print(f"  {k}: {v[:3] if isinstance(v, list) else v}")
         x_current = build_initial_x(rng, d)
         _, f0, g0, v0, y0 = build_solution(x_current, d)
+        feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
 
     best_x   = x_current.copy()
     best_sol = (best_x, f0, g0, v0, y0 )
@@ -746,8 +794,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     cont                       = 1
     iter_without_improvement   = 0
     max_iter_without_improvement = 5
-    MAX_ITER = 40
-    MAX_NEIGH = 70
+    MAX_ITER = 30
+    MAX_NEIGH = 150
 
     print(f"[ls_stage2] Exploring neighbours …")
     while not am_I_stuck and cont <= MAX_ITER:
@@ -764,11 +812,28 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             for im in range(x_current.shape[0]):
                 moves[0].append(('item',  im, -1))
                 moves[0].append(('item',  im, -2))
+
+                if x_current[im].sum() == 0:
+                    counts = np.bincount(first_one_idx, minlength=x_current.shape[1])
+                    top_k = np.argsort(counts)[:5]
+                    t_new = rng.choice(top_k)
+                    moves[0].append(('rnd_item',  im, t_new))
+                    t_new = rng.choice(top_k)
+                    moves[0].append(('rnd_item',  im, t_new))
         else:
             for im in range(x_current.shape[0]):
-                moves[0].append(('item', im, -1))
                 moves[0].append(('item', im, -2))
-                moves[0].append(('item', im, -4))
+                moves[0].append(('item', im, -3))
+                moves[0].append(('item', im, -5))
+
+            item_ids = list(range(x_current.shape[0]))
+            for direction in [-1, -2, -4]:
+                sampled = rng.choice(item_ids, size=min(len(item_ids), 20), replace=False)
+                for i in range(0, len(sampled) - 1, 2):
+                    moves[0].append(('multi_item', (sampled[i], sampled[i+1]), direction))
+                    if i+2 < len(sampled)-1:
+                        moves[0].append(('multi_item', (sampled[i], sampled[i+1], sampled[i+2]), direction))
+
             for m in range(len(d.orders)):
                 moves[1].append(('order', m, -1))
                 moves[1].append(('order', m, -2))
@@ -782,8 +847,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         # Randomly reducing the neighborhood
         total = sum(len(m) for m in moves)
         if total > MAX_NEIGH:
-            p0 = 0.3 if iter_without_improvement > 0 else 1.0
-            for i, p in enumerate([p0, 0.3, 0.4]):
+            p0 = 0.5 if iter_without_improvement > 0 else 1.0
+            for i, p in enumerate([p0, 0.3, 0.2]):
                 size = min(len(moves[i]), int(np.ceil(MAX_NEIGH * p)))
                 if size and len(moves[i]) > size:
                     idxs = rng.choice(len(moves[i]), size=size, replace=False)
@@ -795,7 +860,13 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             # Build candidate x
             if move[0] == 'item':
                 _, im, direction = move
-                x_cand = _make_move_1(x_current, int(im), int(direction), first_one_idx, T)
+                x_cand = _make_move_1(x_current, [im], int(direction), first_one_idx, T)
+            elif move[0] == 'multi_item':
+                _, ims, direction = move
+                x_cand = _make_move_1(x_current, ims, int(direction), first_one_idx, T)
+            elif move[0] == 'rnd_item':
+                _, im, t_new = move
+                x_cand = _make_move_4(x_current, im, t_new, T)
             elif move[0] == 'order':
                 _, m, direction = move
                 x_cand = _make_move_2(
@@ -831,11 +902,14 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             if best_obj_in_iter > best_obj:
 
                 # I check the full feasibility
-                if best_move[0] in ('item', 'order'):
+                if best_move[0] in ('item', 'order', 'multi_item'):
                     # Identify only the affected pods
                     if best_move[0] == 'item':
                         _, best_im, _ = best_move
                         affected_pods = {d.pod_of_item[int(best_im)]}
+                    elif best_move[0] == 'multi_item':
+                        _, best_ims, _ = best_move
+                        affected_pods = {d.pod_of_item[int(im)] for im in best_ims}
                     else:
                         _, best_m, _ = best_move
                         affected_pods = {d.pod_of_item[im] for im in im_by_order[int(best_m)]}
@@ -848,11 +922,13 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
                     f_new, g_new, v_new = _build_fgv(best_x_in_iter, d)
                     sol_curr = (best_x_in_iter, f_new, g_new, v_new, y_new)
+                
                 else:
                     # swap: two full orders, potentially many pods — full rebuild
                     sol_curr = build_solution(best_x_in_iter, d)   
 
-                if check_constraints(sol_curr, d):
+                feasible, _ = check_constraints(sol_curr, d)
+                if feasible:
                     best_obj = best_obj_in_iter
                     best_x   = best_x_in_iter.copy()
                     best_sol = sol_curr

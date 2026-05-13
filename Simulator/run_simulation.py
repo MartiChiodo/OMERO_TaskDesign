@@ -20,7 +20,8 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [2]
+    EXPERIMENT_IDS = [1,2,3,4,5,6]
+    EXPERIMENT_IDS = [1,2]
     SEED = 343310
     OPTIM = True
 
@@ -32,7 +33,7 @@ def main():
             logging.root.removeHandler(handler)
 
         logging.basicConfig(
-            filename=os.path.join(os.path.dirname(__file__), f"output/logs/logs_{EXPERIMENT_ID}_Seed{SEED}_Opt{OPTIM}.log"),
+            filename=os.path.join(os.path.dirname(__file__), f"output/logs/Opt_{OPTIM}/logs_{EXPERIMENT_ID}_Seed{SEED}_Opt{OPTIM}.log"),
             encoding="utf-8",
             level=logging.DEBUG,
             datefmt="%H:%M:%S",
@@ -55,7 +56,7 @@ def main():
                 ],
                 warm_up=float(cfg["warm_up"]),
                 time_horizon=None,
-                path_to_save_stat=f'Simulator/output/reports/report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}',
+                path_to_save_stat=f'Simulator/output/reports/Opt_{OPTIM}/report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}',
                 optimization_enabled=OPTIM,
                 optimization_interval=float(cfg["delta_t_opt"])
             ),
