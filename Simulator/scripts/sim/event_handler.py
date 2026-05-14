@@ -42,7 +42,7 @@ def arrival_order(event: Event, state, sim) -> None:
         if rnd < sim.config.order_gen_config[1]:
             order_size = 1
         else:
-            order_size = sim.RANDOM_GENERATOR.geometric(p=sim.config.order_gen_config[2]) + 2
+            order_size = sim.RANDOM_GENERATOR.geometric(p=sim.config.order_gen_config[2]) + 1
 
         sku_list = [
             _sample_sku(sim.RANDOM_GENERATOR, state.warehouse.num_skus)

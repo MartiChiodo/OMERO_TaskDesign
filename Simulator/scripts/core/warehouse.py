@@ -144,7 +144,7 @@ class Warehouse:
                 y_position = self.Y - MARGIN - col
 
                 # Sample SKUs for this pod 
-                samples = random_generator.normal(loc=num_skus/2, scale=num_skus/3, size=num_skus_per_pod)
+                samples = random_generator.normal(loc=num_skus/2, scale=0.8*num_skus, size=num_skus_per_pod)
                 samples = np.round(samples).astype(int)
                 pod_skus = samples[(samples >= 0) & (samples <= num_skus-1)]
 

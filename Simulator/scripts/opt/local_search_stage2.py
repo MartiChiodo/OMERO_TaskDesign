@@ -369,7 +369,7 @@ def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
         for m in range(len(d.orders))
         for t in range(1,T)
     ))
-    return picking_reward - 0.5*backlog_penalty
+    return picking_reward - backlog_penalty
 
 
 def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
@@ -834,21 +834,20 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                     if i+2 < len(sampled)-1:
                         moves[0].append(('multi_item', (sampled[i], sampled[i+1], sampled[i+2]), direction))
 
-            for m in range(len(d.orders)):
-                moves[1].append(('order', m, -1))
-                moves[1].append(('order', m, -2))
-                moves[1].append(('order', m, -3))
-            for order_ids in d.orders_by_workstation:
-                order_list = list(order_ids)
-                for i1, m1 in enumerate(order_list):
-                    for m2 in order_list[i1 + 1:]:
-                        moves[2].append(('swap', m1, m2))
+        for m in range(len(d.orders)):
+            moves[1].append(('order', m, -1))
+            moves[1].append(('order', m, -2))
+            moves[1].append(('order', m, -3))
+        for order_ids in d.orders_by_workstation:
+            order_list = list(order_ids)
+            for i1, m1 in enumerate(order_list):
+                for m2 in order_list[i1 + 1:]:
+                    moves[2].append(('swap', m1, m2))
 
         # Randomly reducing the neighborhood
         total = sum(len(m) for m in moves)
         if total > MAX_NEIGH:
-            p0 = 0.5 if iter_without_improvement > 0 else 1.0
-            for i, p in enumerate([p0, 0.3, 0.2]):
+            for i, p in enumerate([0.5, 0.3, 0.2]):
                 size = min(len(moves[i]), int(np.ceil(MAX_NEIGH * p)))
                 if size and len(moves[i]) > size:
                     idxs = rng.choice(len(moves[i]), size=size, replace=False)
