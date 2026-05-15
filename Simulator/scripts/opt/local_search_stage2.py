@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from bisect import bisect_left
+import logging
 
 from .stage2_data import Stage2Data
 
@@ -881,7 +882,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         
             # Update not_before_t
             batch_end_t = max(
-                max(tentative_picks[p_id] for p_id in order_pod_items[m]) + 1
+                max(tentative_picks.get(p_id, 0) for p_id in order_pod_items[m]) + 1
                 for m in committable
             )
             not_before_t = batch_end_t + 1
@@ -962,12 +963,14 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         im_by_order.setdefault(m, []).append(im)
 
     # Initial solution 
-    print("\n[ls_stage2] Building initial solution …")
+    print("\n[ls_stage2] Building initial solution ...")
+    logging.info("\n[ls_stage2] Building initial solution ...")
     x_current = build_initial_x(rng, d)
     _, f0, g0, v0, y0 = build_solution(x_current, d)
     feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
     while not feasible:
         print(f"[ls_stage2] violated = {list(viols.keys())}")
+        logging.info("[ls_stage2] violated = %s", list(viols.keys()))
         for k, v in viols.items():
             print(f"  {k}: {v[:3] if isinstance(v, list) else v}")
         x_current = build_initial_x(rng, d)
@@ -978,6 +981,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     best_sol = (best_x, f0, g0, v0, y0)
     best_obj = compute_objective(x_current, f0, g0, d)
     print(f"[ls_stage2] Feasible initial solution: obj = {best_obj:.4f}")
+    logging.info("[ls_stage2] Feasible initial solution: obj = %.4f", best_obj)
 
     T = x_current.shape[1]
 
@@ -991,7 +995,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     MAX_ITER = 30
     MAX_NEIGH = 150
 
-    print(f"[ls_stage2] Exploring neighbours …")
+    print("[ls_stage2] Exploring neighbours ...")
+
     while not am_I_stuck and cont <= MAX_ITER:
         first_one_idx = np.argmax(best_x > 0.5, axis=1)
         first_one_idx[best_x[:, -1] == 0] = T   # recompute once per iter
@@ -1158,6 +1163,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                     best_sol = sol_curr
                     improved = True
                     print(f"[ls_stage2] Iter {cont} : Improved with move {best_move} → {best_obj:.4f}")
+                    logging.info("[ls_stage2] Iter %i : Improved with move %s → %.4f",
+                                 cont, best_move, best_obj)
 
         if improved:
             iter_without_improvement = 0
@@ -1168,9 +1175,11 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                 print(f"[ls_stage2] Converged after "
                       f"{max_iter_without_improvement} iters without improvement "
                       f"at {best_obj:.4f}")
+                logging.info("[ls_stage2] Converged after %i iters without improvement", max_iter_without_improvement)
             else:
-                print(f"[ls_stage2] Iter {cont} No improvement "
+                print(f"[ls_stage2] Iter {cont} : No improvement "
                       f"({iter_without_improvement}/{max_iter_without_improvement})")
+                logging.info("[ls_stage2] Iter %i No improvement", cont)
 
         cont += 1
 

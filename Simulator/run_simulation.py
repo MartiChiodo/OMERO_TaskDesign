@@ -20,10 +20,10 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [1,2,3,4,7,8,9,10]
-    EXPERIMENT_IDS = [1,2,3,4]
+    EXPERIMENT_IDS = [1,2,3,4] + [7,8,9,10] + [13,14,15,16]
+    # EXPERIMENT_IDS = [7]
     SEED = 343310
-    OPTIM = True
+    OPTIM = False
 
     for EXPERIMENT_ID in EXPERIMENT_IDS:
         cfg = load_experiment(EXPERIMENT_ID)
@@ -35,7 +35,7 @@ def main():
         logging.basicConfig(
             filename=os.path.join(os.path.dirname(__file__), f"output/logs/Opt_{OPTIM}/logs_{EXPERIMENT_ID}_Seed{SEED}_Opt{OPTIM}.log"),
             encoding="utf-8",
-            level=logging.DEBUG,
+            level=logging.INFO,
             datefmt="%H:%M:%S",
             filemode="w",
             format="%(asctime)s %(levelname)s: %(message)s",

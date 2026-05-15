@@ -177,7 +177,9 @@ def local_search_stage1(
                 fixed_z.add(m)
 
     # Initial solution
-    print("\n[ls_stage1] Building initial solution …")
+    print("\n[ls_stage1] Building initial solution ...")
+    logging.info("\n[ls_stage1] Building initial solution ...")
+
     z0, x0, y0 = build_initial_solution(orders, relevant_pairs_for_x, OptManager, state, rng)
     while not check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x, x0, y0, z0):
         z0, x0, y0 = build_initial_solution(orders, relevant_pairs_for_x, OptManager, state, rng)
@@ -185,6 +187,7 @@ def local_search_stage1(
     best_sol = (x0, z0, y0)
     best_obj = compute_objective(y0)
     print(f"[ls_stage1] Feasible initial solution: obj = {best_obj:.4f}")
+    logging.info("[ls_stage1] Feasible initial solution: obj = %.4f", best_obj)
 
     # Main loop 
     MAX_ITER  = 30
@@ -194,7 +197,7 @@ def local_search_stage1(
     am_I_stuck = False
     cont = 1
 
-    print(f"[ls_stage1] Exploring neighbours ...")
+    print("[ls_stage1] Exploring neighbours ...")
 
     while cont <= MAX_ITER and not am_I_stuck:
         best_iter_obj = np.inf
@@ -249,6 +252,7 @@ def local_search_stage1(
                 best_sol = best_iter_sol
                 best_obj = best_iter_obj
                 print(f"[ls_stage1] Iter {cont} : Improved with move {best_iter_move} → {best_obj:.4f}")
+                logging.info("[ls_stage1] Iter %i : Improved with move %s → %.4f", cont, best_iter_move,best_obj)
                 iter_without_improvement = 0
             else:
                 if best_iter_obj == best_obj:
@@ -262,9 +266,11 @@ def local_search_stage1(
                     print(f"[ls_stage1] Converged after "
                         f"{max_no_improve} iters without improvement "
                         f"at {best_obj:.4f}")
+                    logging.info("[ls_stage1] Converged after %i iters without improvement", max_no_improve)
                 else:
                     print(f"[ls_stage1] Iter {cont} : No improvement "
                         f"({iter_without_improvement}/{max_no_improve})")
+                    logging.info("[ls_stage1] Iter %i : No improvemen", cont)
 
         cont += 1
 
