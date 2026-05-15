@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import numpy as np
+from bisect import bisect_left
 
 
 @dataclass
@@ -67,6 +68,7 @@ class Stage2Data:
     # Derived fields — computed in __post_init__ 
     ws_positions: list       = field(init=False)
     earliest_t:   np.ndarray = field(init=False)
+    arc_lookup:   dict
 
     def __post_init__(self):
         self.ws_positions = [
@@ -129,6 +131,25 @@ def build_stage2_data(
         p_id = pod_of_item[im]
         items_by_pod.setdefault(p_id, []).append(im)
 
+
+    
+    # Precompute direct travel arcs grouped by (src_loc, dst_loc).
+    n_travel = len(OptManager.travelling_arcs)
+    lookup = {}
+
+    for arc_id in range(n_travel):
+        arc = OptManager.all_arcs[arc_id]
+        src, dst = arc
+        src_loc, dep_t = src
+        dst_loc, arr_t = dst
+        key = (src_loc, dst_loc)
+        lookup.setdefault(key, []).append(
+            (dep_t, arr_t, arc_id, arc)
+        )
+    for key in lookup:
+        lookup[key].sort(key=lambda z: z[0])   # sort by departure
+
+
     return Stage2Data(
         orders                = orders,
         orders_items          = orders_items,
@@ -147,4 +168,5 @@ def build_stage2_data(
         OptManager            = OptManager,
         warehouse             = state.warehouse,
         state                 = state,
+        arc_lookup            = lookup
     )

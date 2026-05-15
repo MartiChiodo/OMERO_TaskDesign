@@ -91,9 +91,10 @@ The project is organised on four logical levels: \texttt{core} (shared entities 
 \texttt{scripts/stat/core.py}        & Dataclasses to support the collection of KPIs \\
 \texttt{scripts/opt/policies.py}     & Greedy assignment policies \\
 \texttt{scripts/opt/OptManager.py}   & The class \texttt{OptManager} controls the optimisation process: precomputes the time-space network and converts binary variables in \texttt{Task} objects\\
-\texttt{scripts/opt/opt\_solver.py}   & Definition of the optimization solver \\
-\texttt{scripts/opt/local\_search.py} & Definition of the local search algorithm used by the otimization solver\\
+\texttt{scripts/opt/local\_search\_stage1.py} & Definition of the local search algorithm used by the otimization solver for the stage  1\\
+\texttt{scripts/opt/local\_search\_stage2.py} & Definition of the local search algorithm used by the otimization solver for the stage  2\\
 \texttt{scripts/opt/stage2\_data.py}  & Dataclass for the second stage of the optimization process \\
+\texttt{scripts/opt/utils.py}  & Here is defined a function that converts the binary variables into \texttt{Task} used by the simulator. \\
 \bottomrule
 \end{tabularx}
 \caption{Folder and file structure of the project.}
@@ -441,7 +442,7 @@ The collected statistics are grouped into three categories:
 \begin{itemize}
     \item \texttt{ResourceTracker}: this type of statistic measures the state frequency of a given entity over time. It is used, for example, for both robots and workstations, and captures respectively the robot utilization rate and the workstation picking time ratio.
     \item \texttt{OrderFlowTracker}: this statistic captures the average order flow time, grouped by order size, from the \texttt{BACKLOG} state to the \texttt{CLOSED} state.
-    \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation.
+    \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation and the average number of pods simultaneously out of their storage location.
 \end{itemize}
 
 Finally, all statistics can be aggregated to compute global performance indicators and support system-level analysis.
@@ -513,7 +514,7 @@ In the code implementation, the variable $x_{imp}$ has only 2 dimensions to redu
 
 \begin{align}
     \min \quad 
-    & \sum_{w \in \mathcal{W}} \sum_{p \in \mathcal{P}} y_{wp} \label{M1_Obj} \\[4pt]
+    &  \sum_{w \in \mathcal{W}}\sum_{y \in \mathcal{P}} y_{wp}\\[4pt]
     \text{s.t.} \quad
     & \sum_{w \in \mathcal{W}} z_{mw} = 1 
      \qquad \forall m \in \mathcal{M} \label{M1_Constr1} \\
@@ -521,18 +522,18 @@ In the code implementation, the variable $x_{imp}$ has only 2 dimensions to redu
      \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m \label{M1_Constr2} \\
     & y_{wp} - x_{imp} - z_{mw} \ge -1 
      \qquad \forall w \in \mathcal{W},\, m \in \mathcal{M},\, i \in \mathcal{I}_m,\, p \in \mathcal{P}_i \label{M1_Constr3} \\
-    & \sum_{m \in \mathcal{M}} z_{mw} \le \overline{I} 
+    & \sum_{m \in \mathcal{M}} |\mathcal{I}_m| z_{mw} \le \overline{I} 
      \qquad \forall w \in \mathcal{W} \label{M1_Constr4} \\
-    & \sum_{m \in \mathcal{M}} z_{mw} \ge \underline{I} 
+    & \sum_{m \in \mathcal{M}} |\mathcal{I}_m| z_{mw} \ge \underline{I} 
      \qquad \forall w \in \mathcal{W} \label{M1_Constr5} \\
     & z_{mw} = 1 
      \qquad \forall m \in \mathcal{M}_0 \label{M1_InitialCond}
 \end{align}
 
 where $\mathcal{M}_0 \subset \mathcal{M}$ is a subset of orders whose workstation is already assigned by the warehouse state.
-Constraints \eqref{M1_Constr4} and \eqref{M1_Constr5} are needed to enforce balance between workstation worloads; the parameters $\overline{I}$ and $\underline{I}$ can be tuned to control the maximum allowed imbalance, or even removed to allow any feasible solution. At the moment,  $\overline{I} = \frac{num\_orders}{4} * 1.5$ and $\overline{I} = \frac{num\_orders}{4} * 0.5$.
+Constraints \eqref{M1_Constr4} and \eqref{M1_Constr5} are needed to enforce balance between workstation worloads; the parameters $\overline{I}$ and $\underline{I}$ can be tuned to control the maximum allowed imbalance between workstations workload and are set at $\overline{I} = \frac{\sum_{m \in \mathcal{M}} |\mathcal{I}_m |}{4} * 1.25$ and $\overline{I} = \frac{\sum_{m \in \mathcal{M}} |\mathcal{I}_m |}{4} * 0.75$.
 
-This optimization problem is solved using Gurobi.
+This optimization problem is solved using a local search strategy.
 
 \subsubsection{Second stage: Task Design and Scheduling}
 The decision variables of the second stage are:
@@ -549,10 +550,7 @@ Moreover, the variable $y_{pa}$ is defined only for the pods $p$ that have been 
 
 \begin{align}
     \max \quad
-    & \sum_{t \in \mathcal{T}} \sum_{m \in \mathcal{M}} g_{mt} 
-    + 0.5 * \sum_{i \in \mathcal{I}} \sum_{m \in \mathcal{M}} x_{imT}
-    - 0.5 * \sum_{m \in \mathcal{M}} \beta_m(1 - g_{mT})
-    \label{M2_Obj} \\[4pt]
+    & \sum_{i \in \mathcal{I}} \sum_{m \in \mathcal{M}} x_{im, T} - \sum_{m \in \mathcal{M}} \sum_{t \in \mathcal{T}} \beta_m(t) (1 - g_{mt}) \label{M2_Obj} \\[4pt]
     \text{s.t.} \quad
     & \sum_{m \in \mathcal{M}(w)} v_{mt} \le C_w
      \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T} \label{M2_Constr1} \\
@@ -567,8 +565,7 @@ Moreover, the variable $y_{pa}$ is defined only for the pods $p$ that have been 
      \qquad \forall p \in \mathcal{P} \label{M2_Constr3} \\
     & \sum_{a \in \mathcal{A}^-_{n}} y_{pa}
     - \sum_{a \in \mathcal{A}^+_{n}} y_{pa} = 0
-     \qquad \forall p \in \mathcal{P},\;
-    \in \mathcal{N} \setminus \left(\mathcal{N}_{\text{end}} \cup \{N_p^0\}\right)
+     \qquad \forall p \in \mathcal{P},\; n \in \mathcal{N} \setminus \left(\mathcal{N}_{\text{end}} \cup \{N_p^0\}\right)
     \label{M2_Constr4} \\
     & x_{imt} - x_{im,t-1}
     \le \sum_{a \in \mathcal{A}^+_{N(w,t)}} y_{pa}
@@ -581,16 +578,29 @@ Moreover, the variable $y_{pa}$ is defined only for the pods $p$ that have been 
      \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \\
     & g_{mt} \le x_{imt}
      \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \\
-    & g_{m,t+1} \ge \sum_{i \in \mathcal{I}_m} x_{imt}
+    & g_{m,t+1} \ge \sum_{i \in \mathcal{I}_m} x_{imt} - \left(|\mathcal{I}_m| - 1\right)
      \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \\
     & v_{mt} \ge v_{m,t-1} - g_{mt}
      \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \label{Enforcing_IC} \\
     & v_{m,0} = 0
-     \qquad \forall m \in \mathcal{M}_0 \label{IC}
+     \qquad \forall m \in \mathcal{M}_0 \label{IC} \\
+    & f_{mt} \ge f_{m,t-1}
+     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \\
+    & g_{mt} \ge g_{m,t-1}
+     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \\
+    & \sum_{p \in \mathcal{P}} \sum_{a \in \mathcal{A}^{\text{mov}}_p(t)} y_{pa} \leq |\mathcal{R}|
+\qquad \forall\, t \in \mathcal{T} \label{max_active_pods}
 \end{align}
 
-The objective function \eqref{M2_Obj} consists of 3 terms: the first one minimize the completion time of all orders (since $g$ is a cumulative variable, the earlier an order is completed the more terms $g_{mt}$ will be equal to $1$); the second one maximize the number of picked items at the end of the time horizon (this term is needed to encourage picking items for an order even if it won't be closed by the end); the third one penalizes uncompleted orders at the end of the time horizon, with a weight $\beta_m$ proportional to the difference between the order's arrival time and its completion time (this term is needed to ensure that orders won't be left in the backlog). \\
-Constraints \eqref{IC} and \eqref{Enforcing_IC} are needed for enforcing the initial conditions given by the orders already opened at workstations, for these orders the variable $f_{mt}$ loses its meaning as it is set to $1$ before any items is picked.
+The objective function \eqref{M2_Obj} consists of 2 terms: the first one maximize the throughput; the second one penalizes uncompleted orders at the end of the time horizon, with a weight $\beta_m$ proportional to the difference between the order's arrival time and its completion time (this term is needed to ensure that orders won't be left in the backlog). \\
+Constraints \eqref{IC} and \eqref{Enforcing_IC} are needed for enforcing the initial conditions given by the orders already opened at workstations, for these orders the variable $f_{mt}$ loses its meaning as it is set to $1$ before any items is picked. \\
+Constraint \eqref{max_active_pods} bounds the maximum number of pods out of their storage location simultaneously. The set $\mathcal{A}^{\text{mov}}_p(t)$ is defined as 
+\[\mathcal{A}^{\text{mov}}_p(t) = 
+\left\{ 
+    a \in \mathcal{A}_p \;\middle|\; 
+    \ell^+(a) \neq s_p, \quad t^-(a) < t \leq t^+(a) 
+\right\}\]
+where $t^-(a)$, $t^+(a)$ are respectively the departure and arrival time of arc $a$.
 
 This optimization problem is solved using a customized local search algorithm whose neighborhood generation mechanism solely relies on perturbing the matrix $x_{imt}$. The neighborhood structure is based on 3 moves:
 \begin{itemize}
