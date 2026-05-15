@@ -270,7 +270,7 @@ def local_search_stage1(
                 else:
                     print(f"[ls_stage1] Iter {cont} : No improvement "
                         f"({iter_without_improvement}/{max_no_improve})")
-                    logging.info("[ls_stage1] Iter %i : No improvemen", cont)
+                    logging.info("[ls_stage1] Iter %i : No improvement", cont)
 
         cont += 1
 

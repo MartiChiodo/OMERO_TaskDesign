@@ -1,0 +1,46 @@
+22:17:10 INFO: Warehouse initialization | grid=10x20, physical=23x25, num_skus=10000, num_robots=20, num_ws=4
+22:17:10 INFO: Warehouse initialized | 200 pods  (average number of skus per pod = 50.83), 4 workstations, 20 robots
+22:17:10 INFO: [OptManager] Building time-space network ...
+22:17:10 INFO: [OptManager] Network ready: 20400 nodes, 157086 travelling arcs, 20196 idle arcs.
+22:17:10 INFO: 
+=============================================
+22:17:10 INFO:   START SIMULATION  {TIME HORIZON = 02:00:00}
+22:17:10 INFO: Solving stage 1 ... 
+22:17:10 INFO: 
+[ls_stage1] Building initial solution ...
+22:17:10 INFO: [ls_stage1] Feasible initial solution: obj = 81.0000
+22:17:11 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 3, 29) → 80.0000
+22:17:12 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 22, 50) → 78.0000
+22:17:13 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 2, 34) → 77.0000
+22:17:14 INFO: [ls_stage1] Iter 4 : No improvement
+22:17:15 INFO: [ls_stage1] Iter 5 : No improvement
+22:17:16 INFO: [ls_stage1] Iter 6 : No improvement
+22:17:16 INFO: [ls_stage1] Iter 7 : No improvement
+22:17:17 INFO: [ls_stage1] Iter 8 : Improved with move ('repod', 76, 198) → 76.0000
+22:17:18 INFO: [ls_stage1] Iter 9 : No improvement
+22:17:19 INFO: [ls_stage1] Iter 10 : No improvement
+22:17:20 INFO: [ls_stage1] Iter 11 : No improvement
+22:17:21 INFO: [ls_stage1] Iter 12 : No improvement
+22:17:22 INFO: [ls_stage1] Converged after 5 iters without improvement
+22:17:22 INFO: Stage 1 solved.
+22:17:22 INFO: Solving stage 2 ... 
+22:17:22 INFO: 
+[ls_stage2] Building initial solution ...
+22:18:08 INFO: [ls_stage2] Feasible initial solution: obj = 84.9090
+22:18:55 INFO: [ls_stage2] Iter 1 : Improved with move ('multi_item', (np.int64(11), np.int64(12)), -4) → 85.0490
+22:19:42 INFO: [ls_stage2] Iter 2 : Improved with move ('multi_item', (np.int64(13), np.int64(23)), -4) → 85.1597
+22:20:28 INFO: [ls_stage2] Iter 3 : Improved with move ('item', 8, -5) → 85.2647
+22:21:15 INFO: [ls_stage2] Iter 4 : Improved with move ('multi_item', (np.int64(82), np.int64(63)), -4) → 85.3793
+22:22:03 INFO: [ls_stage2] Iter 5 : Improved with move ('item', 55, -5) → 85.4793
+22:22:51 INFO: [ls_stage2] Iter 6 : Improved with move ('item', 43, -5) → 85.5710
+22:23:39 INFO: [ls_stage2] Iter 7 : Improved with move ('swap', 14, 51) → 85.7390
+22:24:28 INFO: [ls_stage2] Iter 8 : Improved with move ('item', 89, -5) → 85.8107
+22:25:16 INFO: [ls_stage2] Iter 9 : Improved with move ('multi_item', (np.int64(89), np.int64(41), np.int64(36)), -4) → 85.9440
+22:26:05 INFO: [ls_stage2] Iter 10 : Improved with move ('item', 68, -5) → 86.0373
+22:26:53 INFO: [ls_stage2] Iter 11 : Improved with move ('multi_item', (np.int64(90), np.int64(26), np.int64(93)), -4) → 86.1320
+22:27:42 INFO: [ls_stage2] Iter 12 : Improved with move ('item', 36, -5) → 86.2270
+22:28:32 INFO: [ls_stage2] Iter 13 : Improved with move ('item', 19, -5) → 86.3220
+22:29:21 INFO: [ls_stage2] Iter 14 : Improved with move ('item', 8, -5) → 86.4187
+22:30:09 INFO: [ls_stage2] Iter 15 : Improved with move ('item', 8, -5) → 86.5070
+22:30:58 INFO: [ls_stage2] Iter 16 : Improved with move ('item', 36, -5) → 86.5937
+22:31:47 INFO: [ls_stage2] Iter 17 : Improved with move ('multi_item', (np.int64(8), np.int64(39), np.int64(43)), -4) → 86.7257

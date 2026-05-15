@@ -23,7 +23,7 @@ def main():
     EXPERIMENT_IDS = [1,2,3,4] + [7,8,9,10] + [13,14,15,16]
     EXPERIMENT_IDS = [7,8,9,10]
     SEED = 343310
-    OPTIM = False
+    OPTIM = True
 
     base_dir = os.path.dirname(__file__)
     path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
