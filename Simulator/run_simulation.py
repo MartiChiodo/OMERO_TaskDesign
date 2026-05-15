@@ -21,9 +21,15 @@ def main():
 
     # EXPERIMENT TO SIMULATE
     EXPERIMENT_IDS = [1,2,3,4] + [7,8,9,10] + [13,14,15,16]
-    # EXPERIMENT_IDS = [7]
+    EXPERIMENT_IDS = [7,8,9,10]
     SEED = 343310
     OPTIM = False
+
+    base_dir = os.path.dirname(__file__)
+    path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
+    path_to_reports = os.path.join(base_dir, "output", "reports", f"Opt_{OPTIM}")
+    os.makedirs(path_to_logs, exist_ok=True)
+    os.makedirs(path_to_reports, exist_ok=True)
 
     for EXPERIMENT_ID in EXPERIMENT_IDS:
         cfg = load_experiment(EXPERIMENT_ID)
@@ -33,7 +39,7 @@ def main():
             logging.root.removeHandler(handler)
 
         logging.basicConfig(
-            filename=os.path.join(os.path.dirname(__file__), f"output/logs/Opt_{OPTIM}/logs_{EXPERIMENT_ID}_Seed{SEED}_Opt{OPTIM}.log"),
+            filename=os.path.join(path_to_logs, f"logs_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.log"),
             encoding="utf-8",
             level=logging.INFO,
             datefmt="%H:%M:%S",
@@ -56,7 +62,7 @@ def main():
                 ],
                 warm_up=float(cfg["warm_up"]),
                 time_horizon=None,
-                path_to_save_stat=f'Simulator/output/reports/Opt_{OPTIM}/report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}',
+                path_to_save_stat=os.path.join(path_to_reports, f"report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.txt"),
                 optimization_enabled=OPTIM,
                 optimization_interval=float(cfg["delta_t_opt"])
             ),

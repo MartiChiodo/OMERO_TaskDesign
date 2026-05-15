@@ -1,9 +1,0 @@
-22:07:33 INFO: Warehouse initialization | grid=10x10, physical=23x15, num_skus=5000, num_robots=20, num_ws=4
-22:07:33 INFO: Warehouse initialized | 100 pods  (average number of skus per pod = 50.82), 4 workstations, 20 robots
-22:07:33 INFO: 
-=============================================
-22:07:33 INFO:   START SIMULATION  {TIME HORIZON = 02:00:00}
-22:07:34 INFO:   END SIMULATION.
-
-22:07:34 INFO: Writing statistics report ...
-22:07:34 INFO: Report saved to: Simulator/output/reports/Opt_False/report_3_OptFalse_Seed343310
