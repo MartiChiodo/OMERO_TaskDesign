@@ -670,7 +670,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
     ---------------------
     EC13  - at every time slot t, at most CAP_WS orders are active per
             workstation.  Enforced by non-overlapping time windows between
-            consecutive batches (not_before_t updated inside _schedule_batch).
+            consecutive batches.
  
     Order atomicity - an order is written to x only if ALL its pods can be
             scheduled (commit-or-skip).  This prevents the "f[m]=1 but
@@ -702,19 +702,9 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
  
     for w_id, order_ids in enumerate(d.orders_by_workstation):
         ws = d.warehouse.workstations[w_id]
- 
-        opened  = [m for m in order_ids if d.orders[m].order_id in ws.opened_orders]
-        pending = [m for m in order_ids if d.orders[m].order_id not in ws.opened_orders]
- 
-        # Build the batch list:
-        #   1) Opened orders: hard chunks of CAP_WS (already active at t=0)
-        #   2) New orders:    pod-sharing greedy batches, <= CAP_WS each
-        batches: list[list[int]] = []
-        for i in range(0, len(opened), CAP_WS):
-            batches.append(opened[i : i + CAP_WS])
 
         if not order_ids:
-            return []
+            continue
     
         order_pods: dict[int, set] = {
             m: {d.pod_of_item[im] for im in d.items_of_order[m]}
@@ -779,12 +769,19 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         for m in pool:
             placed = False
             for idx in rng.permutation(len(batches)):
-                if len(batches[idx]) < CAP_WS:
+                if len(batches[idx]) < CAP_WS - 1:
                     batches[idx].append(m)
                     placed = True
                     break
             if not placed:
                 batches.append([m])
+
+        # Build the batch list:
+        #   1) Opened orders: hard chunks of CAP_WS (already active at t=0)
+        #   2) New orders:    pod-sharing greedy batches, <= CAP_WS each
+        opened  = [m for m in order_ids if d.orders[m].order_id in ws.opened_orders]
+        if len(opened) > 0:
+            batches.insert(0, opened)
  
  
         not_before_t = 0   # first pick of the next batch must be >= this
@@ -803,7 +800,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
                     order_pod_items[m] = pod_map
         
             if not order_pod_items:
-                return not_before_t
+                continue
         
             # Earliest feasible pick slot per pod (max across all its items)
             # Also count how many committable orders depend on each pod: schedule
@@ -818,7 +815,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         
             # Tentative scheduling on temporary copies
             tentative_picks: dict[int, int] = {}
-            t_pod_busy   = pod_busy.copy()
+            t_pod_busy = pod_busy.copy()
             t_robot_load = robot_load.copy()
             next_t = not_before_t
         
@@ -856,9 +853,8 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
                     m for m in order_pod_items.keys()
                 ]
 
-        
             if not committable:
-                return not_before_t     # no progress, not_before_t unchanged
+                continue     # no progress, not_before_t unchanged
         
             committed_pods: set[int] = set()
             for m in committable:
@@ -870,7 +866,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
                 t_pick = tentative_picks.get(p_id)
                 if t_pick:
                     travel = pod_ws_travel.get((p_id, w_id), 1)
-                    p_rel  = d.from_PodId_to_RelPod[p_id]
+                    p_rel = d.from_PodId_to_RelPod[p_id]
             
                     # Commit to the real tracking structures
                     pod_busy[p_rel, t_pick] = True
@@ -883,10 +879,12 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
                         for im in order_pod_items[m].get(p_id, []):
                             x[im, t_pick:] = 1.0
         
-            # Update not_before_t: the next batch cannot start before
-            # batch_last_pick + 1, at which point all current-batch orders have
-            # g[m] = 1 and therefore v[m] = 0.
-            not_before_t = batch_last_pick + 1
+            # Update not_before_t
+            batch_end_t = max(
+                max(tentative_picks[p_id] for p_id in order_pod_items[m]) + 1
+                for m in committable
+            )
+            not_before_t = batch_end_t + 1
 
     return x
 
