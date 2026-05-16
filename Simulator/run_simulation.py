@@ -20,10 +20,10 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [1,2,3,4] + [7,8,9,10] + [13,14,15,16]
-    EXPERIMENT_IDS = [7,8,9,10]
+    EXPERIMENT_IDS = [1,2,3,4] + [7,8,9,10] + [13,14,15,16] + [19,20,21,22]
+    EXPERIMENT_IDS = [11]
     SEED = 343310
-    OPTIM = True
+    OPTIM = False
 
     base_dir = os.path.dirname(__file__)
     path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
