@@ -38,16 +38,13 @@ def arrival_order(event: Event, state, sim) -> None:
         order_id = state.orders_counter
         state.orders_counter += 1
 
-        rnd = sim.RANDOM_GENERATOR.random()
-        if rnd < sim.config.order_gen_config[1]:
-            order_size = 1
-        else:
-            order_size = sim.RANDOM_GENERATOR.geometric(p=sim.config.order_gen_config[2]) + 1
-
+        order_size = _generate_order_size(sim.RANDOM_GENERATOR,
+                                        sim.config.order_gen_config[1],
+                                        sim.config.order_gen_config[2])
         sku_list = [
             _sample_sku(sim.RANDOM_GENERATOR, state.warehouse.num_skus)
             for _ in range(order_size)
-        ]
+        ] 
 
         o = Order(
             order_id=order_id,
@@ -922,4 +919,17 @@ def _sample_sku(gen, N):
         id_s = int(gen.normal(0.5 * N, N/6))
         if 0 <= id_s < N:
             return id_s
+  
+        
+MAX_SIZE = 15
+def _generate_order_size(gen, prob_single, geom_p):
+    if gen.random() < prob_single:
+        return 1
+
+    for _ in range(1000):          # rejection loop (converges fast for reasonable geom_p)
+        size = int(gen.geometric(p=geom_p)) + 1
+        if size <= MAX_SIZE:
+            return size
+
+    return MAX_SIZE              
         
