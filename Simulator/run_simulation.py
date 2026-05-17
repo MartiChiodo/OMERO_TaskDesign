@@ -20,8 +20,8 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [1,2,3,4] + [7,8,9,10] + [13,14,15,16] + [19,20,21,22]
-    EXPERIMENT_IDS = [11]
+    EXPERIMENT_IDS = [1,2,3,4,5,6] + [7,8,9,10,11,12] + [13,14,15,16] + [19,20,21,22]
+    EXPERIMENT_IDS = [15,16]
     SEED = 343310
     OPTIM = False
 

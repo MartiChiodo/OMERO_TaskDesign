@@ -1,0 +1,399 @@
+17:53:52 INFO: Warehouse initialization | grid=10x10, physical=23x15, num_skus=2000, num_robots=20, num_ws=4
+17:53:52 INFO: Warehouse initialized | 100 pods  (average number of skus per pod = 21.86), 4 workstations, 20 robots
+17:53:52 INFO: [OptManager] Building time-space network ...
+17:53:52 INFO: [OptManager] Network ready: 10400 nodes, 79608 travelling arcs, 10296 idle arcs.
+17:53:52 INFO: 
+=============================================
+17:53:52 INFO:   START SIMULATION  {TIME HORIZON = 02:00:00}
+17:53:52 INFO: Solving stage 1 ... 
+17:53:52 INFO: 
+[ls_stage1] Building initial solution ...
+17:53:52 INFO: [ls_stage1] Feasible initial solution: obj = 142.0000
+17:53:54 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 39, 62) → 140.0000
+17:53:56 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 61, 102) → 137.0000
+17:53:58 INFO: [ls_stage1] Iter 3 : Improved with move ('moveto', 84, 3) → 135.0000
+17:54:00 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 13, 90) → 133.0000
+17:54:01 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 6, 111) → 131.0000
+17:54:03 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 71, 84) → 130.0000
+17:54:05 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 55, 60) → 129.0000
+17:54:07 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 27, 102) → 128.0000
+17:54:08 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 8, 23) → 127.0000
+17:54:10 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 10, 112) → 126.0000
+17:54:12 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 27, 74) → 125.0000
+17:54:14 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 25, 111) → 124.0000
+17:54:15 INFO: [ls_stage1] Iter 13 : No improvement
+17:54:17 INFO: [ls_stage1] Iter 14 : Improved with move ('moveto', 75, 2) → 123.0000
+17:54:19 INFO: [ls_stage1] Iter 15 : Improved with move ('swap', 5, 85) → 122.0000
+17:54:20 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 5, 63) → 121.0000
+17:54:22 INFO: [ls_stage1] Iter 17 : No improvement
+17:54:24 INFO: [ls_stage1] Iter 18 : No improvement
+17:54:26 INFO: [ls_stage1] Iter 19 : No improvement
+17:54:28 INFO: [ls_stage1] Iter 20 : No improvement
+17:54:29 INFO: [ls_stage1] Converged after 5 iters without improvement
+17:54:29 INFO: Stage 1 solved.
+17:54:29 INFO: Solving stage 2 ... 
+17:54:29 INFO: 
+[ls_stage2] Building initial solution ...
+17:54:58 INFO: [ls_stage2] Feasible initial solution: obj = 180.2835
+17:55:28 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 65, 111) → 180.5262
+17:55:58 INFO: [ls_stage2] Iter 2 : Improved with move ('multi_item', (np.int64(121), np.int64(57)), -4) → 180.6688
+17:56:27 INFO: [ls_stage2] Iter 3 : Improved with move ('item', 56, -5) → 180.8005
+17:56:57 INFO: [ls_stage2] Iter 4 : Improved with move ('item', 186, -5) → 180.9372
+17:57:27 INFO: [ls_stage2] Iter 5 No improvement
+17:57:27 INFO: [ls_stage2] Iter 6 No improvement
+17:57:27 INFO: [ls_stage2] Iter 7 No improvement
+17:57:27 INFO: [ls_stage2] Iter 8 No improvement
+17:57:27 INFO: [ls_stage2] Converged after 5 iters without improvement
+17:57:27 INFO: Stage 2 solved.
+17:57:29 WARNING: Task designing ended. Optimizer designed 148 tasks.
+17:57:29 INFO: Solving stage 1 ... 
+17:57:29 INFO: 
+[ls_stage1] Building initial solution ...
+17:57:29 INFO: [ls_stage1] Feasible initial solution: obj = 204.0000
+17:57:33 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 109, 127) → 203.0000
+17:57:37 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 58, 77) → 202.0000
+17:57:40 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 13, 67) → 201.0000
+17:57:44 INFO: [ls_stage1] Iter 4 : Improved with move ('moveto', 44, 0) → 200.0000
+17:57:48 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 119, 177) → 199.0000
+17:57:52 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 126, 143) → 198.0000
+17:57:57 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 0, 149) → 197.0000
+17:58:00 INFO: [ls_stage1] Iter 8 : Improved with move ('moveto', 36, 1) → 196.0000
+17:58:04 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 15, 69) → 195.0000
+17:58:08 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 70, 97) → 194.0000
+17:58:11 INFO: [ls_stage1] Iter 11 : No improvement
+17:58:15 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 3, 112) → 193.0000
+17:58:18 INFO: [ls_stage1] Iter 13 : Improved with move ('moveto', 57, 2) → 192.0000
+17:58:22 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 74, 199) → 191.0000
+17:58:25 INFO: [ls_stage1] Iter 15 : No improvement
+17:58:29 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 116, 125) → 190.0000
+17:58:32 INFO: [ls_stage1] Iter 17 : Improved with move ('moveto', 142, 1) → 189.0000
+17:58:36 INFO: [ls_stage1] Iter 18 : Improved with move ('swap', 123, 198) → 188.0000
+17:58:39 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 52, 71) → 186.0000
+17:58:43 INFO: [ls_stage1] Iter 20 : No improvement
+17:58:46 INFO: [ls_stage1] Iter 21 : Improved with move ('swap', 47, 119) → 185.0000
+17:58:50 INFO: [ls_stage1] Iter 22 : No improvement
+17:58:53 INFO: [ls_stage1] Iter 23 : Improved with move ('swap', 2, 4) → 184.0000
+17:58:57 INFO: [ls_stage1] Iter 24 : Improved with move ('swap', 21, 152) → 183.0000
+17:59:00 INFO: [ls_stage1] Iter 25 : No improvement
+17:59:04 INFO: [ls_stage1] Iter 26 : No improvement
+17:59:07 INFO: [ls_stage1] Iter 27 : Improved with move ('swap', 15, 126) → 182.0000
+17:59:11 INFO: [ls_stage1] Iter 28 : No improvement
+17:59:14 INFO: [ls_stage1] Iter 29 : No improvement
+17:59:18 INFO: [ls_stage1] Iter 30 : No improvement
+17:59:18 INFO: Stage 1 solved.
+17:59:18 INFO: Solving stage 2 ... 
+17:59:18 INFO: 
+[ls_stage2] Building initial solution ...
+17:59:49 INFO: [ls_stage2] Feasible initial solution: obj = -1298.3310
+18:00:23 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 156, 62) → -1288.1840
+18:00:57 INFO: [ls_stage2] Iter 2 : Improved with move ('swap', 7, 102) → -1278.3055
+18:01:32 INFO: [ls_stage2] Iter 3 : Improved with move ('swap', 42, 187) → -1273.3183
+18:02:07 INFO: [ls_stage2] Iter 4 : Improved with move ('swap', 167, 120) → -1268.5470
+18:02:42 INFO: [ls_stage2] Iter 5 : Improved with move ('swap', 142, 39) → -1260.9275
+18:03:17 INFO: [ls_stage2] Iter 6 : Improved with move ('swap', 31, 173) → -1256.2782
+18:03:52 INFO: [ls_stage2] Iter 7 : Improved with move ('swap', 22, 190) → -1234.6922
+18:04:27 INFO: [ls_stage2] Iter 8 : Improved with move ('swap', 154, 98) → -1230.0905
+18:05:03 INFO: [ls_stage2] Iter 9 No improvement
+18:05:03 INFO: [ls_stage2] Iter 10 No improvement
+18:05:03 INFO: [ls_stage2] Iter 11 No improvement
+18:05:03 INFO: [ls_stage2] Iter 12 No improvement
+18:05:03 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:05:03 INFO: Stage 2 solved.
+18:05:05 WARNING: Task designing ended. Optimizer designed 291 tasks.
+18:05:05 INFO: Solving stage 1 ... 
+18:05:05 INFO: 
+[ls_stage1] Building initial solution ...
+18:05:06 INFO: [ls_stage1] Feasible initial solution: obj = 256.0000
+18:05:14 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 181, 272) → 254.0000
+18:05:19 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 90, 212) → 252.0000
+18:05:25 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 32, 50) → 250.0000
+18:05:31 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 183, 200) → 248.0000
+18:05:36 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 77, 139) → 245.0000
+18:05:42 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 129, 255) → 243.0000
+18:05:48 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 252, 284) → 241.0000
+18:05:53 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 95, 211) → 239.0000
+18:05:59 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 51, 214) → 238.0000
+18:06:06 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 147, 294) → 236.0000
+18:06:11 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 114, 126) → 235.0000
+18:06:17 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 210, 243) → 234.0000
+18:06:23 INFO: [ls_stage1] Iter 13 : Improved with move ('swap', 123, 177) → 233.0000
+18:06:28 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 3, 22) → 232.0000
+18:06:35 INFO: [ls_stage1] Iter 15 : Improved with move ('swap', 0, 68) → 230.0000
+18:06:41 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 96, 118) → 229.0000
+18:06:47 INFO: [ls_stage1] Iter 17 : Improved with move ('swap', 195, 250) → 228.0000
+18:06:52 INFO: [ls_stage1] Iter 18 : Improved with move ('swap', 8, 91) → 227.0000
+18:06:58 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 118, 289) → 226.0000
+18:07:04 INFO: [ls_stage1] Iter 20 : Improved with move ('swap', 154, 255) → 225.0000
+18:07:09 INFO: [ls_stage1] Iter 21 : Improved with move ('swap', 78, 269) → 224.0000
+18:07:15 INFO: [ls_stage1] Iter 22 : No improvement
+18:07:21 INFO: [ls_stage1] Iter 23 : No improvement
+18:07:26 INFO: [ls_stage1] Iter 24 : Improved with move ('swap', 125, 209) → 223.0000
+18:07:32 INFO: [ls_stage1] Iter 25 : No improvement
+18:07:38 INFO: [ls_stage1] Iter 26 : No improvement
+18:07:44 INFO: [ls_stage1] Iter 27 : No improvement
+18:07:50 INFO: [ls_stage1] Iter 28 : Improved with move ('swap', 202, 235) → 222.0000
+18:07:55 INFO: [ls_stage1] Iter 29 : Improved with move ('swap', 220, 277) → 221.0000
+18:08:01 INFO: [ls_stage1] Iter 30 : No improvement
+18:08:01 INFO: Stage 1 solved.
+18:08:01 INFO: Solving stage 2 ... 
+18:08:01 INFO: 
+[ls_stage2] Building initial solution ...
+18:08:37 INFO: [ls_stage2] Feasible initial solution: obj = -5503.5227
+18:09:17 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 12, 285) → -5485.0427
+18:09:57 INFO: [ls_stage2] Iter 2 : Improved with move ('swap', 59, 87) → -5474.0327
+18:10:38 INFO: [ls_stage2] Iter 3 : Improved with move ('order', 94, -3) → -5470.0200
+18:11:19 INFO: [ls_stage2] Iter 4 No improvement
+18:11:20 INFO: [ls_stage2] Iter 5 No improvement
+18:11:20 INFO: [ls_stage2] Iter 6 No improvement
+18:11:20 INFO: [ls_stage2] Iter 7 No improvement
+18:11:20 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:11:20 INFO: Stage 2 solved.
+18:11:22 WARNING: Task designing ended. Optimizer designed 278 tasks.
+18:11:22 INFO: Task 297 got stuck at workstation 3 -> heading to the pod storage location.
+18:11:22 INFO: Solving stage 1 ... 
+18:11:22 INFO: 
+[ls_stage1] Building initial solution ...
+18:11:23 INFO: [ls_stage1] Feasible initial solution: obj = 237.0000
+18:11:29 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 4, 135) → 236.0000
+18:11:34 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 201, 267) → 234.0000
+18:11:39 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 218, 290) → 232.0000
+18:11:44 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 74, 184) → 230.0000
+18:11:49 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 66, 213) → 228.0000
+18:11:55 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 186, 215) → 227.0000
+18:12:00 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 201, 242) → 226.0000
+18:12:06 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 15, 255) → 224.0000
+18:12:11 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 176, 233) → 223.0000
+18:12:17 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 164, 200) → 222.0000
+18:12:22 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 160, 208) → 221.0000
+18:12:28 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 17, 216) → 220.0000
+18:12:33 INFO: [ls_stage1] Iter 13 : Improved with move ('swap', 126, 234) → 219.0000
+18:12:39 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 12, 160) → 218.0000
+18:12:44 INFO: [ls_stage1] Iter 15 : Improved with move ('swap', 43, 233) → 217.0000
+18:12:50 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 101, 132) → 216.0000
+18:12:55 INFO: [ls_stage1] Iter 17 : Improved with move ('swap', 121, 230) → 215.0000
+18:13:01 INFO: [ls_stage1] Iter 18 : Improved with move ('swap', 69, 130) → 214.0000
+18:13:06 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 116, 149) → 212.0000
+18:13:12 INFO: [ls_stage1] Iter 20 : No improvement
+18:13:17 INFO: [ls_stage1] Iter 21 : No improvement
+18:13:23 INFO: [ls_stage1] Iter 22 : No improvement
+18:13:28 INFO: [ls_stage1] Iter 23 : No improvement
+18:13:34 INFO: [ls_stage1] Converged after 5 iters without improvement
+18:13:34 INFO: Stage 1 solved.
+18:13:34 INFO: Solving stage 2 ... 
+18:13:34 INFO: 
+[ls_stage2] Building initial solution ...
+18:14:10 INFO: [ls_stage2] Feasible initial solution: obj = -8428.9913
+18:14:49 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 88, 241) → -8406.5508
+18:15:29 INFO: [ls_stage2] Iter 2 : Improved with move ('swap', 12, 94) → -8393.6308
+18:16:09 INFO: [ls_stage2] Iter 3 No improvement
+18:16:09 INFO: [ls_stage2] Iter 4 No improvement
+18:16:09 INFO: [ls_stage2] Iter 5 No improvement
+18:16:09 INFO: [ls_stage2] Iter 6 No improvement
+18:16:10 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:16:10 INFO: Stage 2 solved.
+18:16:12 WARNING: Task designing ended. Optimizer designed 279 tasks.
+18:16:12 INFO: Solving stage 1 ... 
+18:16:12 INFO: 
+[ls_stage1] Building initial solution ...
+18:16:15 INFO: [ls_stage1] Feasible initial solution: obj = 234.0000
+18:16:22 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 109, 200) → 232.0000
+18:16:28 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 125, 268) → 230.0000
+18:16:34 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 194, 281) → 229.0000
+18:16:39 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 22, 231) → 227.0000
+18:16:44 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 160, 289) → 226.0000
+18:16:49 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 96, 293) → 224.0000
+18:16:54 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 63, 243) → 223.0000
+18:16:59 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 234, 250) → 221.0000
+18:17:04 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 29, 42) → 220.0000
+18:17:10 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 33, 284) → 218.0000
+18:17:15 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 15, 74) → 217.0000
+18:17:20 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 134, 296) → 216.0000
+18:17:25 INFO: [ls_stage1] Iter 13 : Improved with move ('swap', 219, 224) → 215.0000
+18:17:30 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 152, 162) → 214.0000
+18:17:35 INFO: [ls_stage1] Iter 15 : Improved with move ('swap', 124, 252) → 213.0000
+18:17:40 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 81, 289) → 212.0000
+18:17:45 INFO: [ls_stage1] Iter 17 : Improved with move ('swap', 170, 191) → 211.0000
+18:17:50 INFO: [ls_stage1] Iter 18 : Improved with move ('swap', 89, 212) → 210.0000
+18:17:56 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 47, 265) → 209.0000
+18:18:01 INFO: [ls_stage1] Iter 20 : Improved with move ('swap', 75, 283) → 208.0000
+18:18:06 INFO: [ls_stage1] Iter 21 : Improved with move ('swap', 100, 182) → 207.0000
+18:18:11 INFO: [ls_stage1] Iter 22 : Improved with move ('swap', 1, 166) → 206.0000
+18:18:16 INFO: [ls_stage1] Iter 23 : Improved with move ('swap', 6, 74) → 205.0000
+18:18:21 INFO: [ls_stage1] Iter 24 : No improvement
+18:18:26 INFO: [ls_stage1] Iter 25 : Improved with move ('swap', 244, 261) → 204.0000
+18:18:31 INFO: [ls_stage1] Iter 26 : Improved with move ('swap', 35, 276) → 203.0000
+18:18:37 INFO: [ls_stage1] Iter 27 : Improved with move ('swap', 142, 154) → 202.0000
+18:18:42 INFO: [ls_stage1] Iter 28 : Improved with move ('swap', 119, 164) → 201.0000
+18:18:47 INFO: [ls_stage1] Iter 29 : Improved with move ('swap', 80, 183) → 200.0000
+18:18:52 INFO: [ls_stage1] Iter 30 : Improved with move ('swap', 71, 129) → 199.0000
+18:18:52 INFO: Stage 1 solved.
+18:18:52 INFO: Solving stage 2 ... 
+18:18:52 INFO: 
+[ls_stage2] Building initial solution ...
+18:19:28 INFO: [ls_stage2] Feasible initial solution: obj = -10631.3062
+18:20:08 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 216, 119) → -10610.6137
+18:20:48 INFO: [ls_stage2] Iter 2 : Improved with move ('swap', 17, 240) → -10596.2807
+18:21:28 INFO: [ls_stage2] Iter 3 : Improved with move ('swap', 133, 200) → -10583.1642
+18:22:05 INFO: [ls_stage2] Iter 4 : Improved with move ('swap', 268, 96) → -10571.8788
+18:22:43 INFO: [ls_stage2] Iter 5 : Improved with move ('swap', 121, 153) → -10552.4107
+18:23:23 INFO: [ls_stage2] Iter 6 No improvement
+18:23:23 INFO: [ls_stage2] Iter 7 No improvement
+18:23:24 INFO: [ls_stage2] Iter 8 No improvement
+18:23:24 INFO: [ls_stage2] Iter 9 No improvement
+18:23:24 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:23:24 INFO: Stage 2 solved.
+18:23:26 WARNING: Task designing ended. Optimizer designed 282 tasks.
+18:23:26 INFO: Task 867 got stuck at workstation 0 -> heading to the pod storage location.
+18:23:26 INFO: Task 878 got stuck at workstation 3 -> heading to the pod storage location.
+18:23:26 INFO: Solving stage 1 ... 
+18:23:26 INFO: 
+[ls_stage1] Building initial solution ...
+18:23:29 INFO: [ls_stage1] Feasible initial solution: obj = 230.0000
+18:23:36 INFO: [ls_stage1] Iter 1 : Improved with move ('moveto', 285, 3) → 228.0000
+18:23:41 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 7, 173) → 226.0000
+18:23:46 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 137, 140) → 224.0000
+18:23:52 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 20, 133) → 222.0000
+18:23:57 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 61, 85) → 220.0000
+18:24:02 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 120, 174) → 217.0000
+18:24:07 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 257, 280) → 216.0000
+18:24:12 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 51, 294) → 215.0000
+18:24:17 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 6, 129) → 214.0000
+18:24:22 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 29, 268) → 213.0000
+18:24:27 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 14, 167) → 212.0000
+18:24:32 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 183, 254) → 211.0000
+18:24:38 INFO: [ls_stage1] Iter 13 : Improved with move ('swap', 150, 244) → 210.0000
+18:24:43 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 239, 257) → 209.0000
+18:24:49 INFO: [ls_stage1] Iter 15 : Improved with move ('swap', 31, 61) → 208.0000
+18:24:54 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 232, 271) → 207.0000
+18:24:59 INFO: [ls_stage1] Iter 17 : Improved with move ('swap', 13, 177) → 206.0000
+18:25:04 INFO: [ls_stage1] Iter 18 : Improved with move ('swap', 140, 297) → 205.0000
+18:25:10 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 153, 290) → 204.0000
+18:25:15 INFO: [ls_stage1] Iter 20 : Improved with move ('swap', 2, 263) → 203.0000
+18:25:21 INFO: [ls_stage1] Iter 21 : Improved with move ('swap', 105, 176) → 202.0000
+18:25:26 INFO: [ls_stage1] Iter 22 : No improvement
+18:25:31 INFO: [ls_stage1] Iter 23 : Improved with move ('swap', 182, 235) → 201.0000
+18:25:36 INFO: [ls_stage1] Iter 24 : Improved with move ('swap', 22, 163) → 200.0000
+18:25:41 INFO: [ls_stage1] Iter 25 : Improved with move ('swap', 104, 282) → 199.0000
+18:25:46 INFO: [ls_stage1] Iter 26 : Improved with move ('swap', 56, 221) → 197.0000
+18:25:51 INFO: [ls_stage1] Iter 27 : No improvement
+18:25:56 INFO: [ls_stage1] Iter 28 : Improved with move ('swap', 72, 102) → 196.0000
+18:26:01 INFO: [ls_stage1] Iter 29 : No improvement
+18:26:07 INFO: [ls_stage1] Iter 30 : No improvement
+18:26:07 INFO: Stage 1 solved.
+18:26:07 INFO: Solving stage 2 ... 
+18:26:08 INFO: 
+[ls_stage2] Building initial solution ...
+18:26:44 INFO: [ls_stage2] Feasible initial solution: obj = -12661.5000
+18:27:25 INFO: [ls_stage2] Iter 1 No improvement
+18:27:25 INFO: [ls_stage2] Iter 2 No improvement
+18:27:25 INFO: [ls_stage2] Iter 3 No improvement
+18:27:25 INFO: [ls_stage2] Iter 4 No improvement
+18:27:25 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:27:25 INFO: Stage 2 solved.
+18:27:27 WARNING: Task designing ended. Optimizer designed 281 tasks.
+18:27:28 INFO: Solving stage 1 ... 
+18:27:28 INFO: 
+[ls_stage1] Building initial solution ...
+18:27:31 INFO: [ls_stage1] Feasible initial solution: obj = 241.0000
+18:27:38 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 169, 278) → 239.0000
+18:27:43 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 109, 282) → 237.0000
+18:27:48 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 55, 122) → 234.0000
+18:27:54 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 233, 240) → 232.0000
+18:27:59 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 204, 245) → 230.0000
+18:28:04 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 97, 163) → 228.0000
+18:28:10 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 84, 182) → 227.0000
+18:28:15 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 44, 182) → 226.0000
+18:28:20 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 46, 232) → 224.0000
+18:28:26 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 5, 61) → 223.0000
+18:28:31 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 8, 245) → 222.0000
+18:28:36 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 14, 43) → 221.0000
+18:28:41 INFO: [ls_stage1] Iter 13 : Improved with move ('swap', 114, 133) → 219.0000
+18:28:47 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 181, 248) → 218.0000
+18:28:52 INFO: [ls_stage1] Iter 15 : Improved with move ('swap', 5, 252) → 217.0000
+18:28:57 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 20, 153) → 216.0000
+18:29:03 INFO: [ls_stage1] Iter 17 : Improved with move ('swap', 36, 209) → 215.0000
+18:29:08 INFO: [ls_stage1] Iter 18 : Improved with move ('swap', 12, 171) → 214.0000
+18:29:14 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 14, 109) → 213.0000
+18:29:20 INFO: [ls_stage1] Iter 20 : No improvement
+18:29:26 INFO: [ls_stage1] Iter 21 : Improved with move ('swap', 192, 281) → 212.0000
+18:29:32 INFO: [ls_stage1] Iter 22 : No improvement
+18:29:38 INFO: [ls_stage1] Iter 23 : No improvement
+18:29:43 INFO: [ls_stage1] Iter 24 : No improvement
+18:29:48 INFO: [ls_stage1] Iter 25 : No improvement
+18:29:53 INFO: [ls_stage1] Converged after 5 iters without improvement
+18:29:53 INFO: Stage 1 solved.
+18:29:53 INFO: Solving stage 2 ... 
+18:29:54 INFO: 
+[ls_stage2] Building initial solution ...
+18:30:28 INFO: [ls_stage2] Feasible initial solution: obj = -16324.6763
+18:31:13 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 10, 205) → -16308.0863
+18:31:53 INFO: [ls_stage2] Iter 2 : Improved with move ('swap', 26, 211) → -16274.6928
+18:32:35 INFO: [ls_stage2] Iter 3 : Improved with move ('swap', 6, 155) → -16255.8352
+18:33:13 INFO: [ls_stage2] Iter 4 No improvement
+18:33:13 INFO: [ls_stage2] Iter 5 No improvement
+18:33:13 INFO: [ls_stage2] Iter 6 No improvement
+18:33:13 INFO: [ls_stage2] Iter 7 No improvement
+18:33:13 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:33:13 INFO: Stage 2 solved.
+18:33:15 WARNING: Task designing ended. Optimizer designed 271 tasks.
+18:33:15 INFO: Solving stage 1 ... 
+18:33:15 INFO: 
+[ls_stage1] Building initial solution ...
+18:33:17 INFO: [ls_stage1] Feasible initial solution: obj = 226.0000
+18:33:24 INFO: [ls_stage1] Iter 1 : Improved with move ('swap', 54, 218) → 224.0000
+18:33:29 INFO: [ls_stage1] Iter 2 : Improved with move ('swap', 136, 172) → 222.0000
+18:33:34 INFO: [ls_stage1] Iter 3 : Improved with move ('swap', 106, 199) → 221.0000
+18:33:39 INFO: [ls_stage1] Iter 4 : Improved with move ('swap', 33, 149) → 220.0000
+18:33:44 INFO: [ls_stage1] Iter 5 : Improved with move ('swap', 36, 145) → 218.0000
+18:33:49 INFO: [ls_stage1] Iter 6 : Improved with move ('swap', 11, 175) → 217.0000
+18:33:53 INFO: [ls_stage1] Iter 7 : Improved with move ('swap', 186, 187) → 216.0000
+18:33:59 INFO: [ls_stage1] Iter 8 : Improved with move ('swap', 121, 201) → 215.0000
+18:34:04 INFO: [ls_stage1] Iter 9 : Improved with move ('swap', 0, 299) → 214.0000
+18:34:09 INFO: [ls_stage1] Iter 10 : Improved with move ('swap', 77, 93) → 213.0000
+18:34:14 INFO: [ls_stage1] Iter 11 : Improved with move ('swap', 0, 82) → 212.0000
+18:34:19 INFO: [ls_stage1] Iter 12 : Improved with move ('swap', 149, 251) → 211.0000
+18:34:24 INFO: [ls_stage1] Iter 13 : Improved with move ('swap', 47, 106) → 210.0000
+18:34:29 INFO: [ls_stage1] Iter 14 : Improved with move ('swap', 136, 224) → 209.0000
+18:34:34 INFO: [ls_stage1] Iter 15 : Improved with move ('moveto', 259, 0) → 208.0000
+18:34:39 INFO: [ls_stage1] Iter 16 : Improved with move ('swap', 281, 289) → 207.0000
+18:34:44 INFO: [ls_stage1] Iter 17 : Improved with move ('swap', 192, 195) → 206.0000
+18:34:49 INFO: [ls_stage1] Iter 18 : No improvement
+18:34:54 INFO: [ls_stage1] Iter 19 : Improved with move ('swap', 2, 95) → 205.0000
+18:34:59 INFO: [ls_stage1] Iter 20 : Improved with move ('swap', 67, 184) → 204.0000
+18:35:04 INFO: [ls_stage1] Iter 21 : No improvement
+18:35:09 INFO: [ls_stage1] Iter 22 : Improved with move ('swap', 187, 203) → 203.0000
+18:35:14 INFO: [ls_stage1] Iter 23 : No improvement
+18:35:19 INFO: [ls_stage1] Iter 24 : No improvement
+18:35:24 INFO: [ls_stage1] Iter 25 : No improvement
+18:35:29 INFO: [ls_stage1] Iter 26 : No improvement
+18:35:34 INFO: [ls_stage1] Converged after 5 iters without improvement
+18:35:34 INFO: Stage 1 solved.
+18:35:34 INFO: Solving stage 2 ... 
+18:35:34 INFO: 
+[ls_stage2] Building initial solution ...
+18:36:08 INFO: [ls_stage2] violated = ['EC16']
+18:36:42 INFO: [ls_stage2] Feasible initial solution: obj = -16412.8270
+18:37:20 INFO: [ls_stage2] Iter 1 : Improved with move ('swap', 28, 258) → -16347.5275
+18:37:58 INFO: [ls_stage2] Iter 2 : Improved with move ('swap', 30, 206) → -16322.3330
+18:38:36 INFO: [ls_stage2] Iter 3 : Improved with move ('swap', 36, 203) → -16296.1818
+18:39:15 INFO: [ls_stage2] Iter 4 : Improved with move ('swap', 127, 298) → -16278.5593
+18:39:54 INFO: [ls_stage2] Iter 5 : Improved with move ('swap', 61, 163) → -16240.7267
+18:40:32 INFO: [ls_stage2] Iter 6 : Improved with move ('item', 195, -5) → -16233.2447
+18:41:10 INFO: [ls_stage2] Iter 7 : Improved with move ('swap', 97, 278) → -16209.0767
+18:41:48 INFO: [ls_stage2] Iter 8 : Improved with move ('swap', 108, 158) → -16185.0842
+18:42:26 INFO: [ls_stage2] Iter 9 : Improved with move ('swap', 50, 226) → -16150.2047
+18:43:04 INFO: [ls_stage2] Iter 10 : Improved with move ('swap', 32, 144) → -16112.6127
+18:43:42 INFO: [ls_stage2] Iter 11 : Improved with move ('swap', 39, 168) → -16099.9957
+18:44:20 INFO: [ls_stage2] Iter 12 : Improved with move ('swap', 65, 231) → -16087.4630
+18:44:58 INFO: [ls_stage2] Iter 13 No improvement
+18:44:58 INFO: [ls_stage2] Iter 14 No improvement
+18:44:59 INFO: [ls_stage2] Iter 15 No improvement
+18:44:59 INFO: [ls_stage2] Iter 16 No improvement
+18:44:59 INFO: [ls_stage2] Converged after 5 iters without improvement
+18:44:59 INFO: Stage 2 solved.
+18:45:01 WARNING: Task designing ended. Optimizer designed 317 tasks.
+18:45:01 INFO: Task 1684 got stuck at workstation 0 -> heading to the pod storage location.
+18:45:01 INFO:   END SIMULATION.
+
+18:45:01 INFO: Writing statistics report ...
+18:45:01 INFO: Report saved to: c:\Users\chiod\Documents\Tesi_LM\Simulator\output\reports\Opt_True\report_6_OptTrue_Seed343310.txt
