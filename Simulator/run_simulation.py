@@ -21,9 +21,9 @@ def main():
 
     # EXPERIMENT TO SIMULATE
     EXPERIMENT_IDS = [1,2,3,4,5,6] + [7,8,9,10,11,12] + [13,14,15,16] + [19,20,21,22]
-    EXPERIMENT_IDS = [15,16]
+    EXPERIMENT_IDS = [9,10]
     SEED = 343310
-    OPTIM = False
+    OPTIM = True
 
     base_dir = os.path.dirname(__file__)
     path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
