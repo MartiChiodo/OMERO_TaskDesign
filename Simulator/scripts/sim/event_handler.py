@@ -221,7 +221,7 @@ def start_task(event: Event, state, sim) -> None:
 
         if sim.config.optimization_enabled:
             valid = any(
-                o in state.warehouse.workstations[v.workstation_id].opened_orders.union(state.warehouse.workstations[v.workstation_id].order_buffer[:2])
+                o in state.warehouse.workstations[v.workstation_id].opened_orders.union(state.warehouse.workstations[v.workstation_id].order_buffer[:1])
                 for v in candidate.stops
                 for o in v.orders
             )
