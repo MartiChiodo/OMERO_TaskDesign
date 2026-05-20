@@ -1,9 +1,9 @@
-15:12:01 INFO: Warehouse initialization | grid=15x20, physical=34x25, num_skus=6000, num_robots=14, num_ws=4
-15:12:01 INFO: Warehouse initialized | 300 pods  (average number of skus per pod = 21.98), 4 workstations, 14 robots
-15:12:01 INFO: 
+21:46:27 INFO: Warehouse initialization | grid=15x20, physical=34x25, num_skus=6000, num_robots=14, num_ws=4
+21:46:27 INFO: Warehouse initialized | 300 pods  (average number of skus per pod = 21.98), 4 workstations, 14 robots
+21:46:27 INFO: 
 =============================================
-15:12:01 INFO:   START SIMULATION  {TIME HORIZON = 02:00:00}
-15:12:02 INFO:   END SIMULATION.
+21:46:27 INFO:   START SIMULATION  {TIME HORIZON = 01:00:00}
+21:46:28 INFO:   END SIMULATION.
 
-15:12:02 INFO: Writing statistics report ...
-15:12:02 INFO: Report saved to: c:\Users\chiod\Documents\Tesi_LM\Simulator\output\reports\Opt_False\report_15_OptFalse_Seed343310.txt
+21:46:28 INFO: Writing statistics report ...
+21:46:28 INFO: Report saved to: c:\Users\chiod\Documents\Tesi_LM\Simulator\output\reports\Opt_False\report_15_OptFalse_Seed343310.txt

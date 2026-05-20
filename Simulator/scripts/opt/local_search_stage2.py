@@ -4,6 +4,7 @@ from bisect import bisect_left
 import logging
 
 from .stage2_data import Stage2Data
+from .build_initial_x import build_initial_x
 
 
 
@@ -104,8 +105,6 @@ def _check_x_fast(x: np.ndarray, f: np.ndarray, g: np.ndarray,
                 return False
 
     return True
-
-
 
 def _fast_update_fgv_from_move(
     x_cand: np.ndarray,
@@ -450,7 +449,7 @@ def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
     T = x.shape[1]
     picking_reward = x[:, T-1].sum() 
     backlog_penalty   = float(sum(
-        (d.current_time + t-1 * d.OptManager.TIME_UNIT - d.arrival_times[m]) / (d.OptManager.TIME_UNIT * d.OptManager.N_TIME)
+        (d.current_time + (t-1) * d.OptManager.TIME_UNIT - d.arrival_times[m]) / (d.OptManager.TIME_UNIT * d.OptManager.N_TIME)
         * (1.0 - g[m, t])
         for m in range(len(d.orders))
         for t in range(1,T)
@@ -625,7 +624,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
 
 
 
-### INITIAL SOLUTION BUILDER
+""" ### INITIAL SOLUTION BUILDER
 
 # Helpers
 
@@ -656,6 +655,7 @@ def find_feasible_pick_time(
             continue
         if pod_busy[p_rel, max(0, t - 1):min(T, t + 2)].any():
             continue
+        
         t0 = max(0, t - active_window)
         t1 = min(T, t + active_window + 1)
         if robot_load[t0:t1].max() < n_robots:
@@ -663,26 +663,26 @@ def find_feasible_pick_time(
     return None
  
  
-def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
-    """
-    Builds a feasible initial picking matrix x for the Stage-2 local search.
+def build_initial_x_v0(rng: np.random.Generator, d) -> np.ndarray:
+    
+    # Builds a feasible initial picking matrix x for the Stage-2 local search.
  
-    Guaranteed invariants
-    ---------------------
-    EC13  - at every time slot t, at most CAP_WS orders are active per
-            workstation.  Enforced by non-overlapping time windows between
-            consecutive batches.
+    # Guaranteed invariants
+    # ---------------------
+    # EC13  - at every time slot t, at most CAP_WS orders are active per
+    #         workstation.  Enforced by non-overlapping time windows between
+    #         consecutive batches.
  
-    Order atomicity - an order is written to x only if ALL its pods can be
-            scheduled (commit-or-skip).  This prevents the "f[m]=1 but
-            g[m]=0 forever" situation that caused cascading EC13 violations
-            in the previous version.
+    # Order atomicity - an order is written to x only if ALL its pods can be
+    #         scheduled (commit-or-skip).  This prevents the "f[m]=1 but
+    #         g[m]=0 forever" situation that caused cascading EC13 violations
+    #         in the previous version.
  
-    EC14 proxy - pod_busy blocks consecutive picks on the same pod;
-            robot_load proxies max_active_pods (EC14 / EC15 / EC16 are
-            then refined by the local search).
+    # EC14 proxy - pod_busy blocks consecutive picks on the same pod;
+    #         robot_load proxies max_active_pods (EC14 / EC15 / EC16 are
+    #         then refined by the local search).
 
-    """
+    
     T    = d.OptManager.N_TIME
     n_im = len(d.relevant_pairs_for_x)
     CAP_WS = d.OptManager.CAP_WS
@@ -739,8 +739,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         fill_order = sorted(
             order_ids,
             key=lambda m: (
-                max((int(d.earliest_t[im]) for im in d.items_of_order[m]), default=0),
-                rng.random(),
+                - d.orders[m].arrival_time + rng.integers(-30,30)
             ),
         )
     
@@ -749,20 +748,22 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         for seed in seed_order:
             if seed in assigned:
                 continue
+
             batch = [seed]
             assigned.add(seed)
             batch_pods = set(order_pods[seed])
-    
+
             for m in fill_order:
                 if m in assigned or len(batch) >= CAP_WS:
                     continue
-                if order_pods[m] & batch_pods:          # pod overlap -> share the trip
+
+                if order_pods[m] & batch_pods:
                     batch.append(m)
                     batch_pods |= order_pods[m]
                     assigned.add(m)
-    
             batches.append(batch)
     
+
         # Merge underfull batches: fill existing ones before opening new batches
         pool = [m for b in batches if len(b) < CAP_WS for m in b]
         batches = [b for b in batches if len(b) == CAP_WS] 
@@ -770,12 +771,13 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         for m in pool:
             placed = False
             for idx in rng.permutation(len(batches)):
-                if len(batches[idx]) < CAP_WS - 1:
+                if len(batches[idx]) < CAP_WS :
                     batches[idx].append(m)
                     placed = True
                     break
             if not placed:
                 batches.append([m])
+
 
         # Build the batch list:
         #   1) Opened orders: hard chunks of CAP_WS (already active at t=0)
@@ -786,6 +788,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
  
  
         not_before_t = 0   # first pick of the next batch must be >= this
+        not_commited = []
         for id_b, batch in enumerate(batches):
             if not batch:
                 continue
@@ -830,8 +833,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         
                 t_pick = find_feasible_pick_time(
                     candidate_t, p_rel, t_pod_busy, t_robot_load,
-                    n_robots, travel, T,
-                )
+                    n_robots, travel, T)
                 if t_pick is None:
                     continue
         
@@ -844,15 +846,12 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
             # Commit-or-skip per order
             # An order is committable only if ALL its pods found a slot.
             # Pods shared between committable orders are committed only once.
-            if id_b < len(batches) - 1:
+            if id_b < len(batches):
                 committable = [
                     m for m, pod_map in order_pod_items.items()
                     if all(p_id in tentative_picks for p_id in pod_map)
                 ]
-            else:
-                committable = [
-                    m for m in order_pod_items.keys()
-                ]
+                not_commited += [m for m in order_pod_items.keys() if m not in committable]
 
             if not committable:
                 continue     # no progress, not_before_t unchanged
@@ -861,7 +860,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
             for m in committable:
                 committed_pods |= set(order_pod_items[m].keys())
         
-            batch_last_pick = not_before_t - 1
+            batch_last_pick = not_before_t
         
             for p_id in committed_pods:
                 t_pick = tentative_picks.get(p_id)
@@ -882,12 +881,70 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
         
             # Update not_before_t
             batch_end_t = max(
-                max(tentative_picks.get(p_id, 0) for p_id in order_pod_items[m]) + 1
+                max(tentative_picks.get(p_id, 0) for p_id in order_pod_items[m])
                 for m in committable
             )
             not_before_t = batch_end_t + 1
 
-    return x
+
+        ### RETRY SCHEDULING NOT_COMMITED ORDER
+
+        for m in not_commited:
+            pod_map = {}
+            for im in d.items_of_order[m]:
+                if x[im, -1] < 0.5:
+                    pod_map.setdefault(d.pod_of_item[im], []).append(im)
+
+            if not pod_map:
+                continue
+
+            tentative = {}
+            next_t = not_before_t
+            feasible = True
+
+            # try scheduling pods of this order sequentially
+            for p_id, ims in sorted(
+                pod_map.items(),
+                key=lambda kv: max(int(d.earliest_t[im]) for im in kv[1])
+            ):
+                earliest = max(
+                    max(int(d.earliest_t[im]) for im in ims),
+                    next_t,
+                    not_before_t,
+                    1,
+                )
+
+                travel = pod_ws_travel.get((p_id, w_id), 1)
+                p_rel = d.from_PodId_to_RelPod[p_id]
+                t_pick = find_feasible_pick_time(
+                    earliest, p_rel, pod_busy, 
+                    robot_load, n_robots, travel, T)
+
+                if t_pick is None:
+                    feasible = False
+                    break
+
+                tentative[p_id] = t_pick
+                next_t = t_pick + 1
+
+            if not feasible:
+                continue
+
+            # commit order
+            last_pick = not_before_t - 1
+            for p_id, t_pick in tentative.items():
+                travel = pod_ws_travel.get((p_id, w_id), 1)
+                p_rel = d.from_PodId_to_RelPod[p_id]
+                pod_busy[p_rel, t_pick] = True
+                t0, t1 = max(0, t_pick - travel), min(T, t_pick + travel + 1)
+                robot_load[t0:t1] += 1
+                last_pick = max(last_pick, t_pick)
+                for im in pod_map[p_id]:
+                    x[im, t_pick:] = 1.0
+
+            not_before_t = last_pick + 2
+
+    return x """
 
 
 ### NEIGHBHOURS GENERATORS
@@ -931,13 +988,6 @@ def _make_move_3(x, ims1, ims2, first_one_idx, T):
         x_cand[im, :] = 0; x_cand[im, t:] = 1
     return x_cand
 
-def _make_move_4(x, im, t_new, T):
-    if t_new < 0 or t_new >= T:
-        return None
-    x_cand = x.copy()
-    x_cand[im, :] = 0
-    x_cand[im, t_new:] = 1
-    return x_cand
 
 ### LOCAL SEARCH
 
@@ -991,8 +1041,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     am_I_stuck                 = False
     cont                       = 1
     iter_without_improvement   = 0
-    max_iter_without_improvement = 5
-    MAX_ITER = 30
+    max_iter_without_improvement = 3
+    MAX_ITER = 45
     MAX_NEIGH = 150
 
     print("[ls_stage2] Exploring neighbours ...")
@@ -1004,30 +1054,32 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
         best_obj_in_iter = -np.inf
         best_x_in_iter   = None
+        second_best_obj_in_iter = -np.inf
+        second_best_x_in_iter   = None
 
         # Build move list 
         moves = [[], [], []]
 
         if iter_without_improvement > 0:
+            # Smaller moves
             for im in range(x_current.shape[0]):
                 moves[0].append(('item',  im, -1))
                 moves[0].append(('item',  im, -2))
-
-                if x_current[im].sum() == 0:
-                    counts = np.bincount(first_one_idx, minlength=x_current.shape[1])
-                    top_k = np.argsort(counts)[:5]
-                    t_new = rng.choice(top_k)
-                    moves[0].append(('rnd_item',  im, t_new))
-                    t_new = rng.choice(top_k)
-                    moves[0].append(('rnd_item',  im, t_new))
+                for direction in [-1,-2]:
+                    sampled = rng.choice(item_ids, size=min(len(item_ids), 20), replace=False)
+                    for i in range(0, len(sampled) - 1, 2):
+                        moves[0].append(('multi_item', (sampled[i], sampled[i+1]), direction))
+                        if i+2 < len(sampled)-1:
+                            moves[0].append(('multi_item', (sampled[i], sampled[i+1], sampled[i+2]), direction))
         else:
             for im in range(x_current.shape[0]):
                 moves[0].append(('item', im, -2))
-                moves[0].append(('item', im, -3))
-                moves[0].append(('item', im, -5))
+                moves[0].append(('item', im, -4))
+                moves[0].append(('item', im, -6))
+                moves[0].append(('item', im, -8))
 
             item_ids = list(range(x_current.shape[0]))
-            for direction in [-1, -2, -4]:
+            for direction in [-2, -4, -5]:
                 sampled = rng.choice(item_ids, size=min(len(item_ids), 20), replace=False)
                 for i in range(0, len(sampled) - 1, 2):
                     moves[0].append(('multi_item', (sampled[i], sampled[i+1]), direction))
@@ -1037,7 +1089,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         for m in range(len(d.orders)):
             moves[1].append(('order', m, -1))
             moves[1].append(('order', m, -2))
-            moves[1].append(('order', m, -3))
+            moves[1].append(('order', m, -4))
         for order_ids in d.orders_by_workstation:
             order_list = list(order_ids)
             for i1, m1 in enumerate(order_list):
@@ -1068,10 +1120,6 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                 for im in ims:
                     first_one_idx_cand[im] += direction
                 x_cand = _make_move_1(x_current, ims, int(direction), first_one_idx, T)
-            elif move[0] == 'rnd_item':
-                _, im, t_new = move
-                first_one_idx_cand[im] = t_new
-                x_cand = _make_move_4(x_current, im, t_new, T)
             elif move[0] == 'order':
                 _, m, direction = move
                 for im in im_by_order[m]:
@@ -1119,14 +1167,20 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                     best_x_in_iter = x_cand
                     best_move  = move   
                     best_f_in_iter, best_g_in_iter, best_v_in_iter = f_cand, g_cand, v_cand
+                elif obj is not None and obj > second_best_obj_in_iter:
+                    second_best_obj_in_iter = obj
+                    second_best_x_in_iter = x_cand
+                    second_best_move  = move   
+                    s_best_f_in_iter, s_best_g_in_iter, s_best_v_in_iter = f_cand, g_cand, v_cand
+                
 
-        
-        if best_x_in_iter is not None:
+        sol_num = 1
+        while best_x_in_iter is not None and sol_num <= 2:
             x_current = best_x_in_iter
-            if best_obj_in_iter > best_obj:
+            if best_obj_in_iter > best_obj -1e-10:
 
                 # I check the full feasibility
-                if best_move[0] in ('item', 'order', 'multi_item', 'swap', 'rnd_item'):
+                if best_move[0] in ('item', 'order', 'multi_item', 'swap'):
                     # Identify only the affected pods
                     if best_move[0] == 'item':
                         _, best_im, _ = best_move
@@ -1140,9 +1194,6 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                     elif best_move[0] == 'swap':
                         _, best_m1, best_m2 = best_move
                         affected_pods = {d.pod_of_item[im] for im in im_by_order[int(best_m1)]}.union({d.pod_of_item[im] for im in im_by_order[int(best_m2)]})
-                    elif best_move[0] == 'rnd_item':
-                        _, best_im, _ = best_move
-                        affected_pods = {d.pod_of_item[int(best_im)]}
 
                     # Rebuild only the affected pod rows
                     y_new = best_sol[4].copy()
@@ -1158,13 +1209,27 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
                 feasible, _ = check_constraints(sol_curr, d)
                 if feasible:
+                    improved = best_obj_in_iter > best_obj
                     best_obj = best_obj_in_iter
-                    best_x = best_x_in_iter.copy()
+                    best_x = best_x_in_iter
                     best_sol = sol_curr
-                    improved = True
                     print(f"[ls_stage2] Iter {cont} : Improved with move {best_move} → {best_obj:.4f}")
                     logging.info("[ls_stage2] Iter %i : Improved with move %s → %.4f",
                                  cont, best_move, best_obj)
+                    sol_num = 3
+                else:
+                    if second_best_x_in_iter is None:
+                        break
+                    best_x_in_iter = second_best_x_in_iter
+                    best_f_in_iter = s_best_f_in_iter
+                    best_g_in_iter = s_best_g_in_iter
+                    best_v_in_iter = s_best_v_in_iter
+                    best_move = second_best_move
+                    best_obj_in_iter = second_best_obj_in_iter
+                    sol_num += 1
+            else:
+                break
+
 
         if improved:
             iter_without_improvement = 0
