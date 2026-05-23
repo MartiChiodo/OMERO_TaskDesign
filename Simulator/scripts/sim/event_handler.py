@@ -216,7 +216,8 @@ def start_task(event: Event, state, sim) -> None:
     skipped_t = []
     task = None
 
-    while not state.released_tasks.is_empty():
+    loop_ended = state.released_tasks.is_empty() 
+    while not loop_ended:
         candidate = state.released_tasks.pop()
 
         if sim.config.optimization_enabled:
@@ -240,6 +241,8 @@ def start_task(event: Event, state, sim) -> None:
         logging.debug("Task %i blocked: pod %i not idle.  [released tasks = %i]",
                     candidate.task_id, candidate.pod_id, len(state.released_tasks))
         skipped_t.append(candidate)
+
+        loop_ended = state.released_tasks.is_empty() 
 
     for t in skipped_t:
         state.released_tasks.push(t)
