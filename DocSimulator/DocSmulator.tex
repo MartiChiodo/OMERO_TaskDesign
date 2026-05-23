@@ -17,8 +17,6 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
-\usepackage{optidef}
-
 
 % Margins
 \geometry{margin=2.5cm}
@@ -111,35 +109,35 @@ The parameters that define order generation and pod processing times at workstat
 The numerical values present are those adopted by \cite{Barnhart2024} or fixed based on the literature; parameters marked with \texttt{???} are yet to be defined.
 
 \begin{table}[htbp]
-\begin{longtable}{p{5cm} p{4.5cm} p{5.5cm}}
+\begin{longtable}{p{5cm} p{7.5cm}}
 \toprule
-\textbf{Parameter} & \textbf{Domain} & \textbf{Description} \\
+\textbf{Parameter} & \textbf{Description} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{Parameter} & \textbf{Domain} & \textbf{Description} \\
+\textbf{Parameter} & \textbf{Description} \\
 \midrule
 \endhead
-\multicolumn{3}{l}{\textit{Layout and capacity}} \\[2pt]
-\texttt{NUM\_PODS}              & ???         & Total number of pods (\texttt{GRID\_ROWS} $\times$ \texttt{GRID\_COLS}) \\
-\texttt{NUM\_SKUS}              & ???         & Number of distinct SKUs \\
-\texttt{NUM\_SKUS\_PER\_POD}    & 20          & Target number of distinct SKUs for each pod \\
-\texttt{NUM\_ROBOTS}            & ???         & Number of autonomous mobile robots \\
-\texttt{NUM\_WORKSTATIONS}      & ???         & Number of picking stations \\
-\texttt{GRID\_ROWS / GRID\_COLS}& ??? / ???   & Pod grid dimensions \\
-\texttt{WS\_ORDER\_CAPACITY}    & 3           & Maximum number of open orders per station \\
-\texttt{WS\_RELEASED\_TASK\_CAPACITY} & ???    & Number of tasks released per workstation \\[6pt]
-\multicolumn{3}{l}{\textit{Operational times}} \\[2pt]
-\texttt{ROBOT\_SPEED}           & 30.0        & Robot speed (cells/min, $\approx 0{,}5$ m/s) \\
-\texttt{POD\_PROCESS\_TIME}     & 5 s         & Processing time of a pod at the workstation \\
-\texttt{ITEM\_PROCESS\_TIME}    & 5 s         & Picking time of an item at the workstation \\[6pt]
-\multicolumn{3}{l}{\textit{Order generation}} \\[2pt]
-\texttt{INTERARRIVAL\_TIME\_ORDER} & $\left\{\frac{12}{35}, \frac{6}{25}, \frac{3}{10}, \frac{3}{40}, \frac{1}{5}, \frac{3}{50}, \frac{3}{100}, \frac{3}{250}\right\}$ & Mean order inter-arrival time (min) \\
-\texttt{PROB\_1\_ITEM\_ORDER}   & 0.5                     & Probability that an order contains a single item \\
-\texttt{GEO\_DIST\_PARAM\_ORDER}& \{0.25, 0.35, 0.45, 0.65\} & Geometric parameter for multi-item orders \\[6pt]
-\multicolumn{3}{l}{\textit{Simulation control}} \\[2pt]
-\texttt{TIME\_HORIZON}          & ???         & Total simulation duration (min) \\
-\texttt{DELTA\_T\_OPT}          & 15 min      & Optimiser call interval \\
+\multicolumn{2}{l}{\textit{Layout and capacity}} \\[2pt]
+\texttt{NUM\_PODS}                   & Total number of pods (\texttt{GRID\_ROWS} $\times$ \texttt{GRID\_COLS}) \\
+\texttt{NUM\_SKUS}                   & Number of distinct SKUs \\
+\texttt{NUM\_SKUS\_PER\_POD}         & Target number of distinct SKUs for each pod \\
+\texttt{NUM\_ROBOTS}                 & Number of autonomous mobile robots \\
+\texttt{NUM\_WORKSTATIONS}           & Number of picking stations \\
+\texttt{GRID\_ROWS / GRID\_COLS}     & Pod grid dimensions \\
+\texttt{WS\_ORDER\_CAPACITY}         & Maximum number of open orders per station \\
+\texttt{WS\_RELEASED\_TASK\_CAPACITY}& Number of tasks released per workstation \\[6pt]
+\multicolumn{2}{l}{\textit{Operational times}} \\[2pt]
+\texttt{ROBOT\_SPEED}                & Robot speed (cells/min, $\approx 0{,}5$ m/s) \\
+\texttt{POD\_PROCESS\_TIME}          & Processing time of a pod at the workstation \\
+\texttt{ITEM\_PROCESS\_TIME}         & Picking time of an item at the workstation \\[6pt]
+\multicolumn{2}{l}{\textit{Order generation}} \\[2pt]
+\texttt{INTERARRIVAL\_TIME\_ORDER}   & Mean order inter-arrival time (min) \\
+\texttt{PROB\_1\_ITEM\_ORDER}        & Probability that an order contains a single item \\
+\texttt{GEO\_DIST\_PARAM\_ORDER}     & Geometric parameter for multi-item orders \\[6pt]
+\multicolumn{2}{l}{\textit{Simulation control}} \\[2pt]
+\texttt{TIME\_HORIZON}              & Total simulation duration (min) \\
+\texttt{DELTA\_T\_OPT}              & Optimiser call interval \\
 \bottomrule
 \end{longtable}
 \caption{Numerical parameters of the simulator divided by functionality.}
@@ -156,8 +154,8 @@ Order generation follows the model of Barnhart et al \cite{Barnhart2024}:
 \If{$u < \texttt{PROB\_1\_ITEM\_ORDER}$}
     \State $order\_size \gets 1$
 \Else
-    \State Sample $g \sim \text{Geometric}(p)$ with $p = \texttt{GEO\_DIST\_PARAM\_ORDER}$
-    \State $order\_size \gets g + 2$
+    \State Sample $g \sim \text{Geometric}(p)$ with $p = \texttt{GEO\_DIST\_PARAM\_ORDER}$ until $g \le 15$
+    \State $order\_size \gets g + 1$
 \EndIf
 
 \For{$i = 0$ to $order\_size - 1$}
@@ -287,7 +285,7 @@ The travel time between two cells is computed as the sum of two components: a no
 The simulation engine is split across three Python objects to cleanly separate immutable configuration from mutable per-run state.
 
 % ── SimulatorConfig ──────────────────────────────────────────────────────────
-\subsection{\texttt{SimulatorConfig} — immutable parameters}
+\subsection{\texttt{SimulatorConfig} - immutable parameters}
 
 A dataclass that holds every parameter that does not change across replicas. It is constructed once and shared by all \texttt{run()} calls on the same \texttt{Simulator} instance.
 
@@ -296,7 +294,7 @@ A dataclass that holds every parameter that does not change across replicas. It 
 \toprule
 \textbf{Attribute} & \textbf{Type} & \textbf{Description} \\
 \midrule
-\texttt{order\_gen\_config}    & \texttt{list[float]}  & \texttt{[interarrival\_time, prob\_1\_item, geo\_param]} — parameters for order arrival generation \\
+\texttt{order\_gen\_config}    & \texttt{list[float]}  & \texttt{[interarrival\_time, prob\_1\_item, geo\_param]}, parameters for order arrival generation \\
 \texttt{time\_horizone}        & \texttt{float}        & Time horizon of the simulator in seconds.. \\
 \texttt{warm\_up}              & \texttt{float}        & Seconds discarded from statistics at run start. Default \texttt{0}. \\
 \texttt{optimization\_enabled} & \texttt{bool}         & \texttt{False} $\to$ greedy policies; \texttt{True} $\to$ optimiser \\
@@ -305,7 +303,7 @@ A dataclass that holds every parameter that does not change across replicas. It 
 \end{tabularx}
 
 % ── SimulatorState ───────────────────────────────────────────────────────────
-\subsection{\texttt{SimulatorState} — mutable per-run state}
+\subsection{\texttt{SimulatorState} - mutable per-run state}
 
 A plain dataclass holding all quantities that change during a simulation run. A fresh \texttt{SimulatorState} is constructed at the beginning of every \texttt{run()} call, guaranteeing that consecutive calls on the same \texttt{Simulator} object produce fully independent replicas with no shared mutable state.
 
@@ -328,9 +326,9 @@ A plain dataclass holding all quantities that change during a simulation run. A 
 \end{tabularx}
 
 % ── Simulator ────────────────────────────────────────────────────────────────
-\subsection{\texttt{Simulator} — orchestrator}
+\subsection{\texttt{Simulator} - orchestrator}
 
-The \texttt{Simulator} class owns the immutable configuration, the random generator and the \texttt{StatManager}. Its constructor accepts a \texttt{warehouse\_factory} — a zero-argument callable that returns a fresh \texttt{Warehouse} — instead of a \texttt{Warehouse} instance directly. This design choice is intentional: calling \texttt{run()} multiple times in the main script produces independent replicas automatically, because each call rebuilds the full \texttt{SimulatorState} (including a new \texttt{Warehouse}) from scratch before processing any event.
+The \texttt{Simulator} class owns the immutable configuration, the random generator and the \texttt{StatManager}. Its constructor accepts a \texttt{warehouse\_factory}, a zero-argument callable that returns a fresh \texttt{Warehouse}, instead of a \texttt{Warehouse} instance directly. This design choice is intentional: calling \texttt{run()} multiple times in the main script produces independent replicas automatically, because each call rebuilds the full \texttt{SimulatorState} (including a new \texttt{Warehouse}) from scratch before processing any event.
 
 \vspace{0.4em}
 \begin{tabularx}{\textwidth}{l l X}
@@ -443,6 +441,7 @@ The collected statistics are grouped into three categories:
     \item \texttt{ResourceTracker}: this type of statistic measures the state frequency of a given entity over time. It is used, for example, for both robots and workstations, and captures respectively the robot utilization rate and the workstation picking time ratio.
     \item \texttt{OrderFlowTracker}: this statistic captures the average order flow time, grouped by order size, from the \texttt{BACKLOG} state to the \texttt{CLOSED} state.
     \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation and the average number of pods simultaneously out of their storage location.
+    \item \texttt{Counter}: this type of statistic is used to count occurencies of something; in particular, it is used to track the throughtput of the system.
 \end{itemize}
 
 Finally, all statistics can be aggregated to compute global performance indicators and support system-level analysis.
@@ -500,117 +499,202 @@ Second, in this policy the while loop continues until the number of designed tas
 The model is a static optimization problem split into two stages: the first stage assigns orders to workstations and pods to orders, while the second stage designs tasks and schedules them over a time-space network. The two stages are connected by the decision variables of the first stage, which are used as input parameters for the second stage.
 
 \subsubsection{Time-space network}
-\todo
+The time-space network is constructed at the beginning of each simulation run, when the \texttt{OptManager} class is instantiated. The network is built by considering arcs of the form
+\[
+\left((s_s, t_s), (s_d, t_d)\right), \qquad t_s < t_d,
+\]
+where each time-space tuple $(s,t)$ represents a node characterized by a spatial position and a temporal coordinate. The spatial position corresponds to the cell identifier within the warehouse grid, while the time coordinate is defined relative to the considered optimization run.
 
-\subsubsection{First stage: Order-Workstation and Order-Item-Pod Assignments}
-The decision variables of the first stage are:
+Not all possible arcs are included in the network, as this would significantly increase its size. Specifically, only two classes of arcs are considered:
 \begin{itemize}
+    \item \emph{travelling arcs}, namely arcs for which either the source location or the destination location corresponds to a workstation, and such that $t_d - t_s$ is sufficient for the pod to reach the workstation under deterministic travel times; 
+    \item \emph{idle arcs}, namely arcs satisfying
+    \[
+    s_s = s_d, \qquad t_d = t_s + 1,
+    \]
+    where $s_s$ corresponds to a pod storage location.
+\end{itemize}
+
+\subsubsection{First Stage: Order-Workstation and Order-Item-Pod Assignments}
+
+The first stage assigns orders to workstations and items to pods. The decision
+variables are:
+\begin{itemize}[noitemsep]
     \item $z_{mw} = 1$ if order $m$ is assigned to workstation $w$, $0$ otherwise.
-    \item $x_{imp} = 1$ if item $i$ of order $m$ is assigned to pod $p$, $0$ otherwise.
+    \item $x_{imp} = 1$ if item $i$ of order $m$ is retrieved from pod $p$, $0$ otherwise.
     \item $y_{wp} = 1$ if pod $p$ is assigned to workstation $w$, $0$ otherwise.
 \end{itemize}
 
-In the code implementation, the variable $x_{imp}$ has only 2 dimensions to reduce the number of unused variables as not all items $i$ are required by order $m$. A bijective map $(i, m) \rightarrow im$ is been used to keep track of the correspondence between the two representations.
+In the implementation, $x_{imp}$ is stored with two indices only, since not all items $i$ are required by order $m$; a bijective map $(i,m)\to im$ tracks the correspondence between the two representations.
 
 \begin{align}
-    \min \quad 
-    &  \sum_{w \in \mathcal{W}}\sum_{y \in \mathcal{P}} y_{wp}\\[4pt]
+    \min \quad
+    & \sum_{w \in \mathcal{W}}\sum_{p \in \mathcal{P}} y_{wp} \\[4pt]
     \text{s.t.} \quad
-    & \sum_{w \in \mathcal{W}} z_{mw} = 1 
-     \qquad \forall m \in \mathcal{M} \label{M1_Constr1} \\
-    & \sum_{p \in \mathcal{P}_i} x_{imp} = 1 
-     \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m \label{M1_Constr2} \\
-    & y_{wp} - x_{imp} - z_{mw} \ge -1 
-     \qquad \forall w \in \mathcal{W},\, m \in \mathcal{M},\, i \in \mathcal{I}_m,\, p \in \mathcal{P}_i \label{M1_Constr3} \\
-    & \sum_{m \in \mathcal{M}} |\mathcal{I}_m| z_{mw} \le \overline{I} 
-     \qquad \forall w \in \mathcal{W} \label{M1_Constr4} \\
-    & \sum_{m \in \mathcal{M}} |\mathcal{I}_m| z_{mw} \ge \underline{I} 
-     \qquad \forall w \in \mathcal{W} \label{M1_Constr5} \\
-    & z_{mw} = 1 
-     \qquad \forall m \in \mathcal{M}_0 \label{M1_InitialCond}
+    & \sum_{w \in \mathcal{W}} z_{mw} = 1
+      \qquad \forall m \in \mathcal{M} \label{M1_Constr1} \\
+    & \sum_{p \in \mathcal{P}_i} x_{imp} = 1
+      \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m \label{M1_Constr2} \\
+    & y_{wp} \ge x_{imp} + z_{mw} - 1
+      \qquad \forall w \in \mathcal{W},\, m \in \mathcal{M},\,
+              i \in \mathcal{I}_m,\, p \in \mathcal{P}_i \label{M1_Constr3} \\
+    & \sum_{m \in \mathcal{M}} |\mathcal{I}_m|\, z_{mw} \le \overline{I}
+      \qquad \forall w \in \mathcal{W} \label{M1_Constr4} \\
+    & \sum_{m \in \mathcal{M}} |\mathcal{I}_m|\, z_{mw} \ge \underline{I}
+      \qquad \forall w \in \mathcal{W} \label{M1_Constr5} \\
+    & z_{mw} = 1
+      \qquad \forall m \in \mathcal{M}_0 \label{M1_InitialCond}
 \end{align}
 
-where $\mathcal{M}_0 \subset \mathcal{M}$ is a subset of orders whose workstation is already assigned by the warehouse state.
-Constraints \eqref{M1_Constr4} and \eqref{M1_Constr5} are needed to enforce balance between workstation worloads; the parameters $\overline{I}$ and $\underline{I}$ can be tuned to control the maximum allowed imbalance between workstations workload and are set at $\overline{I} = \frac{\sum_{m \in \mathcal{M}} |\mathcal{I}_m |}{4} * 1.25$ and $\overline{I} = \frac{\sum_{m \in \mathcal{M}} |\mathcal{I}_m |}{4} * 0.75$.
+where $\mathcal{M}_0 \subset \mathcal{M}$ is the subset of orders whose workstation is already fixed by the current warehouse state. The objective minimises the total number of (workstation, pod) pairs, which is a proxy for the number of pod movements. Constraints \eqref{M1_Constr4}--\eqref{M1_Constr5} enforce workload balance; the bounds are set to $\overline{I} = 1.25\,\frac{\sum_m |\mathcal{I}_m|}{|\mathcal{W}|}$ and $\underline{I} = 0.75\,\frac{\sum_m |\mathcal{I}_m|}{|\mathcal{W}|}$.
 
-This optimization problem is solved using a local search strategy.
+The problem is solved via the local search described in Section~\ref{sss:ls_stage1}; its output, the assignments $z$ and $x$, is passed as input to the second stage.
 
-\subsubsection{Second stage: Task Design and Scheduling}
-The decision variables of the second stage are:
-\begin{itemize}
-    \item $x_{imt} = 1$ if item $i$ of order $m$ is picked by time $t$, $0$ otherwise.
-    \item $f_{mt} = 1$ if at least $1$ item of order $m$ has been picked by time $t-1$, $0$ otherwise.
+
+\subsubsection{Second Stage: Task Design and Scheduling}
+
+Given the assignments from Stage 1, the second stage schedules pod movements over the time-space network. The decision variables are:
+\begin{itemize}[noitemsep]
+    \item $x_{imt} = 1$ if item $i$ of order $m$ has been picked by time $t$,
+          $0$ otherwise.
+    \item $f_{mt} = 1$ if at least one item of order $m$ has been picked by time
+          $t-1$, $0$ otherwise.
     \item $g_{mt} = 1$ if order $m$ is completed by time $t-1$, $0$ otherwise.
     \item $v_{mt} = 1$ if order $m$ is open at time $t$, $0$ otherwise.
-    \item $y_{pa} = 1$ if arc $a$ in the time-space network is selected for pod $p$, $0$ otherwise.
+    \item $y_{pa} = 1$ if arc $a$ in the time-space network is selected for pod
+          $p$, $0$ otherwise.
 \end{itemize}
 
-As before, the variable $x_{imt}$ has only 2 dimensions to reduce the number of unused variables as not all items $i$ are required by order $m$. A bijective map $(i, m) \rightarrow im$ is been used to keep track of the correspondence between the two representations.
-Moreover, the variable $y_{pa}$ is defined only for the pods $p$ that have been assigned to a workstation in the first stage, to reduce the number of unused variables.
+As in Stage 1, $x_{imt}$ is stored with two indices via the same bijective map.
+The variable $y_{pa}$ is defined only for pods assigned to at least one workstation in Stage 1.
 
 \begin{align}
     \max \quad
-    & \sum_{i \in \mathcal{I}} \sum_{m \in \mathcal{M}} x_{im, T} - \sum_{m \in \mathcal{M}} \sum_{t \in \mathcal{T}} \beta_m(t) (1 - g_{mt}) \label{M2_Obj} \\[4pt]
+    & \sum_{m \in \mathcal{M}} x_{im,T}
+      - \sum_{m \in \mathcal{M}} \sum_{t \in \mathcal{T}} \beta_m(t)\,(1 - g_{mt})
+      \label{M2_Obj} \\[4pt]
     \text{s.t.} \quad
     & \sum_{m \in \mathcal{M}(w)} v_{mt} \le C_w
-     \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T} \label{M2_Constr1} \\
+      \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T}
+      \label{M2_Constr1} \\
     & \sum_{m \in \mathcal{M}(w)} \sum_{i \in \mathcal{I}_m}
-    \delta^{\text{item}} (x_{imt} - x_{im,t-1})
-    + \sum_{p \in \mathcal{P}} \sum_{a \in \mathcal{A}^+_{N(w,t)}}
-    \delta^{\text{pod}} y_{pa}
-    \le \Delta
-     \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T} \setminus \{0\}
-    \label{M2_Constr2} \\
+      \delta^{\text{item}} (x_{imt} - x_{im,t-1})
+      + \sum_{p \in \mathcal{P}} \sum_{a \in \mathcal{A}^+_{N(w,t)}}
+      \delta^{\text{pod}}\, y_{pa}
+      \le \Delta
+      \qquad \forall w \in \mathcal{W},\, t \in \mathcal{T} \setminus \{0\}
+      \label{M2_Constr2} \\
     & \sum_{a \in \mathcal{A}^+_{N_p^0}} y_{pa} = 1
-     \qquad \forall p \in \mathcal{P} \label{M2_Constr3} \\
+      \qquad \forall p \in \mathcal{P}
+      \label{M2_Constr3} \\
     & \sum_{a \in \mathcal{A}^-_{n}} y_{pa}
-    - \sum_{a \in \mathcal{A}^+_{n}} y_{pa} = 0
-     \qquad \forall p \in \mathcal{P},\; n \in \mathcal{N} \setminus \left(\mathcal{N}_{\text{end}} \cup \{N_p^0\}\right)
-    \label{M2_Constr4} \\
+      - \sum_{a \in \mathcal{A}^+_{n}} y_{pa} = 0
+      \qquad \forall p \in \mathcal{P},\;
+              n \in \mathcal{N} \setminus \left(\mathcal{N}_{\text{end}}
+              \cup \{N_p^0\}\right)
+      \label{M2_Constr4} \\
     & x_{imt} - x_{im,t-1}
-    \le \sum_{a \in \mathcal{A}^+_{N(w,t)}} y_{pa}
-     \qquad \forall w \in \mathcal{W},\, m \in \mathcal{M}(w),\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \setminus \{0\} \\
+      \le \sum_{a \in \mathcal{A}^+_{N(w,t)}} y_{pa}
+      \qquad \forall w,\, m \in \mathcal{M}(w),\, i \in \mathcal{I}_m,\,
+              t \in \mathcal{T} \setminus \{0\} \\
     & x_{imt} \ge x_{im,t-1}
-     \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \setminus \{0\} \\
+      \qquad \forall m,\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \setminus \{0\} \\
     & v_{mt} = f_{mt} - g_{mt}
-     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \setminus \{0\} \\
-    & f_{mt} \ge x_{imt}
-     \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \\
-    & g_{mt} \le x_{imt}
-     \qquad \forall m \in \mathcal{M},\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \\
-    & g_{m,t+1} \ge \sum_{i \in \mathcal{I}_m} x_{imt} - \left(|\mathcal{I}_m| - 1\right)
-     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \\
+      \qquad \forall m,\, t \in \mathcal{T} \setminus \{0\} \\
+    & f_{mt} \ge x_{imt},\quad g_{mt} \le x_{imt}
+      \qquad \forall m,\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \\
+    & g_{m,t+1} \ge \sum_{i \in \mathcal{I}_m} x_{imt} - (|\mathcal{I}_m| - 1)
+      \qquad \forall m,\, t \in \mathcal{T} \\
     & v_{mt} \ge v_{m,t-1} - g_{mt}
-     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \label{Enforcing_IC} \\
+      \qquad \forall m,\, t \in \mathcal{T}
+      \label{Enforcing_IC} \\
     & v_{m,0} = 0
-     \qquad \forall m \in \mathcal{M}_0 \label{IC} \\
-    & f_{mt} \ge f_{m,t-1}
-     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \\
-    & g_{mt} \ge g_{m,t-1}
-     \qquad \forall m \in \mathcal{M},\, t \in \mathcal{T} \\
-    & \sum_{p \in \mathcal{P}} \sum_{a \in \mathcal{A}^{\text{mov}}_p(t)} y_{pa} \leq |\mathcal{R}|
-\qquad \forall\, t \in \mathcal{T} \label{max_active_pods}
+      \qquad \forall m \in \mathcal{M}_0
+      \label{IC} \\
+    & f_{mt} \ge f_{m,t-1},\quad g_{mt} \ge g_{m,t-1}
+      \qquad \forall m,\, t \in \mathcal{T} \\
+    & \sum_{p \in \mathcal{P}} \sum_{a \in \mathcal{A}^{\text{mov}}_p(t)} y_{pa}
+      \le |\mathcal{R}|
+      \qquad \forall t \in \mathcal{T}
+      \label{max_active_pods}
 \end{align}
 
-The objective function \eqref{M2_Obj} consists of 2 terms: the first one maximize the throughput; the second one penalizes uncompleted orders at the end of the time horizon, with a weight $\beta_m$ proportional to the difference between the order's arrival time and its completion time (this term is needed to ensure that orders won't be left in the backlog). \\
-Constraints \eqref{IC} and \eqref{Enforcing_IC} are needed for enforcing the initial conditions given by the orders already opened at workstations, for these orders the variable $f_{mt}$ loses its meaning as it is set to $1$ before any items is picked. \\
-Constraint \eqref{max_active_pods} bounds the maximum number of pods out of their storage location simultaneously. The set $\mathcal{A}^{\text{mov}}_p(t)$ is defined as 
-\[\mathcal{A}^{\text{mov}}_p(t) = 
-\left\{ 
-    a \in \mathcal{A}_p \;\middle|\; 
-    \ell^+(a) \neq s_p, \quad t^-(a) < t \leq t^+(a) 
-\right\}\]
-where $t^-(a)$, $t^+(a)$ are respectively the departure and arrival time of arc $a$.
+The objective \eqref{M2_Obj} maximises throughput and penalises uncompleted orders with a weight $\beta_m(t)$ proportional to the time elapsed since order $m$ arrived, preventing orders from being left indefinitely in the backlog.
+Constraints \eqref{IC}--\eqref{Enforcing_IC} enforce initial conditions for orders already open at workstations, for which $f_{mt}$ is set to $1$ regardless of whether any item has been picked. Constraint \eqref{max_active_pods} bounds the
+number of pods simultaneously out of storage, where
+\[
+\mathcal{A}^{\text{mov}}_p(t) =
+\left\{a \in \mathcal{A}_p \;\middle|\;
+\ell^+(a) \neq s_p,\quad t^-(a) < t \le t^+(a)\right\}
+\]
+and $t^-(a)$, $t^+(a)$ denote the departure and arrival times of arc $a$.
+The problem is solved via the local search described in Section~\ref{sss:ls_stage2}.
 
-This optimization problem is solved using a customized local search algorithm whose neighborhood generation mechanism solely relies on perturbing the matrix $x_{imt}$. The neighborhood structure is based on 3 moves:
-\begin{itemize}
-    \item \textbf{Anticipating item picking.} A single item is picked earlier.
-    \item \textbf{Anticipating order picking.} All items of an order are picked earlier.
-    \item \textbf{Orders swaps.} Two orders assigned to the same workstation swap their position in the picking sequence.
+
+\subsubsection{Local Search Stage 1}
+\label{sss:ls_stage1}
+
+The Stage-1 local search minimises $\sum_{w,p} y_{wp}$. At each iteration, a random subset of at most $600$ candidate moves is generated from three types:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Swap.} The workstation assignments of two free orders are exchanged.
+    \item \textbf{Move-to.} A single free order is reassigned to a different workstation.
+    \item \textbf{Re-pod.} A single item is reassigned to a different pod stocking its SKU.
 \end{itemize}
-The created neighborhood is not explored exhaustively, but a random subset of neighbors is generated at each iteration and the best improving solution is selected. This is done to speed up the optimization process: every time a new $x_{imt}$ is created, the others variable need to be update accordingly to maintain feasibility, and this can be computationally expensive especially in the reconstruction of $y_{pa}$ as feasible pod trajectories need to be defined. \\
-The algorithm stops after a fixed number of iterations without improvements.
 
+After each move, $y$ is recomputed deterministically from $x$ and $z$. Infeasible candidates are discarded; among the remaining ones, the move yielding the lowest objective is accepted. Ties are accepted to allow plateau traversal. Orders already open at a workstation are never moved. The algorithm terminates after $30$ iterations or after $5$ consecutive iterations without strict improvement.
+
+
+\subsubsection{Local Search Stage 2}
+\label{sss:ls_stage2}
+
+\paragraph{Initial solution.}
+The local search requires a feasible starting point for $x_{imt}$, built by a dedicated construction heuristic. For each workstation $w$, orders are partitioned into batches of at most $C_w$ orders. Batches are grown from a seed order by iteratively adding the candidate that maximises pod sharing and minimises new pods introduced; underfull batches are subsequently merged via best-fit on the same score. 
+Pod arrivals are then scheduled tentatively, accounting for pod chaining (the departure location is either the pod's storage cell or the last workstation it was committed to). 
+A batch is committed only if all its required pods found a feasible slot; uncommitted orders are retried individually.
+
+The construction heuristic is summarised in Algorithm~\ref{alg:initial_solution}.
+
+\begin{algorithm}
+\caption{Initial Solution Construction}
+\label{alg:initial_solution}
+\begin{algorithmic}[1]
+\For{each workstation $w$}
+    \State Partition orders into batches via greedy pod-sharing score
+    \State Merge underfull batches with best-fit
+    \State Prepend opened orders as first batch
+    \For{each batch $b$}
+        \State Sort pods by order count (desc) and earliest pick time
+        \For{each pod $p$ in sorted order}
+            \State $t^* \gets$ \Call{FindSlot}{$p$, earliest feasible time, travel time}
+            \If{$t^* \neq \texttt{None}$} register tentative pick at $t^*$ \EndIf
+        \EndFor
+        \If{all pods of at least one order found a slot}
+            \State Commit picks; set $x_{im,\,t^*:} = 1$ for each item $i$, order $m$
+        \Else
+            \State Add orders of the batch to the retry pool
+        \EndIf
+    \EndFor
+    \State Retry uncommitted orders individually
+\EndFor
+\State \Return $x$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Neighbourhood and move types.}
+The search perturbs only $x_{imt}$; all other variables are derived from $x$. Up to $150$ candidate moves are sampled per iteration, allocated $50\%$--$30\%$--$20\%$ across the three classes:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Item shift.} The pick time of one item, or of a small random subset of items, is shifted earlier by a fixed number of time steps; the shift magnitude decreases when no improvement has been found in the previous iteration.
+    \item \textbf{Order shift.} All items of an order are shifted earlier by a fixed number of time steps.
+    \item \textbf{Order swap.} Two orders at the same workstation exchange their position in the picking sequence.
+\end{itemize}
+
+\paragraph{Two-phase feasibility check.}
+To avoid rebuilding $y$ at every candidate evaluation, feasibility is verified in two stages. First, a cheap $x$-only check verifies the constraints that do not involve pod routing (monotonicity of $x$, capacity \eqref{M2_Constr1}, consistency of $f$, $g$, $v$), which are updated incrementally by recomputing only the rows of affected orders. Only for the best $x$-feasible candidate per iteration are the affected pod rows of $y$ rebuilt and the full constraint check
+\eqref{M2_Constr3}--\eqref{max_active_pods} performed. If this check fails, the second-best candidate is tried before discarding the iteration. The algorithm terminates after $45$ iterations or after $3$ consecutive iterations without improvement.
+
+\clearpage
 \newpage
 \printbibliography
 
