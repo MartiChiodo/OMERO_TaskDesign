@@ -153,7 +153,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         t_firstpicking =  task.priority
         pod = data.warehouse.pods[task.pod_id]
         ws = data.warehouse.workstations[task.stops[0].workstation_id]
-        pr = t_firstpicking - 0.25*(data.warehouse.travel_time(
+        pr = t_firstpicking - 0.5*(data.warehouse.travel_time(
             data.warehouse.cell2coord(pod.storage_location),
             data.warehouse.cell2coord(ws.position)
         ))/data.OptManager.TIME_UNIT

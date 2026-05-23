@@ -35,8 +35,8 @@ def check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
     sku_per_order = np.array([len(orders_items[m]) for m in range(len(orders))])  # shape (n_orders,)
     total_skus = sku_per_order.sum()
 
-    lower_I = np.floor(total_skus / n_w * 0.9)
-    upper_I = np.ceil(total_skus / n_w * 1.1)
+    lower_I = np.floor(total_skus / n_w * 0.85)
+    upper_I = np.ceil(total_skus / n_w * 1.15)
 
     ws_loads = sku_per_order @ z          # shape (n_w,)  —  SKU totali per worker
     if (ws_loads > upper_I + 1e-6).any() or (ws_loads < lower_I - 1e-6).any():
@@ -190,9 +190,9 @@ def local_search_stage1(
     logging.info("[ls_stage1] Feasible initial solution: obj = %.4f", best_obj)
 
     # Main loop 
-    MAX_ITER  = 30
+    MAX_ITER  = 50
     MAX_NEIGH = 600
-    max_no_improve = 5
+    max_no_improve = 3
     iter_without_improvement = 0
     am_I_stuck = False
     cont = 1

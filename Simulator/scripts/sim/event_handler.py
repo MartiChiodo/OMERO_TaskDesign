@@ -216,9 +216,10 @@ def start_task(event: Event, state, sim) -> None:
     skipped_t = []
     task = None
 
-    loop_ended = state.released_tasks.is_empty() 
+    loop_ended = len(state.released_tasks) == 0
     while not loop_ended:
         candidate = state.released_tasks.pop()
+        loop_ended = len(state.released_tasks) == 0
 
         if sim.config.optimization_enabled:
             valid = any(
@@ -242,7 +243,6 @@ def start_task(event: Event, state, sim) -> None:
                     candidate.task_id, candidate.pod_id, len(state.released_tasks))
         skipped_t.append(candidate)
 
-        loop_ended = state.released_tasks.is_empty() 
 
     for t in skipped_t:
         state.released_tasks.push(t)

@@ -546,7 +546,7 @@ In the implementation, $x_{imp}$ is stored with two indices only, since not all 
       \qquad \forall m \in \mathcal{M}_0 \label{M1_InitialCond}
 \end{align}
 
-where $\mathcal{M}_0 \subset \mathcal{M}$ is the subset of orders whose workstation is already fixed by the current warehouse state. The objective minimises the total number of (workstation, pod) pairs, which is a proxy for the number of pod movements. Constraints \eqref{M1_Constr4}--\eqref{M1_Constr5} enforce workload balance; the bounds are set to $\overline{I} = 1.25\,\frac{\sum_m |\mathcal{I}_m|}{|\mathcal{W}|}$ and $\underline{I} = 0.75\,\frac{\sum_m |\mathcal{I}_m|}{|\mathcal{W}|}$.
+where $\mathcal{M}_0 \subset \mathcal{M}$ is the subset of orders whose workstation is already fixed by the current warehouse state. The objective minimises the total number of (workstation, pod) pairs, which is a proxy for the number of pod movements. Constraints \eqref{M1_Constr4}--\eqref{M1_Constr5} enforce workload balance; the bounds are set to $\overline{I} = 1.15\,\frac{\sum_m |\mathcal{I}_m|}{|\mathcal{W}|}$ and $\underline{I} = 0.85\,\frac{\sum_m |\mathcal{I}_m|}{|\mathcal{W}|}$.
 
 The problem is solved via the local search described in Section~\ref{sss:ls_stage1}; its output, the assignments $z$ and $x$, is passed as input to the second stage.
 
