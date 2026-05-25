@@ -18,7 +18,7 @@ from Simulator.scripts.opt.utils import convert_OptSol_to_SimObj
 ### CONSTANTS
 OBATCH_SIZE = 300   # max orders pulled from the backlog per optimisation cycle
 TIME_UNIT   = 20    # seconds per discrete time period
-N_TIME      = 80   # number of discrete periods in the scheduling horizon
+N_TIME      = 100   # number of discrete periods in the scheduling horizon
 
 
 class OptManager:
@@ -172,6 +172,7 @@ class OptManager:
         """
         ws_orders       = []
         ws_orders_items = []
+        assigned = set()
 
         for ws in state.warehouse.workstations:
             # Visits currently being processed at this workstation
@@ -186,8 +187,10 @@ class OptManager:
             for order_id in ws.order_buffer:
                 o = state.orders_in_system.get(order_id)
                 if o is not None:
+                    o.status = OrderStatus.BACKLOG
                     ws_orders.append(o)
                     ws_orders_items.append(list(o.items_required))
+                    assigned.add(order_id)
 
             # Open orders — exclude items already claimed by active task visits
             for order_id in ws.opened_orders:
@@ -204,6 +207,8 @@ class OptManager:
                 if remaining:
                     ws_orders.append(o)
                     ws_orders_items.append(remaining)
+                    assigned.add(order_id)
+                    
 
         # Backlog orders — pull up to OBATCH_SIZE - (already collected)
         backlog       = []
@@ -214,9 +219,10 @@ class OptManager:
         while len(backlog) < n_to_consider and len(state.orders_in_system) > 0:
             o = state.orders_in_system.pop()
             l_to_push.append(o)
-            if o.status == OrderStatus.BACKLOG:
+            if o.status == OrderStatus.BACKLOG and o.order_id not in assigned:
                 backlog.append(o)
                 backlog_items.append(list(o.items_pending))
+                assigned.add(o.order_id)
 
         # Restore the priority queue
         for o in l_to_push:

@@ -121,11 +121,11 @@ class StatManager:
         lines.append(f"Simulation with time-horizon = {config.time_horizon} sec and warm-up = {config.warm_up} sec.")
         lines.append(f"Optimization enabled = {config.optimization_enabled}")
 
-        lines.append(f"\n Total number of items picked (throughtput) = {self.throughput}.\n Average number of pod moving simultaneously = {self.avg_number_pod_moving.mean(0, end_time)}.")
+        lines.append(f"\nTotal number of items picked (throughtput) = {self.throughput}.\nAverage number of pod moving simultaneously = {self.avg_number_pod_moving.mean(0, end_time)}.")
         lines.append(f"Computational time spent for making decisions = {self.decisions_computing_time} sec.")
 
         lines += self.format_closed_orders_table()
-        lines.append(f"\n In the system there are still {len([o for o in state.orders_in_system if o.status == OrderStatus.BACKLOG])} order(s) in backlog, {len([o for o in state.orders_in_system if o.status == OrderStatus.WAITING])} order(s) enqueued at a workstation and {len([o for o in state.orders_in_system if o.status == OrderStatus.OPEN])} order(s) open at a workstation.")
+        lines.append(f"\nIn the system there are still {len([o for o in state.orders_in_system if o.status == OrderStatus.BACKLOG])} order(s) in backlog, {len([o for o in state.orders_in_system if o.status == OrderStatus.WAITING])} order(s) enqueued at a workstation and {len([o for o in state.orders_in_system if o.status == OrderStatus.OPEN])} order(s) open at a workstation.")
         if len([o for o in state.orders_in_system if o.status == OrderStatus.BACKLOG]) > 0:
             lines+=self.format_backlog_orders_table(state.orders_in_system, end_time)
         
@@ -200,24 +200,25 @@ class StatManager:
     def format_backlog_orders_table(self,orders_in_system, end_time) -> list[str]:
         lines = []
         lines.append(f"\n{'=' * 60}\n  BACKLOG ORDERS \n{'=' * 60}")
-        lines.append(f"  {'Size':<8} {'Closed':>8} {'Avg Flow (sec)':>17}")
+        lines.append(f"  {'Size':<8} {'Number':>8} {'Avg waiting time (sec)':>25}")
         lines.append("-" * 60)
 
         tot_backlog = 0
         backlog = {}
         for o in orders_in_system:
-            if o.order_size in backlog.keys():
-                backlog[o.order_size][0] += 1
-                backlog[o.order_size][1] += (end_time - o.arrival_time)
-            else:
-                backlog[o.order_size] = [1, (end_time - o.arrival_time)]
+            if o.status == OrderStatus.BACKLOG:
+                if o.order_size in backlog.keys():
+                    backlog[o.order_size][0] += 1
+                    backlog[o.order_size][1] += end_time - o.arrival_time
+                else:
+                    backlog[o.order_size] = [1, end_time - o.arrival_time]
 
         sizes = backlog.keys()
         for size in sizes:
             n   = backlog[size][0]
             tot_backlog += n
             avg = backlog[size][1]/n
-            lines.append(f"  {size:<8} {n:>8} {avg:>12.2f}")
+            lines.append(f"  {size:<8} {n:>8} {avg:>15.2f}")
 
         lines.append("-" * 60)
         return lines

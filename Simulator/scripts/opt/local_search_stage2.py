@@ -449,12 +449,12 @@ def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
     T = x.shape[1]
     picking_reward = x[:, T-1].sum() 
     backlog_penalty   = float(sum(
-        (d.current_time + (t-1) * d.OptManager.TIME_UNIT - d.arrival_times[m]) / (d.OptManager.TIME_UNIT * d.OptManager.N_TIME)
+        (d.current_time + t * d.OptManager.TIME_UNIT - d.arrival_times[m]) / d.OptManager.TIME_UNIT 
         * (1.0 - g[m, t])
         for m in range(len(d.orders))
-        for t in range(1,T)
+        for t in range(T)
     ))
-    return picking_reward - backlog_penalty
+    return picking_reward - backlog_penalty/d.OptManager.N_TIME
 
 
 def check_constraints(sol: tuple, d) -> tuple[bool, dict]:

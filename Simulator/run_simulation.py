@@ -21,7 +21,7 @@ def main():
 
     # EXPERIMENT TO SIMULATE
     EXPERIMENT_IDS = [1,2,3,4,5,6] + [7,8,9,10,11,12] + [13,14,15,16] # + [19,20,21,22]
-    EXPERIMENT_IDS = [7,8,9,10]
+    EXPERIMENT_IDS = [2,3,4,7,8]
     SEED = 343310
     OPTIM = True
 
@@ -41,7 +41,7 @@ def main():
         logging.basicConfig(
             filename=os.path.join(path_to_logs, f"logs_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.log"),
             encoding="utf-8",
-            level=logging.INFO,
+            level=logging.DEBUG,
             datefmt="%H:%M:%S",
             filemode="w",
             format="%(asctime)s %(levelname)s: %(message)s",

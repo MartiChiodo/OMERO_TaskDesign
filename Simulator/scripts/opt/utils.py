@@ -108,9 +108,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                             items=pick_data["items"],
                         ))
                 if stops:
-                    pr = None
+                    pr = data.OptManager.N_TIME + 2
                     for i,m in [(i,m) for i,m in relevant_pairs_for_x if i in stops[0].items and data.orders[m].order_id in stops[0].orders]:
-                        pr = item_to_time.get((i, m))
+                        pr = min(pr, item_to_time.get((i, m)))
                         if not pr == None:
                             break 
                     tasks.append(Task(
@@ -135,9 +135,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                         items=pick_data["items"],
                     ))
             if stops:
-                pr = None
+                pr = data.OptManager.N_TIME + 2
                 for i,m in [(i,m) for i,m in relevant_pairs_for_x if i in stops[0].items and data.orders[m].order_id in stops[0].orders]:
-                    pr = item_to_time.get((i, m))
+                    pr = min(pr, item_to_time.get((i, m)))
                     if not pr == None:
                         break 
                 tasks.append(Task(
@@ -150,10 +150,10 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
 
     # Assigning priority to tasks
     for task in tasks:
-        t_firstpicking =  task.priority
+        t_firstpicking = task.priority
         pod = data.warehouse.pods[task.pod_id]
         ws = data.warehouse.workstations[task.stops[0].workstation_id]
-        pr = t_firstpicking - 0.5*(data.warehouse.travel_time(
+        pr = t_firstpicking - 0.25*(1.1*data.warehouse.travel_time(
             data.warehouse.cell2coord(pod.storage_location),
             data.warehouse.cell2coord(ws.position)
         ))/data.OptManager.TIME_UNIT
@@ -164,7 +164,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
     order_first_task = [data.OptManager.N_TIME]*len(data.orders)
     for new_id, task in enumerate(tasks):
         task.task_id = data.state.task_counter + new_id
-        task.priority = new_id / (len(tasks) -1) * 500 if len(tasks) > 1 else 0
+        task.priority = new_id / (len(tasks) -1) * 300 if len(tasks) > 1 else 0
         for m in [m  for m, o in enumerate(data.orders)
                   if o.order_id in [id_o for v in task.stops for id_o in v.orders]]:
             order_first_task[m] = min(order_first_task[m], task.priority)
