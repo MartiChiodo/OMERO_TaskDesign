@@ -49,14 +49,14 @@
 For the sake of simplicity, the simulator is based on the following simplifying assumptions.
 
 \begin{itemize}[noitemsep]
-    \item Replenishment missions are not considered, therefore no inventory constraints are modelled. Each pod contains a limited set of SKUs, but the exact quantity or volume of each item is not known.
+    \item Replenishment missions are not considered, therefore no inventory constraint is modelled. Each pod contains a limited set of SKUs, but the exact quantity or volume of each item is not known.
     \item Technical aspects of the robots, such as energy management and low-level routing, are outside the scope of this simulator and are not modelled.
     \item At the end of a mission, the pod will return to its storage position.
 \end{itemize}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{General Description}
-The discrete-event simulator emulates the operational dynamics of an Amazon-style RMFS (Robotic Mobile Fulfillment System), based on a \textit{parts-to-picker} approach: robots bring pods to workstations, where operators pick items and process orders.
+The discrete-event simulator mimics the operational dynamics of an Amazon-style RMFS (Robotic Mobile Fulfillment System), based on a \textit{parts-to-picker} approach: robots bring pods to workstations, where operators pick items and process orders.
 
 The simulator supports two decision-making modes:
 \begin{enumerate}[noitemsep]
@@ -106,8 +106,6 @@ The project is organised on four logical levels: \texttt{core} (shared entities 
 The following table lists the simulator configuration parameters.
 The parameters that define order generation and pod processing times at workstations have a domain defined by \cite{Barnhart2024}\footnote{GitHub repository \url{https://github.com/alexschmid3/warehouse-task-assignment}.}.
 
-The numerical values present are those adopted by \cite{Barnhart2024} or fixed based on the literature; parameters marked with \texttt{???} are yet to be defined.
-
 \begin{table}[htbp]
 \begin{longtable}{p{5cm} p{7.5cm}}
 \toprule
@@ -120,7 +118,7 @@ The numerical values present are those adopted by \cite{Barnhart2024} or fixed b
 \endhead
 \multicolumn{2}{l}{\textit{Layout and capacity}} \\[2pt]
 \texttt{NUM\_PODS}                   & Total number of pods (\texttt{GRID\_ROWS} $\times$ \texttt{GRID\_COLS}) \\
-\texttt{NUM\_SKUS}                   & Number of distinct SKUs \\
+\texttt{NUM\_SKUS}                   & Number of distinct SKUs (fixed in such way that in average every pod has 20 skus) \\
 \texttt{NUM\_SKUS\_PER\_POD}         & Target number of distinct SKUs for each pod \\
 \texttt{NUM\_ROBOTS}                 & Number of autonomous mobile robots \\
 \texttt{NUM\_WORKSTATIONS}           & Number of picking stations \\
@@ -128,15 +126,15 @@ The numerical values present are those adopted by \cite{Barnhart2024} or fixed b
 \texttt{WS\_ORDER\_CAPACITY}         & Maximum number of open orders per station \\
 \texttt{WS\_RELEASED\_TASK\_CAPACITY}& Number of tasks released per workstation \\[6pt]
 \multicolumn{2}{l}{\textit{Operational times}} \\[2pt]
-\texttt{ROBOT\_SPEED}                & Robot speed (cells/min, $\approx 0{,}5$ m/s) \\
+\texttt{ROBOT\_SPEED}                & Robot speed \\
 \texttt{POD\_PROCESS\_TIME}          & Processing time of a pod at the workstation \\
 \texttt{ITEM\_PROCESS\_TIME}         & Picking time of an item at the workstation \\[6pt]
 \multicolumn{2}{l}{\textit{Order generation}} \\[2pt]
-\texttt{INTERARRIVAL\_TIME\_ORDER}   & Mean order inter-arrival time (min) \\
+\texttt{INTERARRIVAL\_TIME\_ORDER}   & Mean order inter-arrival time \\
 \texttt{PROB\_1\_ITEM\_ORDER}        & Probability that an order contains a single item \\
 \texttt{GEO\_DIST\_PARAM\_ORDER}     & Geometric parameter for multi-item orders \\[6pt]
 \multicolumn{2}{l}{\textit{Simulation control}} \\[2pt]
-\texttt{TIME\_HORIZON}              & Total simulation duration (min) \\
+\texttt{TIME\_HORIZON}              & Total simulation duration  \\
 \texttt{DELTA\_T\_OPT}              & Optimiser call interval \\
 \bottomrule
 \end{longtable}
@@ -191,7 +189,7 @@ Tracks a customer order from arrival to completion.
 
 \subsection{Pod}
 
-Represents a storage pod. When idle, the pod is at its \texttt{storage\_location}; when on a mission, its status becomes \texttt{BUSY}, and the location is not known.
+Represents a storage pod. When idle, the pod is at its \texttt{storage\_location}; when on a mission, its status becomes \texttt{BUSY}, and the location is not known precisely as routing is not considered.
 
 \vspace{0.4em}
 \begin{tabularx}{\textwidth}{l l X}
@@ -269,7 +267,7 @@ X = \text{grid\_rows} + 2\left\lfloor\frac{\text{grid\_rows}-1}{2}\right\rfloor 
 Y = \text{grid\_cols} + 2 \cdot \text{MARGIN} - 1
 \]
 
-Workstations are placed along the perimeter, preferably on the bottom side in a symmetric configuration. Robots are initialized at random, non-overlapping positions within the warehouse.  
+Workstations are placed along the perimeter, preferably on the bottom side in a symmetric configuration. Robots are initialized at random non-overlapping positions within the warehouse.  
 The travel time between two cells is computed as the sum of two components: a nominal travel time, obtained by dividing the Manhattan distance by \texttt{robot\_speed}, and a positive stochastic component accounting for potential delays due to congestion or other effects.
 
 \begin{figure}[htbp]
@@ -297,8 +295,8 @@ A dataclass that holds every parameter that does not change across replicas. It 
 \texttt{order\_gen\_config}    & \texttt{list[float]}  & \texttt{[interarrival\_time, prob\_1\_item, geo\_param]}, parameters for order arrival generation \\
 \texttt{time\_horizone}        & \texttt{float}        & Time horizon of the simulator in seconds.. \\
 \texttt{warm\_up}              & \texttt{float}        & Seconds discarded from statistics at run start. Default \texttt{0}. \\
-\texttt{optimization\_enabled} & \texttt{bool}         & \texttt{False} $\to$ greedy policies; \texttt{True} $\to$ optimiser \\
-\texttt{optimization\_interval} & \texttt{float}        & Time interval between two optimization in seconds. Default \texttt{15*60} \\
+\texttt{optimization\_enabled} & \texttt{bool}         & If \texttt{False}, greedy policies are adopted; if \texttt{True}, optimiser is adopted \\
+\texttt{optimization\_interval} & \texttt{float}        & Time interval between two optimization in seconds \\
 \bottomrule
 \end{tabularx}
 
@@ -326,7 +324,7 @@ A plain dataclass holding all quantities that change during a simulation run. A 
 \end{tabularx}
 
 % ── Simulator ────────────────────────────────────────────────────────────────
-\subsection{\texttt{Simulator} - orchestrator}
+\subsection{\texttt{Simulator}}
 
 The \texttt{Simulator} class owns the immutable configuration, the random generator and the \texttt{StatManager}. Its constructor accepts a \texttt{warehouse\_factory}, a zero-argument callable that returns a fresh \texttt{Warehouse}, instead of a \texttt{Warehouse} instance directly. This design choice is intentional: calling \texttt{run()} multiple times in the main script produces independent replicas automatically, because each call rebuilds the full \texttt{SimulatorState} (including a new \texttt{Warehouse}) from scratch before processing any event.
 
@@ -357,7 +355,7 @@ The main event loop inside \texttt{run()} follows the classical DES structure:
     \item Write and reset statistics via \texttt{STAT\_MANAGER}.
 \end{enumerate}
 
-To be precise, the first \texttt{ARRIVAL\_ORDER} event will make arrive $30$ orders simultaneously to mimic a initial situation of a already working warehouse.
+To be precise, the first \texttt{ARRIVAL\_ORDER} event will make arrive $100$ orders simultaneously to mimic a initial situation of a already working warehouse.
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -418,7 +416,7 @@ Note that once a task is extracted from the priority queue in \texttt{START\_TAS
 In the \texttt{Simulator} class, when the \texttt{future\_events} queue is initialized, ties between simultaneous events are resolved by prioritizing \texttt{RELEASE\_TASK} events. This is because the greedy policy used for task generation must consider the full set of released tasks in order to avoid producing redundant tasks, which could lead to inconsistencies in the simulation. For the same reason, at the end of the \texttt{END\_PICKING} event, if a new order is opened at the workstation, no new tasks are designed or released, as this will be handled during the \texttt{OPEN\_ORDER} process.  
 The reason behind these design choices will become clearer when the greedy policies are introduced.
 
-The following flowcharts illustrate the dependencies between events and the overall system dynamics.
+The following flowcharts illustrate the dependencies between events.
 
 \begin{figure}[htbp]
 \centering\includegraphics[width=\textwidth]{images/Diagramma_ERG_Policy.pdf}
@@ -434,17 +432,16 @@ The following flowcharts illustrate the dependencies between events and the over
 % ─────────────────────────────────────────────────────────────────────────────
 \newpage \clearpage
 \section{KPIs Collection}
-The main objective of this simulator is to evaluate two different optimization approaches in a controlled and reproducible environment; hence, several relevant statistics must be collected.
+The main objective of this simulator is to evaluate two different optimization approaches in a controlled and reproducible environment; hence, relevant statistics must be collected.
 
 The collected statistics are grouped into three categories:
 \begin{itemize}
     \item \texttt{ResourceTracker}: this type of statistic measures the state frequency of a given entity over time. It is used, for example, for both robots and workstations, and captures respectively the robot utilization rate and the workstation picking time ratio.
     \item \texttt{OrderFlowTracker}: this statistic captures the average order flow time, grouped by order size, from the \texttt{BACKLOG} state to the \texttt{CLOSED} state.
-    \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation and the average number of pods simultaneously out of their storage location.
+    \item \texttt{TimeWeightedMeanTracker}: this type of statistic is used to compute time-averaged KPIs, such as the average number of open orders per workstation or the average number of pods simultaneously out of their storage location.
     \item \texttt{Counter}: this type of statistic is used to count occurencies of something; in particular, it is used to track the throughtput of the system.
 \end{itemize}
 
-Finally, all statistics can be aggregated to compute global performance indicators and support system-level analysis.
 
 
 
@@ -454,12 +451,11 @@ Finally, all statistics can be aggregated to compute global performance indicato
 
 \subsubsection{Assignment Order-Workstation}
 The assignment order-workstation is performed whenever an order arrives in the system.  
-The greedy policy implemented is the following\footnote{Vorrei migliorarla cercando di creare dei cluster in base alle sku required dalgli order alle workstation}:
+The greedy policy implemented is the following\footnote{Vorrei migliorarla cercando di creare dei cluster in base alle sku required dagli order alle workstation}:
 \begin{algorithm}
 \caption{Assignment order-workstation}
 \begin{algorithmic}[1]
-\State Select \texttt{workstation\_id} as the open workstation minimizing the total number of orders, 
-computed as the sum of queued and currently open orders
+\State Select \texttt{workstation\_id} as the workstation minimizing the sum of queued and currently open orders
 \end{algorithmic}
 \end{algorithm}
 
@@ -467,7 +463,7 @@ In this policy, the sequencing of orders at a given workstation is neglected, as
 
 \subsubsection{Task Design and Sequencing}
 Task design is performed greedily, considering only the orders currently open at a given workstation, with the objective of maximizing pile-on that is, minimizing the number of pods required to complete all open orders at the workstation.  
-During the algorithm, all released tasks associated with the given workstation that have not yet been allocated are redesigned to account for newly required items. This is why the realising of already designed tasks must be prioritized in order to avoid inconsistencies.
+During the algorithm, all released tasks associated with the given workstation that have not yet been dispatched are redesigned to account for newly required items. This is why the realising of already designed tasks must be prioritized in order to avoid inconsistencies.
 
 In practice, task sequencing is neglected, as priority is based exclusively on the time at which tasks are designed and released.
 
@@ -601,7 +597,7 @@ The variable $y_{pa}$ is defined only for pods assigned to at least one workstat
       \qquad \forall m,\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \setminus \{0\} \\
     & v_{mt} = f_{mt} - g_{mt}
       \qquad \forall m,\, t \in \mathcal{T} \setminus \{0\} \\
-    & f_{mt} \ge x_{imt},\quad g_{mt} \le x_{imt}
+    & f_{mt} \ge x_{imt},\quad g_{mt} \le x_{im,t-1}
       \qquad \forall m,\, i \in \mathcal{I}_m,\, t \in \mathcal{T} \\
     & g_{m,t+1} \ge \sum_{i \in \mathcal{I}_m} x_{imt} - (|\mathcal{I}_m| - 1)
       \qquad \forall m,\, t \in \mathcal{T} \\
@@ -642,8 +638,7 @@ The Stage-1 local search minimises $\sum_{w,p} y_{wp}$. At each iteration, a ran
     \item \textbf{Re-pod.} A single item is reassigned to a different pod stocking its SKU.
 \end{itemize}
 
-After each move, $y$ is recomputed deterministically from $x$ and $z$. Infeasible candidates are discarded; among the remaining ones, the move yielding the lowest objective is accepted. Ties are accepted to allow plateau traversal. Orders already open at a workstation are never moved. The algorithm terminates after $30$ iterations or after $5$ consecutive iterations without strict improvement.
-
+After each move, $y$ is recomputed deterministically from $x$ and $z$. Infeasible candidates are discarded; among the remaining ones, the move yielding the lowest objective is accepted. Ties are accepted to allow plateau traversal. Orders already open at a workstation are never moved. 
 
 \subsubsection{Local Search Stage 2}
 \label{sss:ls_stage2}
@@ -685,14 +680,38 @@ The construction heuristic is summarised in Algorithm~\ref{alg:initial_solution}
 The search perturbs only $x_{imt}$; all other variables are derived from $x$. Up to $150$ candidate moves are sampled per iteration, allocated $50\%$--$30\%$--$20\%$ across the three classes:
 
 \begin{itemize}[noitemsep]
-    \item \textbf{Item shift.} The pick time of one item, or of a small random subset of items, is shifted earlier by a fixed number of time steps; the shift magnitude decreases when no improvement has been found in the previous iteration.
-    \item \textbf{Order shift.} All items of an order are shifted earlier by a fixed number of time steps.
-    \item \textbf{Order swap.} Two orders at the same workstation exchange their position in the picking sequence.
+    \item \textbf{Item shift:} The pick time of one item, or of a small random subset of items, is shifted earlier by a fixed number of time steps.
+    \item \textbf{Order shift:} All items of an order are shifted earlier by a fixed number of time steps.
+    \item \textbf{Order swap:} Two orders at the same workstation exchange their position in the picking sequence.
 \end{itemize}
 
 \paragraph{Two-phase feasibility check.}
 To avoid rebuilding $y$ at every candidate evaluation, feasibility is verified in two stages. First, a cheap $x$-only check verifies the constraints that do not involve pod routing (monotonicity of $x$, capacity \eqref{M2_Constr1}, consistency of $f$, $g$, $v$), which are updated incrementally by recomputing only the rows of affected orders. Only for the best $x$-feasible candidate per iteration are the affected pod rows of $y$ rebuilt and the full constraint check
-\eqref{M2_Constr3}--\eqref{max_active_pods} performed. If this check fails, the second-best candidate is tried before discarding the iteration. The algorithm terminates after $45$ iterations or after $3$ consecutive iterations without improvement.
+\eqref{M2_Constr3}--\eqref{max_active_pods} performed. If this check fails, the second-best candidate is tried before discarding the iteration. 
+
+\subsubsection{From Binary Variables to Simulator Objects}
+
+The function contained in \texttt{scripts/opt/utils.py} translates the binary solutions $(x, v, y)$ produced by the two-stage optimiser into the \texttt{Task} and \texttt{Visit} objects seen by the simulator. The conversion proceeds in four steps.
+
+\begin{enumerate}
+\item \textbf{Item pick times}
+For each relevant $(i, m)$ pair indexed by $im$, the pick time $t^*_{im}$ is the first timestep at which $x_{im,t}$ transitions from $0$ to $1$. Combined with the pod assignment from Stage~1, this defines the lookup $\texttt{pick\_at}[(p, t, w)]$, which collects, for each pod $p$ arriving at workstation $w$ at time $t$, the set of items and orders to be served.
+
+\item \textbf{Pod trajectory reconstruction}
+For each pod $p$, the arcs selected by $y_{pa} > 0.5$ are extracted and sorted by departure time. The sequence is walked to identify \emph{trips}: a trip begins when the pod departs from storage and ends when it returns. Each stop corresponding to a workstation visit with a non-empty item set is encoded as a \texttt{Visit}; a trip with at least one valid \texttt{Visit} becomes a \texttt{Task}.
+
+\item \textbf{Priority assignment}
+The priority of each task is set to:
+\begin{equation}
+    \pi = t^*_{\text{first}} - \frac{0.25 \cdot d(p,\, w)}{\Delta_{\text{unit}}}
+\end{equation}
+where $t^*_{\text{first}}$ is the pick time of the first item at the first stop, $d(p, w)$ is the travel time from the pod's storage cell to the first destination workstation, and $\Delta_{\text{unit}}$ is the optimiser time unit. 
+
+\item \textbf{Sorting and ID assignment}
+Tasks are sorted by ascending priority and remapped onto $[0,\, 300]$ via linear rescaling. IDs are assigned sequentially from \texttt{state.task\_counter}, and orders within each workstation are sorted by their start time derived from $v_{mt}$, with ties broken by the priority of the first task serving that order.
+\end{enumerate}
+
+Finally, note that the simulator may not respect the optimized task sequence: a task is additionally held back until at least one of its served orders is already open or is first in the order queue at the target workstation. Without this check, a robot could deliver a pod to a workstation with no open order ready to receive it, causing a dead-lock.
 
 \clearpage
 \newpage

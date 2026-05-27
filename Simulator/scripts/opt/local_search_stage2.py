@@ -548,7 +548,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     if ec21:
         viols['EC21'] = ec21
 
-    ec22 = []
+    ec22 = [] ### DA COONTROLLARE
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         bad = np.where(g[m, 1:] > x[im, :-1] + 1e-6)[0] + 1
         if bad.size:
@@ -565,7 +565,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     if bad.size:
         viols['continuity_v'] = bad.tolist()
 
-    g_lb = []
+    g_lb = [] ### DA CONTROLLARE
     for m in range(len(d.orders)):
         ims    = d.items_of_order[m]
         n_items = int(d.n_items_per_order[m])
