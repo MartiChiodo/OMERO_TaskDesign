@@ -6,19 +6,19 @@ from itertools import product
 
 import numpy as np
 
-from Simulator.scripts.core.warehouse import Warehouse
-from Simulator.scripts.core.enums import OrderStatus
+from scripts.core.warehouse import Warehouse
+from scripts.core.enums import OrderStatus
 
-from Simulator.scripts.opt.local_search_stage1 import local_search_stage1
-from Simulator.scripts.opt.local_search_stage2 import local_search_stage2
-from Simulator.scripts.opt.stage2_data import build_stage2_data
-from Simulator.scripts.opt.utils import convert_OptSol_to_SimObj
+from scripts.opt.local_search_stage1 import local_search_stage1
+from scripts.opt.local_search_stage2 import local_search_stage2
+from scripts.opt.stage2_data import build_stage2_data
+from scripts.opt.utils import convert_OptSol_to_SimObj
 
 
 ### CONSTANTS
 OBATCH_SIZE = 300   # max orders pulled from the backlog per optimisation cycle
-TIME_UNIT   = 20    # seconds per discrete time period
-N_TIME      = 100   # number of discrete periods in the scheduling horizon
+TIME_UNIT   = 30    # seconds per discrete time period
+N_TIME      = 50   # number of discrete periods in the scheduling horizon
 
 
 class OptManager:

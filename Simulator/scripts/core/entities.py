@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Any
 from dataclasses import dataclass, field
-from Simulator.scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationPickingStatus, EventType
+from scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationPickingStatus, EventType
 
 
 ### MISSIONS-RELATED CLASSES

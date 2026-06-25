@@ -35,8 +35,8 @@ def check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
     sku_per_order = np.array([len(orders_items[m]) for m in range(len(orders))])  # shape (n_orders,)
     total_skus = sku_per_order.sum()
 
-    lower_I = np.floor(total_skus / n_w * 0.85)
-    upper_I = np.ceil(total_skus / n_w * 1.15)
+    lower_I = np.floor(total_skus / n_w * 0.8)
+    upper_I = np.ceil(total_skus / n_w * 1.2)
 
     ws_loads = sku_per_order @ z          # shape (n_w,)  —  SKU totali per worker
     if (ws_loads > upper_I + 1e-6).any() or (ws_loads < lower_I - 1e-6).any():

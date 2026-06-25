@@ -24,13 +24,13 @@ from typing import Callable
 import numpy as np
 from numpy.random import Generator
 
-from Simulator.scripts.core.entities import Order, Task, Event
-from Simulator.scripts.core.warehouse import Warehouse
-from Simulator.scripts.core.queues import PriorityQueue
-from Simulator.scripts.sim import event_handler as eh
-from Simulator.scripts.core.enums import OrderStatus, EventType, PodStatus
-from Simulator.scripts.stat.StatManager import StatManager
-from Simulator.scripts.opt.OptManager import OptManager
+from scripts.core.entities import Order, Task, Event
+from scripts.core.warehouse import Warehouse
+from scripts.core.queues import PriorityQueue
+from scripts.sim import event_handler as eh
+from scripts.core.enums import OrderStatus, EventType, PodStatus
+from scripts.stat.StatManager import StatManager
+from scripts.opt.OptManager import OptManager
 
 
 
@@ -175,7 +175,7 @@ class Simulator:
 
         state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = 100))
         if self.config.optimization_enabled:
-            state.future_events.push(Event(time=60, type=EventType.RUN_OPTIMIZER))
+            state.future_events.push(Event(time=1, type=EventType.RUN_OPTIMIZER))
 
         event_to_process = state.future_events.pop()
         while event_to_process.time < time_horizon:

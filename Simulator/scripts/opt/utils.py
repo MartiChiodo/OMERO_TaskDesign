@@ -1,5 +1,5 @@
 from collections import defaultdict
-from Simulator.scripts.core.entities import Task, Visit
+from scripts.core.entities import Task, Visit
 
 def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
 

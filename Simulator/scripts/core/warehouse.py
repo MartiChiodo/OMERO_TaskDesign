@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-from Simulator.scripts.core.enums import PodStatus, WorkstationPickingStatus, RobotStatus
-from Simulator.scripts.core.entities import Pod, Workstation, Robot
+from scripts.core.enums import PodStatus, WorkstationPickingStatus, RobotStatus
+from scripts.core.entities import Pod, Workstation, Robot
 
 
 # Layout constants

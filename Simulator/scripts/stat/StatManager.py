@@ -1,8 +1,8 @@
 import logging
 import os
 
-from Simulator.scripts.core.enums import WorkstationPickingStatus, RobotStatus, OrderStatus
-from Simulator.scripts.stat.core import *
+from scripts.core.enums import WorkstationPickingStatus, RobotStatus, OrderStatus
+from scripts.stat.core import *
 
 
 #  Main coordinator 

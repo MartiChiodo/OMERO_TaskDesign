@@ -6,8 +6,8 @@ pod selection for task design, and robot allocation.
 """
 
 import logging
-from Simulator.scripts.core.entities import Task, Visit
-from Simulator.scripts.core.enums import PodStatus, RobotStatus
+from scripts.core.entities import Task, Visit
+from scripts.core.enums import PodStatus, RobotStatus
 
 
 def assign_order_to_workstation_policy(order, workstations) -> int:

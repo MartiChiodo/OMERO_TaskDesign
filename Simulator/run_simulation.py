@@ -5,8 +5,8 @@ import pandas as pd
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from Simulator.scripts.core.warehouse import Warehouse
-from Simulator.scripts.sim.Simulator import Simulator, SimulatorConfig
+from scripts.core.warehouse import Warehouse
+from scripts.sim.Simulator import Simulator, SimulatorConfig
 
 
 def load_experiment(experiment_id: str) -> dict:
@@ -20,8 +20,17 @@ def load_experiment(experiment_id: str) -> dict:
 def main():
 
     # EXPERIMENT TO SIMULATE
-    EXPERIMENT_IDS = [1,2,3,4,5,6] + [7,8,9,10,11,12] + [13,14,15,16] # + [19,20,21,22]
-    EXPERIMENT_IDS = [5,6,9,10,11]
+    # EXPERIMENT_IDS = [1,2,3,4] + [11,12,13,14] + [21,22,23,24] + [31,32,33,34]
+
+    # Cluster parallelization
+    slurm_id = os.environ.get("SLURM_ARRAY_TASK_ID")
+    if slurm_id is not None:
+        # Siamo sul cluster: un solo esperimento
+        EXPERIMENT_IDS = [int(slurm_id)]
+    else:
+        # Siamo in locale: lista manuale
+        EXPERIMENT_IDS  = [1]
+
     SEED = 343310
     OPTIM = True
 
@@ -42,7 +51,7 @@ def main():
             filename=os.path.join(path_to_logs, f"logs_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.log"),
             encoding="utf-8",
             level=logging.DEBUG,
-            datefmt="%H:%M:%S",
+            datefmt='%Y-%m-%d %H:%M:%S',
             filemode="w",
             format="%(asctime)s %(levelname)s: %(message)s",
         )

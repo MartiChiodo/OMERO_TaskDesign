@@ -7,11 +7,11 @@ Each handler has signature ``(event, state, sim)`` where:
 """
 
 import logging, time
-from Simulator.scripts.core.entities import Order, Event, Task, Visit
-from Simulator.scripts.core.warehouse import Warehouse
-from Simulator.scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationPickingStatus, EventType
-from Simulator.scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
-from Simulator.scripts.core.queues import PriorityQueue
+from scripts.core.entities import Order, Event, Task, Visit
+from scripts.core.warehouse import Warehouse
+from scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationPickingStatus, EventType
+from scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
+from scripts.core.queues import PriorityQueue
 
 TIME_LIMIT_AT_WS = 600
 
