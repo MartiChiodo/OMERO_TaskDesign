@@ -29,7 +29,7 @@ def main():
         EXPERIMENT_IDS = [int(slurm_id)]
     else:
         # Siamo in locale: lista manuale
-        EXPERIMENT_IDS  = [1]
+        EXPERIMENT_IDS  = [2]
 
     SEED = 343310
     OPTIM = True
