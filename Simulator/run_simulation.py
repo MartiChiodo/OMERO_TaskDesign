@@ -31,7 +31,7 @@ def main():
         # Siamo in locale: lista manuale
         EXPERIMENT_IDS  = [1,2,3,4] + [11,12,13,14] + [21,22,23,24] + [31,32,33,34]
 
-    SEED = 300871
+    SEED = 50102
     OPTIM = False
 
     base_dir = os.path.dirname(__file__)
