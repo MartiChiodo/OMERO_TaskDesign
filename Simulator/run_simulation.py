@@ -29,10 +29,10 @@ def main():
         EXPERIMENT_IDS = [int(slurm_id)]
     else:
         # Siamo in locale: lista manuale
-        EXPERIMENT_IDS  = [2]
+        EXPERIMENT_IDS  = [1,2,3,4] + [11,12,13,14] + [21,22,23,24] + [31,32,33,34]
 
-    SEED = 343310
-    OPTIM = True
+    SEED = 300871
+    OPTIM = False
 
     base_dir = os.path.dirname(__file__)
     path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")

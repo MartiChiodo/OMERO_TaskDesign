@@ -17,8 +17,8 @@ from scripts.opt.utils import convert_OptSol_to_SimObj
 
 ### CONSTANTS
 OBATCH_SIZE = 300   # max orders pulled from the backlog per optimisation cycle
-TIME_UNIT   = 30    # seconds per discrete time period
-N_TIME      = 50   # number of discrete periods in the scheduling horizon
+TIME_UNIT   = 20    # seconds per discrete time period
+N_TIME      = 100    # number of discrete periods in the scheduling horizon
 
 
 class OptManager:

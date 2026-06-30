@@ -4,7 +4,7 @@ from bisect import bisect_left
 import logging
 
 from .stage2_data import Stage2Data
-from .build_initial_x_new import build_initial_x
+from .build_initial_x_v1 import build_initial_x
 
 
 ### Fast helpers (no y needed)
@@ -725,11 +725,22 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     _, f0, g0, v0, y0 = build_solution(x_current, d)
     feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
 
+    max_attempts = 10
+    attempt = 1
+
     while not feasible:
-        print(f"[ls_stage2] violated = {list(viols.keys())}")
-        logging.info("[ls_stage2] violated = %s", list(viols.keys()))
+        print(f"[ls_stage2] violated = {list(viols.keys())} (attempt {attempt}/{max_attempts})")
+        logging.info("[ls_stage2] violated = %s (attempt %d/%d)", list(viols.keys()), attempt, max_attempts)
         for k, vv in viols.items():
             print(f"  {k}: {vv[:3] if isinstance(vv, list) else vv}")
+
+        if attempt >= max_attempts:
+            msg = f"[ls_stage2] Failed to find a feasible initial solution after {max_attempts} attempts."
+            print(msg)
+            logging.error(msg)
+            raise RuntimeError(msg)
+
+        attempt += 1
         x_current = build_initial_x(rng, d)
         _, f0, g0, v0, y0 = build_solution(x_current, d)
         feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
@@ -739,7 +750,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     best_obj = compute_objective(x_current, f0, g0, d)
     print(f"[ls_stage2] Feasible initial solution: obj = {best_obj:.4f}")
     logging.info("[ls_stage2] Feasible initial solution: obj = %.4f", best_obj)
-
+    
     T = x_current.shape[1]
     item_ids = list(range(x_current.shape[0]))
 
@@ -749,9 +760,9 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     am_I_stuck                   = False
     cont                         = 1
     iter_without_improvement     = 0
-    max_iter_without_improvement = 3
-    MAX_ITER  = 100
-    MAX_NEIGH = 200
+    max_iter_without_improvement = 5
+    MAX_ITER  = 150
+    MAX_NEIGH = 300
 
     print("[ls_stage2] Exploring neighbours ...")
 
@@ -776,7 +787,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         # ---- Build move list ----------------------------------------- #
         moves = [[], [], []]
 
-        if iter_without_improvement > 0:
+        if iter_without_improvement > 1:
             for im in range(x_current.shape[0]):
                 moves[0].append(('item', im, -1))
                 moves[0].append(('item', im, -2))
@@ -820,7 +831,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
         total = sum(len(mv) for mv in moves)
         if total > MAX_NEIGH:
-            for i, p in enumerate([0.5, 0.3, 0.2]):
+            for i, p in enumerate([0.4, 0.4, 0.2]):
                 size = min(len(moves[i]), int(np.ceil(MAX_NEIGH * p)))
                 if size and len(moves[i]) > size:
                     idxs     = rng.choice(len(moves[i]), size=size, replace=False)
@@ -937,7 +948,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
                 feasible, _ = check_constraints(sol_curr, d)
                 if feasible:
-                    improved = best_obj_in_iter > best_obj
+                    improved = best_obj_in_iter >= best_obj
                     best_obj = best_obj_in_iter
                     best_x   = best_x_in_iter
                     best_sol = sol_curr

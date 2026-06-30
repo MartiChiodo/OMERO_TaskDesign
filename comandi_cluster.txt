@@ -1,7 +1,7 @@
 ### COMANDI CLUSTER
 
 caricare la cartella con il codice (da fare fuori dal cluster): 
-scp -r C:\Users\chiod\Documents\Tesi_LM\Simulator Lagrange-poli:~
+scp -r C:\Users\chiod\Documents\OMERO_TaskDesign\Simulator Lagrange-poli:~
 
 scaricare la cartella con il codice 
-scp -r Lagrange-poli:/beegfs/users/mchiodo/Simulator C:\Users\chiod\Documents\Tesi_LM\
+scp -r Lagrange-poli:/beegfs/users/mchiodo/Simulator C:\Users\chiod\Documents\OMERO_TaskDesign\
