@@ -1,0 +1,297 @@
+Avvio esperimento 13 con seed 293874 su lagrange-c03.hpcdisma.polito.it alle Tue 30 Jun 18:15:46 CEST 2026
+Usando SEED=293874, EXPERIMENT_IDS=[13]
+
+[ls_stage1] Building initial solution ...
+[ls_stage1] Feasible initial solution found at attempt 1/10: obj = 138.0000
+[ls_stage1] Exploring neighbours ...
+[ls_stage1] Iter 1: Improved with move ('swap', 43, 45) → 136.0000
+[ls_stage1] Iter 2: Improved with move ('swap', 12, 26) → 134.0000
+[ls_stage1] Iter 3: Improved with move ('swap', 8, 97) → 132.0000
+[ls_stage1] Iter 4: Improved with move ('swap', 32, 69) → 130.0000
+[ls_stage1] Iter 5: Improved with move ('swap', 61, 81) → 129.0000
+[ls_stage1] Iter 6: Improved with move ('swap', 57, 64) → 128.0000
+[ls_stage1] Iter 7: Improved with move ('swap', 13, 63) → 127.0000
+[ls_stage1] Iter 8: Improved with move ('moveto', 35, 1) → 126.0000
+[ls_stage1] Iter 9: Improved with move ('swap', 2, 17) → 125.0000
+[ls_stage1] Iter 10: Improved with move ('swap', 60, 86) → 124.0000
+[ls_stage1] Iter 11: Improved with move ('swap', 49, 93) → 123.0000
+[ls_stage1] Iter 12: Improved with move ('swap', 6, 91) → 122.0000
+[ls_stage1] Iter 13: No improvement (1/3)
+[ls_stage1] Iter 14: No improvement (2/3)
+[ls_stage1] Converged after 3 iters without improvement at 122.0000
+[ls_stage1] Final obj = 122.0
+
+[ls_stage2] Building initial solution ...
+[ls_stage2] Feasible initial solution: obj = -25.9240
+[ls_stage2] Exploring neighbours ...
+[ls_stage2] Iter 1: improved move=('order', 70, -4) obj=-22.6298
+[ls_stage2] Iter 2: improved move=('order', 4, -2) obj=-19.5308
+[ls_stage2] Iter 3: no improvement (1/5)
+[ls_stage2] Iter 4: no improvement (2/5)
+[ls_stage2] Iter 5: no improvement (3/5)
+[ls_stage2] Iter 6: no improvement (4/5)
+[ls_stage2] Converged after 5 iters without improvement at obj=-19.5308
+[ls_stage2] Local search ended.
+
+[ls_stage1] Building initial solution ...
+[ls_stage1] Feasible initial solution found at attempt 1/10: obj = 270.0000
+[ls_stage1] Exploring neighbours ...
+[ls_stage1] Iter 1: Improved with move ('swap', 4, 87) → 268.0000
+[ls_stage1] Iter 2: Improved with move ('swap', 28, 129) → 266.0000
+[ls_stage1] Iter 3: Improved with move ('swap', 22, 63) → 264.0000
+[ls_stage1] Iter 4: Improved with move ('swap', 97, 106) → 262.0000
+[ls_stage1] Iter 5: Improved with move ('swap', 39, 59) → 260.0000
+[ls_stage1] Iter 6: Improved with move ('swap', 113, 172) → 258.0000
+[ls_stage1] Iter 7: Improved with move ('swap', 2, 134) → 256.0000
+[ls_stage1] Iter 8: Improved with move ('swap', 36, 91) → 254.0000
+[ls_stage1] Iter 9: Improved with move ('moveto', 112, 2) → 252.0000
+[ls_stage1] Iter 10: Improved with move ('swap', 78, 141) → 250.0000
+[ls_stage1] Iter 11: Improved with move ('swap', 152, 192) → 248.0000
+[ls_stage1] Iter 12: Improved with move ('swap', 44, 88) → 246.0000
+[ls_stage1] Iter 13: Improved with move ('swap', 101, 102) → 244.0000
+[ls_stage1] Iter 14: Improved with move ('swap', 99, 156) → 242.0000
+[ls_stage1] Iter 15: Improved with move ('swap', 144, 158) → 240.0000
+[ls_stage1] Iter 16: Improved with move ('swap', 151, 186) → 238.0000
+[ls_stage1] Iter 17: Improved with move ('swap', 85, 111) → 236.0000
+[ls_stage1] Iter 18: Improved with move ('swap', 89, 123) → 234.0000
+[ls_stage1] Iter 19: Improved with move ('swap', 16, 86) → 232.0000
+[ls_stage1] Iter 20: Improved with move ('swap', 121, 142) → 231.0000
+[ls_stage1] Iter 21: Improved with move ('swap', 103, 122) → 230.0000
+[ls_stage1] Iter 22: Improved with move ('swap', 54, 62) → 229.0000
+[ls_stage1] Iter 23: Improved with move ('swap', 85, 187) → 227.0000
+[ls_stage1] Iter 24: Improved with move ('swap', 15, 40) → 226.0000
+[ls_stage1] Iter 25: Improved with move ('swap', 141, 190) → 225.0000
+[ls_stage1] Iter 26: Improved with move ('swap', 90, 171) → 224.0000
+[ls_stage1] Iter 27: Improved with move ('swap', 95, 121) → 223.0000
+[ls_stage1] Iter 28: Improved with move ('swap', 6, 131) → 222.0000
+[ls_stage1] Iter 29: Improved with move ('swap', 81, 169) → 221.0000
+[ls_stage1] Iter 30: Improved with move ('swap', 135, 153) → 220.0000
+[ls_stage1] Iter 31: Improved with move ('swap', 43, 164) → 219.0000
+[ls_stage1] Iter 32: Improved with move ('swap', 128, 137) → 218.0000
+[ls_stage1] Iter 33: Improved with move ('swap', 60, 159) → 217.0000
+[ls_stage1] Iter 34: Improved with move ('swap', 93, 145) → 216.0000
+[ls_stage1] Iter 35: Improved with move ('swap', 33, 114) → 215.0000
+[ls_stage1] Iter 36: Improved with move ('swap', 155, 183) → 214.0000
+[ls_stage1] Iter 37: Improved with move ('swap', 1, 131) → 213.0000
+[ls_stage1] Iter 38: No improvement (1/3)
+[ls_stage1] Iter 39: No improvement (2/3)
+[ls_stage1] Converged after 3 iters without improvement at 213.0000
+[ls_stage1] Final obj = 213.0
+
+[ls_stage2] Building initial solution ...
+[ls_stage2] Feasible initial solution: obj = -647.7597
+[ls_stage2] Exploring neighbours ...
+[ls_stage2] Iter 1: no improvement (1/5)
+[ls_stage2] Iter 2: no improvement (2/5)
+[ls_stage2] Iter 3: no improvement (3/5)
+[ls_stage2] Iter 4: no improvement (4/5)
+[ls_stage2] Converged after 5 iters without improvement at obj=-647.7597
+[ls_stage2] Local search ended.
+
+[ls_stage1] Building initial solution ...
+[ls_stage1] Feasible initial solution found at attempt 1/10: obj = 358.0000
+[ls_stage1] Exploring neighbours ...
+[ls_stage1] Iter 1: Improved with move ('swap', 77, 194) → 355.0000
+[ls_stage1] Iter 2: Improved with move ('swap', 1, 180) → 352.0000
+[ls_stage1] Iter 3: Improved with move ('swap', 37, 244) → 349.0000
+[ls_stage1] Iter 4: Improved with move ('swap', 15, 33) → 346.0000
+[ls_stage1] Iter 5: Improved with move ('swap', 10, 89) → 343.0000
+[ls_stage1] Iter 6: Improved with move ('swap', 159, 259) → 340.0000
+[ls_stage1] Iter 7: Improved with move ('swap', 28, 63) → 338.0000
+[ls_stage1] Iter 8: Improved with move ('swap', 27, 125) → 336.0000
+[ls_stage1] Iter 9: Improved with move ('swap', 35, 158) → 333.0000
+[ls_stage1] Iter 10: Improved with move ('swap', 59, 189) → 331.0000
+[ls_stage1] Iter 11: Improved with move ('swap', 167, 211) → 329.0000
+[ls_stage1] Iter 12: Improved with move ('swap', 219, 278) → 326.0000
+[ls_stage1] Iter 13: Improved with move ('swap', 110, 276) → 324.0000
+[ls_stage1] Iter 14: Improved with move ('swap', 117, 139) → 322.0000
+[ls_stage1] Iter 15: Improved with move ('swap', 161, 197) → 320.0000
+[ls_stage1] Iter 16: Improved with move ('swap', 106, 111) → 318.0000
+[ls_stage1] Iter 17: Improved with move ('swap', 16, 183) → 316.0000
+[ls_stage1] Iter 18: Improved with move ('swap', 0, 115) → 315.0000
+[ls_stage1] Iter 19: Improved with move ('swap', 177, 234) → 313.0000
+[ls_stage1] Iter 20: Improved with move ('swap', 7, 55) → 311.0000
+[ls_stage1] Iter 21: Improved with move ('swap', 65, 131) → 310.0000
+[ls_stage1] Iter 22: Improved with move ('swap', 14, 48) → 308.0000
+[ls_stage1] Iter 23: Improved with move ('swap', 179, 213) → 306.0000
+[ls_stage1] Iter 24: Improved with move ('swap', 215, 217) → 305.0000
+[ls_stage1] Iter 25: Improved with move ('swap', 46, 92) → 303.0000
+[ls_stage1] Iter 26: Improved with move ('swap', 155, 248) → 302.0000
+[ls_stage1] Iter 27: Improved with move ('swap', 95, 130) → 300.0000
+[ls_stage1] Iter 28: Improved with move ('swap', 2, 216) → 299.0000
+[ls_stage1] Iter 29: Improved with move ('moveto', 62, 2) → 298.0000
+[ls_stage1] Iter 30: Improved with move ('swap', 104, 165) → 297.0000
+[ls_stage1] Iter 31: Improved with move ('swap', 30, 91) → 296.0000
+[ls_stage1] Iter 32: Improved with move ('moveto', 214, 0) → 295.0000
+[ls_stage1] Iter 33: Improved with move ('swap', 240, 274) → 294.0000
+[ls_stage1] Iter 34: Improved with move ('swap', 279, 282) → 293.0000
+[ls_stage1] Iter 35: Improved with move ('swap', 138, 198) → 291.0000
+[ls_stage1] Iter 36: Improved with move ('swap', 17, 221) → 290.0000
+[ls_stage1] Iter 37: Improved with move ('swap', 192, 247) → 289.0000
+[ls_stage1] Iter 38: Improved with move ('swap', 81, 281) → 288.0000
+[ls_stage1] Iter 39: Improved with move ('swap', 1, 203) → 287.0000
+[ls_stage1] Iter 40: No improvement (1/3)
+[ls_stage1] Iter 41: Improved with move ('swap', 43, 154) → 286.0000
+[ls_stage1] Iter 42: Improved with move ('swap', 11, 57) → 285.0000
+[ls_stage1] Iter 43: Improved with move ('swap', 91, 114) → 284.0000
+[ls_stage1] Iter 44: No improvement (1/3)
+[ls_stage1] Iter 45: No improvement (2/3)
+[ls_stage1] Converged after 3 iters without improvement at 284.0000
+[ls_stage1] Final obj = 284.0
+
+[ls_stage2] Building initial solution ...
+[ls_stage2] Feasible initial solution: obj = -1846.6910
+[ls_stage2] Exploring neighbours ...
+[ls_stage2] Iter 1: no improvement (1/5)
+[ls_stage2] Iter 2: no improvement (2/5)
+[ls_stage2] Iter 3: no improvement (3/5)
+[ls_stage2] Iter 4: no improvement (4/5)
+[ls_stage2] Converged after 5 iters without improvement at obj=-1846.6910
+[ls_stage2] Local search ended.
+
+[ls_stage1] Building initial solution ...
+[ls_stage1] Feasible initial solution found at attempt 1/10: obj = 376.0000
+[ls_stage1] Exploring neighbours ...
+[ls_stage1] Iter 1: Improved with move ('swap', 139, 172) → 373.0000
+[ls_stage1] Iter 2: Improved with move ('swap', 236, 288) → 371.0000
+[ls_stage1] Iter 3: Improved with move ('swap', 146, 236) → 368.0000
+[ls_stage1] Iter 4: Improved with move ('swap', 38, 179) → 366.0000
+[ls_stage1] Iter 5: Improved with move ('swap', 96, 221) → 364.0000
+[ls_stage1] Iter 6: Improved with move ('swap', 126, 174) → 361.0000
+[ls_stage1] Iter 7: Improved with move ('swap', 202, 286) → 358.0000
+[ls_stage1] Iter 8: Improved with move ('swap', 61, 222) → 356.0000
+[ls_stage1] Iter 9: Improved with move ('swap', 164, 277) → 354.0000
+[ls_stage1] Iter 10: Improved with move ('swap', 21, 65) → 352.0000
+[ls_stage1] Iter 11: Improved with move ('swap', 45, 207) → 349.0000
+[ls_stage1] Iter 12: Improved with move ('swap', 109, 171) → 347.0000
+[ls_stage1] Iter 13: Improved with move ('swap', 76, 87) → 345.0000
+[ls_stage1] Iter 14: Improved with move ('swap', 86, 287) → 343.0000
+[ls_stage1] Iter 15: Improved with move ('swap', 4, 173) → 341.0000
+[ls_stage1] Iter 16: Improved with move ('swap', 116, 294) → 339.0000
+[ls_stage1] Iter 17: Improved with move ('swap', 9, 74) → 337.0000
+[ls_stage1] Iter 18: Improved with move ('swap', 39, 255) → 335.0000
+[ls_stage1] Iter 19: Improved with move ('swap', 242, 248) → 333.0000
+[ls_stage1] Iter 20: Improved with move ('swap', 89, 267) → 331.0000
+[ls_stage1] Iter 21: Improved with move ('swap', 291, 298) → 329.0000
+[ls_stage1] Iter 22: Improved with move ('swap', 48, 70) → 328.0000
+[ls_stage1] Iter 23: Improved with move ('swap', 94, 224) → 327.0000
+[ls_stage1] Iter 24: Improved with move ('swap', 136, 299) → 325.0000
+[ls_stage1] Iter 25: Improved with move ('swap', 34, 258) → 323.0000
+[ls_stage1] Iter 26: Improved with move ('swap', 144, 224) → 322.0000
+[ls_stage1] Iter 27: Improved with move ('swap', 135, 183) → 321.0000
+[ls_stage1] Iter 28: Improved with move ('swap', 101, 189) → 319.0000
+[ls_stage1] Iter 29: Improved with move ('swap', 14, 32) → 318.0000
+[ls_stage1] Iter 30: Improved with move ('swap', 238, 266) → 316.0000
+[ls_stage1] Iter 31: Improved with move ('swap', 185, 231) → 315.0000
+[ls_stage1] Iter 32: Improved with move ('swap', 187, 273) → 314.0000
+[ls_stage1] Iter 33: Improved with move ('swap', 113, 260) → 312.0000
+[ls_stage1] Iter 34: Improved with move ('swap', 278, 293) → 311.0000
+[ls_stage1] Iter 35: Improved with move ('swap', 40, 293) → 309.0000
+[ls_stage1] Iter 36: Improved with move ('swap', 133, 285) → 308.0000
+[ls_stage1] Iter 37: Improved with move ('swap', 210, 233) → 307.0000
+[ls_stage1] Iter 38: Improved with move ('swap', 158, 273) → 306.0000
+[ls_stage1] Iter 39: Improved with move ('swap', 52, 252) → 305.0000
+[ls_stage1] Iter 40: Improved with move ('swap', 120, 223) → 304.0000
+[ls_stage1] Iter 41: Improved with move ('swap', 127, 225) → 303.0000
+[ls_stage1] Iter 42: Improved with move ('swap', 23, 183) → 302.0000
+[ls_stage1] Iter 43: Improved with move ('swap', 1, 253) → 301.0000
+[ls_stage1] Iter 44: Improved with move ('moveto', 198, 1) → 300.0000
+[ls_stage1] Iter 45: Improved with move ('swap', 59, 225) → 299.0000
+[ls_stage1] Iter 46: Improved with move ('swap', 46, 196) → 298.0000
+[ls_stage1] Iter 47: Improved with move ('swap', 1, 57) → 297.0000
+[ls_stage1] Iter 48: Improved with move ('swap', 120, 200) → 296.0000
+[ls_stage1] Iter 49: Improved with move ('swap', 13, 134) → 295.0000
+[ls_stage1] Iter 50: Improved with move ('swap', 33, 292) → 294.0000
+[ls_stage1] Final obj = 294.0
+
+[ls_stage2] Building initial solution ...
+[ls_stage2] Feasible initial solution: obj = -2541.0372
+[ls_stage2] Exploring neighbours ...
+[ls_stage2] Iter 1: improved move=('order', 62, -2) obj=-2536.8227
+[ls_stage2] Iter 2: no improvement (1/5)
+[ls_stage2] Iter 3: no improvement (2/5)
+[ls_stage2] Iter 4: no improvement (3/5)
+[ls_stage2] Iter 5: no improvement (4/5)
+[ls_stage2] Converged after 5 iters without improvement at obj=-2536.8227
+[ls_stage2] Local search ended.
+Simulation with time-horizon = 3600.0 sec and warm-up = 0.0 sec.
+Optimization enabled = True
+
+Total number of items picked (throughtput) = 562.
+Average number of pod moving simultaneously = 17.411335627274855.
+Computational time spent for making decisions = 4123.824484348297 sec.
+
+============================================================
+  ORDERS BY SIZE
+============================================================
+  Size       Closed    Avg Flow (sec)
+------------------------------------------------------------
+  1             145      1063.08
+  2             136      1185.74
+  3              30      1215.36
+  4               8      1335.86
+  5               1      1596.42
+------------------------------------------------------------
+  Total         320      1137.98
+
+In the system there are still 441 order(s) in backlog, 43 order(s) enqueued at a workstation and 15 order(s) open at a workstation.
+
+============================================================
+  BACKLOG ORDERS 
+============================================================
+  Size       Number    Avg waiting time (sec)
+------------------------------------------------------------
+  3              50         1429.64
+  2             172         1282.42
+  1             206         1281.55
+  4              11         1333.89
+  8               1          558.44
+  5               1          148.44
+------------------------------------------------------------
+
+============================================================
+  ROBOTS
+============================================================
+  ID           Idle       Busy     Util
+------------------------------------------------------------
+  0          220.86    3357.20   93.8%
+  1          578.36    2974.53   83.7%
+  2          663.98    2870.62   81.2%
+  3          382.99    2833.49   88.1%
+  4          426.71    3116.26   88.0%
+  5          433.79    3094.23   87.7%
+  6          399.91    3116.77   88.6%
+  7          332.32    3180.46   90.5%
+  8          756.45    2736.85   78.3%
+  9          566.55    2927.54   83.8%
+  10         393.67    3088.92   88.7%
+  11         105.92    3162.40   96.8%
+  12         582.82    2314.63   79.9%
+  13         479.52    2583.84   84.3%
+  14         361.64    3109.67   89.6%
+  15         398.30    3130.61   88.7%
+  16         217.69    3338.08   93.9%
+  17         278.58    3238.83   92.1%
+  18         478.16    2942.57   86.0%
+  19         582.28    2912.44   83.3%
+------------------------------------------------------------
+  Mean       432.02    3001.50   87.4%
+  Std        156.47     245.39    4.7%
+  Global                         87.4%
+
+============================================================
+  WORKSTATIONS
+============================================================
+  ID           Idle       Busy     Util     Avg OO
+------------------------------------------------------------
+  0         1276.25    2250.00   63.8%       3.89
+  1         2143.36    1370.00   39.0%       3.61
+  2         2733.87     775.00   22.1%       3.78
+  3         2601.07     875.00   25.2%       3.12
+------------------------------------------------------------
+  Mean      2188.64    1317.50   37.5%
+  Std        570.50     583.61   16.5%
+  Global                         37.6%
+
+============================================================
+Fine esperimento 13 alle Tue 30 Jun 19:24:33 CEST 2026

@@ -1,0 +1,21 @@
+
+[notice] A new release of pip is available: 23.2.1 -> 26.1.2
+[notice] To update, run: pip install --upgrade pip
+Traceback (most recent call last):
+  File "/beegfs/users/mchiodo/Simulator/run_simulation.py", line 106, in <module>
+    main()
+  File "/beegfs/users/mchiodo/Simulator/run_simulation.py", line 103, in main
+    sim.run(float(cfg["time_horizon"]))
+  File "/beegfs/users/mchiodo/Simulator/scripts/sim/Simulator.py", line 196, in run
+    self._process_event(event_to_process, state, dispatch)
+  File "/beegfs/users/mchiodo/Simulator/scripts/sim/Simulator.py", line 239, in _process_event
+    handler(event, state, self)
+  File "/beegfs/users/mchiodo/Simulator/scripts/sim/event_handler.py", line 827, in run_optimizer
+    orders, ordered_orders_by_w, tasks = sim.OPT_MANAGER.solve_task_design_and_assignment(sim, state)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/beegfs/users/mchiodo/Simulator/scripts/opt/OptManager.py", line 303, in solve_task_design_and_assignment
+    sol =  local_search_stage2(st2_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/beegfs/users/mchiodo/Simulator/scripts/opt/local_search_stage2.py", line 741, in local_search_stage2
+    raise RuntimeError(msg)
+RuntimeError: [ls_stage2] Failed to find a feasible initial solution after 10 attempts.

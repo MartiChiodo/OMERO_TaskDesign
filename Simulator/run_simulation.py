@@ -31,8 +31,17 @@ def main():
         # Siamo in locale: lista manuale
         EXPERIMENT_IDS  = [1,2,3,4] + [11,12,13,14] + [21,22,23,24] + [31,32,33,34]
 
-    SEED = 50102
-    OPTIM = False
+    # Seed: su cluster viene da variabile d'ambiente impostata nel job.sh (congelata al momento del submit)
+    # In locale usa il valore di default sotto, oppure imposta SIM_SEED manualmente
+    _seed_env = os.environ.get("SIM_SEED")
+    if _seed_env is not None:
+        SEED = int(_seed_env)
+    else:
+        SEED = 50102  
+
+    OPTIM = True
+
+    print(f"Usando SEED={SEED}, EXPERIMENT_IDS={EXPERIMENT_IDS}")
 
     base_dir = os.path.dirname(__file__)
     path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
@@ -42,7 +51,6 @@ def main():
 
     for EXPERIMENT_ID in EXPERIMENT_IDS:
         cfg = load_experiment(EXPERIMENT_ID)
-        # print(cfg.keys())
 
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
