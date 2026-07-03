@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=run_simulation
+#SBATCH --job-name=seed050102
 #SBATCH --partition=cpu-long,cpu-unlimited,cpu-medium
 #SBATCH --mail-user=s343310@studenti.polito.it
 #SBATCH --mail-type=NONE
@@ -8,7 +8,7 @@
 #SBATCH --time=1-00:00:00
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=1
-#SBATCH --array=1,2,3,4,11,12,13,14,21,22,23,24,31,32,33,34
+#SBATCH --array=41,42,43,44
 
 # ============================================================
 # UNICO PARAMETRO DA MODIFICARE AD OGNI LANCIO

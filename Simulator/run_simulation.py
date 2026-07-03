@@ -29,7 +29,7 @@ def main():
         EXPERIMENT_IDS = [int(slurm_id)]
     else:
         # Siamo in locale: lista manuale
-        EXPERIMENT_IDS  = [1,2,3,4] + [11,12,13,14] + [21,22,23,24] + [31,32,33,34]
+        EXPERIMENT_IDS  = [41,42,43,44]
 
     # Seed: su cluster viene da variabile d'ambiente impostata nel job.sh (congelata al momento del submit)
     # In locale usa il valore di default sotto, oppure imposta SIM_SEED manualmente
@@ -37,9 +37,9 @@ def main():
     if _seed_env is not None:
         SEED = int(_seed_env)
     else:
-        SEED = 50102  
+        SEED = 343310  
 
-    OPTIM = True
+    OPTIM = False
 
     print(f"Usando SEED={SEED}, EXPERIMENT_IDS={EXPERIMENT_IDS}")
 
