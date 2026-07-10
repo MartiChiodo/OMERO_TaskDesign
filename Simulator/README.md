@@ -26,7 +26,7 @@ Tesi_LM/
     |   ├── local_search_stafe2.py         # Implementation of a local search heuristic to solve the sequencing problem
     |   ├── stage2_data.py                 # Contain the main data structure to fed the sequencing problem
     |   ├── build_initial_x_v1.py          # Contains the probabilistic function to build a feasible initial solution for the stage 2 problem
-|   └── convert_OptSol_to_SimObj.py        # Contais a function to convert the decision variables into objects (`Task`) to fed the simulator
+    |   └── convert_OptSol_to_SimObj.py    # Contais a function to convert the decision variables into objects (`Task`) to fed the simulator
     │  
     └── stat/
         ├── Statanager.py                  # General KPIs collector and update method
