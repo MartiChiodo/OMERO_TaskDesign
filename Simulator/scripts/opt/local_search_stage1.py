@@ -2,32 +2,59 @@ from __future__ import annotations
 import numpy as np
 import logging
 
+"""
+Stage-1 local search for the order picking / pod assignment problem.
 
-def check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
-                      x: np.ndarray, y: np.ndarray, z: np.ndarray) -> bool:
+Decision variables
+-------------------
+x[im, p] : binary
+    1 if item-order pair `im` (referring to relevant_pairs_for_x[im] = (item, order))
+    is retrieved from pod `p`, 0 otherwise.
+y[w, p] : binary
+    1 if pod `p` is visited at workstation `w` (i.e. at least one item assigned to
+    workstation `w` is retrieved from pod `p`), 0 otherwise.
+z[m, w] : binary
+    1 if order `m` is assigned to workstation `w`, 0 otherwise.
+"""
+
+
+def check_constraints(
+    orders,
+    orders_items,
+    OptManager,
+    relevant_pairs_for_x,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    fixed_orders: dict[int, int] | None = None,
+) -> bool:
     """
-    x[im, p] = 1 if pod p retrieves item im
-    y[w,  p] = 1 if pod p visits workstation w
-    z[m,  w] = 1 if order m is assigned to workstation w
+    Verify that a candidate (x, y, z) solution satisfies all Stage-1 constraints.<
     """
     n_w = OptManager.n_workstations
 
-    # EC7: each order assigned to exactly one workstation
+    # EC1: each order assigned to exactly one workstation
     if (z.sum(axis=1) != 1).any():
         return False
 
-    # EC8: each item retrieved from exactly one pod (among those stocking its sku)
+    # EC2: each item retrieved from exactly one pod (among those stocking its sku)
     for im, (i, _) in enumerate(relevant_pairs_for_x):
         if x[im, OptManager.pod_indices_by_sku[i]].sum() != 1:
             return False
 
-    # EC10: y[w,p] >= x[im,p] + z[m,w] - 1  for all w, im, p
+    # EC3: orders already opened at a workstation must stay pinned to it
+    if fixed_orders:
+        for m, w_fixed in fixed_orders.items():
+            if z[m, w_fixed] != 1:
+                return False
+
+    # EC4: y[w,p] >= x[im,p] + z[m,w] - 1  for all w, im, p
     for im, (_, m) in enumerate(relevant_pairs_for_x):
         required = np.outer(z[m], x[im])   # shape (n_w, n_p)
         if (y < required - 1e-6).any():
             return False
 
-    # EC11: workload balance (in termini di SKU)
+    # EC5: workload balance (in terms of number of SKUs per workstation)
     sku_per_order = np.array([len(orders_items[m]) for m in range(len(orders))])
     total_skus = sku_per_order.sum()
 
@@ -42,12 +69,41 @@ def check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
 
 
 def compute_objective(y: np.ndarray):
+    """Stage-1 objective: total number of (workstation, pod) visits, i.e. sum(y)."""
     return y.sum()
+
+
+def get_fixed_orders(orders, state, n_w: int) -> dict[int, int]:
+    """
+    Build the {order_index -> workstation_index} mapping for orders that are
+    already "opened" (picking started) at a given workstation.
+
+    These orders are hard-fixed: they cannot be reassigned to another
+    workstation during either the construction of the initial solution or
+    the local search (EC3).
+    """
+    fixed_orders: dict[int, int] = {}
+    for w in range(n_w):
+        opened_ids = state.warehouse.workstations[w].opened_orders
+        for m in range(len(orders)):
+            if orders[m].order_id in opened_ids:
+                fixed_orders[m] = w
+    return fixed_orders
 
 
 def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManager, state, rng):
     """
     Build a feasible initial solution for Stage-1.
+
+    Strategy
+    --------
+    1. Pin orders that are already opened at a workstation (EC3) to that
+       workstation.
+    2. Assign the remaining ("free") orders in a first pass to satisfy the
+       lower bound on SKU load per workstation (EC5).
+    3. Assign any still-free orders in a second, greedy pass that tries to
+       minimise the number of newly activated (workstation, pod) pairs,
+       while respecting the upper SKU-load bound.
     """
     n_orders = len(orders)
     n_w      = OptManager.n_workstations
@@ -58,20 +114,22 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
     x = np.zeros((n_im,    n_p), dtype=np.float64)
     y = np.zeros((n_w,     n_p), dtype=np.float64)
 
-    # Use SKU-based bounds, consistent with check_constraints / EC11
+    # Use SKU-based bounds, consistent with check_constraints / EC5
     sku_per_order = np.array([len(orders_items[m]) for m in range(n_orders)])
     total_skus    = sku_per_order.sum()
     lower_I       = np.floor(total_skus / n_w * 0.8)
     upper_I       = np.ceil(total_skus / n_w * 1.2)
     ws_load_skus  = np.zeros(n_w, dtype=int)   # tracks SKUs, not orders
 
-    # Pre-compute order -> items lookup
+    # Pre-compute order -> items lookup (order_index -> list of x-row indices)
     items_of_order: dict[int, list[int]] = {}
     for im, (_, m) in enumerate(relevant_pairs_for_x):
         items_of_order.setdefault(m, []).append(im)
 
     def _assign_order(m, w):
-        """Assign order m to workstation w (updates z, x, y, ws_load_skus)."""
+        """Assign order m to workstation w, updating z, x, y and ws_load_skus.
+        For each item of the order, reuse an already-open pod at that
+        workstation if one stocks the SKU, otherwise open a new one."""
         z[m, w] = 1
         ws_load_skus[w] += sku_per_order[m]
         for im in items_of_order.get(m, []):
@@ -81,20 +139,18 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
             x[im, p] = 1
             y[w, p]  = 1
 
-    # Fix already-open orders
-    fixed = set()
-    for w in range(n_w):
-        for m in range(n_orders):
-            if orders[m].order_id in state.warehouse.workstations[w].opened_orders:
-                if z[m].sum() == 0:          # avoid double-assigning
-                    _assign_order(m, w)
-                    fixed.add(m)
+    ### Step 1: fix already-opened orders to their current workstation (EC3)
+    fixed_orders = get_fixed_orders(orders, state, n_w)
+    fixed = set(fixed_orders.keys())
+    for m, w in fixed_orders.items():
+        if z[m].sum() == 0:          # avoid double-assigning
+            _assign_order(m, w)
 
     # Remaining orders in random order
     free_orders = [m for m in range(n_orders) if m not in fixed]
     rng.shuffle(free_orders)
 
-    # First pass: satisfy lower bound on each workstation
+    ### Step 2: first pass, satisfy the lower bound on each workstation 
     min_load_skus = int(np.ceil(lower_I))
     remaining     = free_orders.copy()
     still_free    = []
@@ -105,7 +161,7 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
             _assign_order(m, w)
         still_free = remaining   # orders left after satisfying lower bounds
 
-    # Second pass: greedily minimise new pod activations
+    #### Step 3: second pass, greedily minimise new pod activations 
     for m in still_free:
         best_w, best_cost = None, float("inf")
 
@@ -113,6 +169,8 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
             if ws_load_skus[w] + sku_per_order[m] > upper_I + 1e-6:
                 continue
 
+            # Cost = number of items in order m that would require opening
+            # a brand-new (workstation, pod) pair at workstation w.
             cost = sum(
                 0 if y[w, OptManager.pod_indices_by_sku[
                     relevant_pairs_for_x[im][0]]].any() else 1
@@ -124,6 +182,8 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
                 best_w = w
 
         if best_w is None:
+            # No workstation can accept the order without breaking the
+            # upper bound: fall back to the least-loaded one.
             best_w = int(np.argmin(ws_load_skus))
 
         _assign_order(m, best_w)
@@ -136,21 +196,26 @@ def local_search_stage1(
     OptManager, state, n_w: int,
 ) -> tuple[dict, dict]:
     """
-    Local search for Stage-1: order-workstation and item-pod assignment.
+    Local search for Stage-1: order-to-workstation and item-to-pod assignment.
 
     Minimises the number of distinct (workstation, pod) pairs — equivalent
-    to minimising sum(y1), the Stage-1 objective.
+    to minimising sum(y), the Stage-1 objective — while respecting all
+    constraints, including EC9 (orders already opened at a workstation stay
+    pinned there).
+
+    Neighbourhood moves explored at each iteration:
+    - 'swap'   : exchange the workstations of two (non-fixed) orders.
+    - 'moveto' : move a single (non-fixed) order to a different workstation.
+    - 'repod'  : change the pod used to retrieve a given item-order pair.
     """
     n_orders = len(orders)
     rng      = np.random.default_rng(seed=42)
 
-    fixed_z = set()
-    for w in range(n_w):
-        for m in range(n_orders):
-            if orders[m].order_id in state.warehouse.workstations[w].opened_orders:
-                fixed_z.add(m)
+    # Orders already opened at a workstation (EC3): fixed, cannot be moved
+    fixed_orders = get_fixed_orders(orders, state, n_w)
+    fixed_z = set(fixed_orders.keys())
 
-    # ---------- Initial solution (with attempt limit) ----------
+    ### INITIAL SOLUTION
     print("\n[ls_stage1] Building initial solution ...")
     logging.info("\n[ls_stage1] Building initial solution ...")
 
@@ -160,7 +225,8 @@ def local_search_stage1(
                                         OptManager, state, rng)
     attempt = 1
 
-    while not check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x, x0, y0, z0):
+    while not check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
+                                 x0, y0, z0, fixed_orders):
         if attempt >= MAX_INIT_ATTEMPTS:
             msg = (f"[ls_stage1] Failed to find a feasible initial solution "
                    f"after {MAX_INIT_ATTEMPTS} attempts.")
@@ -182,7 +248,7 @@ def local_search_stage1(
           f"{attempt}/{MAX_INIT_ATTEMPTS}: obj = {best_obj:.4f}")
     logging.info("[ls_stage1] Feasible initial solution: obj = %.4f", best_obj)
 
-    # ---------- Main loop ----------
+    ### MAIN LOOP
     MAX_ITER           = 50
     MAX_NEIGH          = 600
     max_no_improve     = 3
@@ -197,22 +263,24 @@ def local_search_stage1(
         best_iter_move = None
         best_iter_sol  = None
 
-        # Generate candidate moves
+        # Generate candidate moves. Only non-fixed orders (not in fixed_z)
+        # are eligible for 'swap' and 'moveto' moves, so that EC9 orders
+        # never leave their pinned workstation.
         moves = []
 
-        # Swap workstations between 2 orders
+        # Swap workstations between 2 (non-fixed) orders
         order_list = [m for m in range(n_orders) if m not in fixed_z]
         pairs = [(order_list[i], order_list[j])
                  for i in range(len(order_list))
                  for j in range(i + 1, len(order_list))]
         moves += [('swap', m1, m2) for m1, m2 in pairs]
 
-        # Change workstation
+        # Change workstation of a (non-fixed) order
         for m in order_list:
             for w in range(n_w):
                 moves.append(('moveto', m, w))
 
-        # Re-pod moves
+        # Re-pod moves: change which pod supplies a given item-order pair
         for im, (i, _) in enumerate(relevant_pairs_for_x):
             pods = OptManager.pod_indices_by_sku[i]
             for p in pods:
@@ -232,7 +300,8 @@ def local_search_stage1(
                 continue
 
             x, z, y = sol_cand
-            if check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x, x, y, z):
+            if check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
+                                  x, y, z, fixed_orders):
                 obj = compute_objective(y)
                 if obj < best_iter_obj:
                     best_iter_obj  = obj
@@ -250,7 +319,7 @@ def local_search_stage1(
                 iter_without_improvement = 0
             else:
                 if best_iter_obj == best_obj:
-                    # Moving along a plateau
+                    # Moving along a plateau (same objective, different solution)
                     best_sol = best_iter_sol
                     best_obj = best_iter_obj
 
@@ -273,9 +342,14 @@ def local_search_stage1(
     return x, z
 
 
-# ---------- Move helpers ----------
+# ---------------------------------------------------------------------------
+# Move helpers: each takes the current solution and returns a *new* candidate
+# solution (x, z, y) reflecting a single local move. y is always rebuilt from
+# scratch from (x, z) to keep it consistent (EC4).
+# ---------------------------------------------------------------------------
 
 def _make_swap(sol, m1, m2, relevant_pairs_for_x):
+    """Swap the workstations of two orders m1, m2 (no-op if already equal)."""
     x, z, y = [arr.copy() for arr in sol]
     w1, w2 = z[m1].argmax(), z[m2].argmax()
     if w1 == w2:
@@ -287,6 +361,7 @@ def _make_swap(sol, m1, m2, relevant_pairs_for_x):
 
 
 def _make_moveto(sol, m, w_new, relevant_pairs_for_x):
+    """Move order m to workstation w_new (no-op if already assigned there)."""
     x, z, y = [arr.copy() for arr in sol]
     w_old = z[m].argmax()
     if w_old == w_new:
@@ -298,6 +373,7 @@ def _make_moveto(sol, m, w_new, relevant_pairs_for_x):
 
 
 def _make_repod(sol, im, p_new, relevant_pairs_for_x):
+    """Change the pod supplying item-order pair im to p_new (no-op if unchanged)."""
     x, z, y = [arr.copy() for arr in sol]
     p_old = x[im].argmax()
     if p_old == p_new:
@@ -309,6 +385,9 @@ def _make_repod(sol, im, p_new, relevant_pairs_for_x):
 
 
 def _rebuild_y(x, z, relevant_pairs_for_x):
+    """Recompute y[w, p] from scratch given x and z, enforcing EC4:
+    y[w, p] = 1 iff some item-order pair uses pod p while its order is
+    assigned to workstation w."""
     n_w = z.shape[1]
     n_p = x.shape[1]
     y   = np.zeros((n_w, n_p))

@@ -6,24 +6,69 @@ import logging
 from .stage2_data import Stage2Data
 from .build_initial_x_v1 import build_initial_x
 
+"""
+Stage-2 local search: picking-time scheduling (x) and pod routing (y) over a
+time-space network.
 
-### Fast helpers (no y needed)
+Decision variables
+-------------------
+x[im, t] : binary
+    1 if item-order pair `im` (relevant_pairs_for_x[im] = (item, order)) has
+    already been picked by time step t. x is non-decreasing in t (EC19):
+    once an item is picked it stays picked for the rest of the horizon.
+f[m, t] : binary
+    1 if order m has started picking by time t (i.e. at least one of its
+    items has been picked). Derived from x, never a free variable.
+g[m, t] : binary
+    1 if order m has been fully completed (all its items picked) by time t-1.
+    Derived from x, never a free variable.
+v[m, t] : binary
+    v = f - g. 1 if order m is "in progress" at time t (started but not yet
+    finished). Also derived from x.
+y[p, a] : binary
+    1 if pod p traverses arc `a` of the time-expanded transportation network
+    (all_arcs), i.e. the routing decision for each pod over time.
+
+Only x is truly free during the local search; f, g, v are always recomputed
+deterministically from x, and y is (re)built from x only when a candidate
+solution is about to be evaluated for full feasibility / accepted as the
+new incumbent (build_solution / _rebuild_pod_row).
+"""
+
+
+### FAST HELPERS (no y needed)
+# These mirror, on x only, the more expensive checks that build_solution /
+# check_constraints perform once y is also available. They are used
+# during the local search loop (cheap) and only the winning candidate is
+# ever passed through the full, y-aware check_constraints.
 
 def _build_fgv(x: np.ndarray, d) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute f, g, v from x only, no pod routing.
     Identical logic to the corresponding block in build_solution.
+
+    For each order m: t_start is the earliest time index at which any of
+    its items is picked, t_end is one past the latest such time index.
+    f[m] = 1 for t >= t_start ("order started"); g[m] = 1 for t >= t_end
+    ("order finished"); v[m] = f[m] - g[m] ("order in progress").
+
+    For orders that were already opened before the current horizon
+    (order_id in d.opened_order_ids), v is forced to 1 for the whole
+    interval up to t_end (they were already "in progress" at t = 0), and
+    f is redefined as v + g to stay consistent with v = f - g.
     """
     T      = x.shape[1]
     M      = len(d.orders)
     all_ms = np.array([m for (_, m) in d.relevant_pairs_for_x])
 
+    # For each item-order pair, index of the first time step where x == 1
+    # (i.e. len(T) if the item is never picked within the horizon).
     first_one_idx = (x == 0).sum(axis=1)
 
     t_start = np.full(M, T, dtype=int)
     t_end   = np.zeros(M,  dtype=int)
-    np.minimum.at(t_start, all_ms, first_one_idx)
-    np.maximum.at(t_end,   all_ms, first_one_idx)
+    np.minimum.at(t_start, all_ms, first_one_idx)   # earliest pick per order
+    np.maximum.at(t_end,   all_ms, first_one_idx)   # latest pick per order
     t_end += 1
 
     time_range = np.arange(T)
@@ -31,6 +76,7 @@ def _build_fgv(x: np.ndarray, d) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     g = (time_range[np.newaxis, :] >= t_end[:, np.newaxis]  ).astype(np.float64)
     v = f - g
 
+    # Orders already open before the horizon: force "in progress" from t=0.
     if len(d.opened_order_ids) > 0:
         for m, order in enumerate(d.orders):
             if order.order_id in d.opened_order_ids:
@@ -50,31 +96,40 @@ def _check_x_fast(x: np.ndarray, f: np.ndarray, g: np.ndarray,
     M  = len(d.orders)
     dx = np.diff(x, axis=1)
 
+    # x must never decrease over time (an item, once picked, stays picked).
     if (dx < -1e-6).any():
         return False
-    if x[:, 0].any():
-        return False
+    # workstation SKU-throughput capacity, evaluated via v (order in progress).
     for order_ids in d.orders_by_workstation:
         if (v[list(order_ids), :].sum(axis=0) > d.OptManager.CAP_WS + 1e-6).any():
             return False
+    # v must equal f - g.
     if (np.abs(v - (f - g)) > 1e-6).any():
         return False
+    # f[m,t] >= x[im,t] for every item im of order m.
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         if (f[m] < x[im] - 1e-6).any():
             return False
+    # g[m,t] <= x[im,t-1] for every item im of order m.
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         if (g[m, 1:] > x[im, :-1] + 1e-6).any():
             return False
+    # f must be non-decreasing in t.
     if (np.diff(f, axis=1) < -1e-6).any():
         return False
+    # g must be non-decreasing in t.
     if (np.diff(g, axis=1) < -1e-6).any():
         return False
+    # g cannot be lower than what the picking progress already
+    # guarantees (workload-consistency lower bound on g).
     for m in range(M):
         ims     = d.items_of_order[m]
         n_items = int(d.n_items_per_order[m])
         lb      = x[ims, :-1].sum(axis=0) - (n_items - 1)
         if (g[m, 1:] < lb - 1e-6).any():
             return False
+    # initial condition for opened orders (v[m,0] = 1) or, for
+    # not-yet-opened orders, f can only be active if items were picked.
     for m, order in enumerate(d.orders):
         if order.order_id in d.opened_order_ids:
             if not np.isclose(float(v[m, 0]), 1.0):
@@ -98,7 +153,17 @@ def _fast_update_fgv_from_move(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Incrementally update f, g, v after applying a move.
-    Recomputes only rows corresponding to affected orders.
+
+    Instead of recomputing f, g, v for every order (expensive), only the
+    rows of the orders actually touched by the move are recomputed, using
+    the same t_start/t_end logic as _build_fgv. All other rows are copied
+    unchanged from the current solution.
+
+    `move` types and which orders they affect:
+      - 'item'/'rnd_item'   : a single item-order pair -> its order.
+      - 'multi_item'        : several item-order pairs -> their orders.
+      - 'order'              : a whole order -> itself.
+      - 'swap'               : two orders -> both of them.
     """
     T = x_cand.shape[1]
 
@@ -131,6 +196,7 @@ def _fast_update_fgv_from_move(
 
     time_range = np.arange(T)
 
+    # Recompute f, g, v only for the orders touched by this move.
     for m in affected_orders:
         ims             = d.items_of_order[m]
         item_pick_times = first_one_idx[ims]
@@ -160,11 +226,24 @@ def _fast_update_fgv_from_move(
 
 
 ### SOLUTION BUILDER
+# Expands a picking matrix x into the full solution (f, g, v, y) by
+# deciding the actual pod routes over the time-expanded network. This is
+# the expensive step of the pipeline: it is only ever called on the
+# current incumbent, never on every neighbour explored during the search.
 
 def build_solution(x: np.ndarray, d) -> tuple:
     """
     Derive the full solution (f, g, v, y) from the picking matrix x.
     Expensive — call only for the final best solution, not during search.
+
+    For each pod, builds a chronological list of "events" (workstation,
+    arrival time) it must visit, one per item it supplies, then threads a
+    feasible path through the time-expanded network connecting consecutive
+    events (going through the pod's storage location when convenient,
+    otherwise moving there directly), padding the remaining time with idle
+    arcs. If an event cannot be reached in time, the pod is left in place
+    (a warning is logged) — this preserves flow-conservation (EC16) at the
+    cost of a potential EC18 violation, to be caught by check_constraints.
     """
     n_travel = len(d.OptManager.travelling_arcs)
     T        = x.shape[1]
@@ -179,6 +258,8 @@ def build_solution(x: np.ndarray, d) -> tuple:
     first_one_idx = (x == 0).sum(axis=1)
 
     def add_idle_arcs(y, p_rel: int, loc: int, t_from: int, t_to: int) -> None:
+        """Fill the time window [t_from, t_to) at a fixed location with
+        self-loop / waiting arcs for pod p_rel."""
         for t in range(t_from, t_to):
             for id_a in d.OptManager.outgoing_arc_idx.get((loc, t), []):
                 if d.OptManager.all_arcs[id_a][1] == (loc, t + 1):
@@ -213,6 +294,8 @@ def build_solution(x: np.ndarray, d) -> tuple:
     for p_rel, p_id in enumerate(d.from_RelPod_to_PodId):
         storage_loc = d.warehouse.pods[p_id].storage_location
 
+        # Build the chronological sequence of (workstation, arrival_time)
+        # events this pod must satisfy, deduplicating consecutive repeats.
         items_for_pod = {
             im: int(first_one_idx[im])
             for im in d.items_by_pod[p_id]
@@ -293,8 +376,7 @@ def build_solution(x: np.ndarray, d) -> tuple:
                         add_idle_arcs(y, p_rel, prev_loc, prev_t, arc[0][1])
                         y[p_rel, arc_id] = 1
                     else:
-                        # Evento irraggiungibile: resta fermo, EC18 violato
-                        # ma EC16 preservato (nessun arco inserito)
+                        # Evento irraggiungibile: resta fermo
                         logging.warning(
                             "build_solution: pod %d cannot reach ws %s "
                             "by t=%d from %s t=%d — staying put",
@@ -336,6 +418,10 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
     """
     Recompute the y row for a single pod without touching the rest of y.
     Mirrors the per-pod logic inside build_solution.
+
+    Used as a cheap incremental update: when a move only touches a handful
+    of orders, only the pods supplying those orders need their route
+    recomputed, instead of rebuilding the whole y matrix from scratch.
     """
     n_travel    = len(d.OptManager.travelling_arcs)
     T           = d.OptManager.N_TIME
@@ -352,6 +438,9 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
                     break
 
     def find_arc(src_loc, t_from, dst_loc, latest):
+        """Best (latest-arriving, within `latest`) direct arc from src_loc
+        departing no earlier than t_from. Linear scan variant of
+        find_arc_departing_after used above, kept separate on purpose."""
         best_arc, best_id = None, None
         for t_dep in range(t_from, latest):
             for id_a in d.OptManager.outgoing_arc_idx.get((src_loc, t_dep), []):
@@ -460,8 +549,28 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
 
 
 ### OBJECTIVE AND CONSTRAINTS CHECKER
+# compute_objective rewards fully-picked orders and penalises backlog
+# (orders taking longer, relative to their arrival time, to complete).
+# check_constraints is the authoritative, y-aware feasibility check: it
+# verifies every EC and returns both a  boolean and a dict of violations 
+# (empty dict <=> feasible), useful for # debugging which constraint(s) 
+# failed.
 
 def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
+    """
+    Stage-2 objective: reward completed picks minus a backlog penalty.
+
+    picking_reward  = number of item-order pairs picked by the end of the
+                       horizon (x[:, T-1].sum()).
+    backlog_penalty = sum, over all orders and all time steps where the
+                       order is not yet finished (g = 0), of the order's
+                       "age" (elapsed time since arrival) — i.e. orders
+                       that have been waiting longer are penalised more
+                       for every time step they remain incomplete.
+
+    The final objective is picking_reward minus a (small, normalised)
+    weight on the backlog penalty.
+    """
     T = x.shape[1]
     picking_reward  = x[:, T - 1].sum()
     backlog_penalty = float(sum(
@@ -475,23 +584,31 @@ def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
 
 
 def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
-    """Full constraint checker including y-based constraints."""
+    """
+    Full constraint checker including y-based constraints.
+
+    Returns (feasible, viols) where `feasible` is True iff `viols` is
+    empty. `viols` maps each violated constraint's label to details about
+    where/how it was violated, to make debugging infeasible candidates
+    straightforward. 
+    """
     x, f, g, v, y = sol
     T        = x.shape[1]
     n_travel = len(d.OptManager.travelling_arcs)
     viols: dict = {}
 
-    # EC13
+    # EC10: per-workstation SKU-throughput capacity, evaluated via v.
     for w, order_ids in enumerate(d.orders_by_workstation):
         cap = v[list(order_ids), :].sum(axis=0)
         bad = np.where(cap > d.OptManager.CAP_WS + 1e-6)[0]
         if bad.size:
-            viols.setdefault('EC13', []).append(
+            viols.setdefault('EC10', []).append(
                 {'w': w, 'times': bad.tolist(), 'values': cap[bad].tolist()}
             )
 
-    # EC14
-    ec14 = []
+    # EC11: combined item-picking + pod-arrival work rate per workstation
+    # per time slot cannot exceed 2 * TIME_UNIT.
+    ec11 = []
     for w, order_ids in enumerate(d.orders_by_workstation):
         ws_p  = d.ws_positions[w]
         ims_w = [im for im, (_, m) in enumerate(d.relevant_pairs_for_x) if m in order_ids]
@@ -504,23 +621,24 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             pod_arrivals = d.OptManager.DELTA_POD * y[:, travel_arrivals].sum()
             total = float(item_work + pod_arrivals)
             if total > 2 * d.OptManager.TIME_UNIT + 1e-6:
-                ec14.append({'w': w, 't': t, 'value': total})
-    if ec14:
-        viols['EC14'] = ec14
+                ec11.append({'w': w, 't': t, 'value': total})
+    if ec11:
+        viols['EC11'] = ec11
 
-    # EC15
-    ec15 = []
+    # EC12: each pod must depart its storage location exactly once at t=0.
+    ec12 = []
     for rel_p, p_id in enumerate(d.from_RelPod_to_PodId):
         stor     = d.warehouse.pods[p_id].storage_location
         out_arcs = d.OptManager.outgoing_arc_idx.get((stor, 0), [])
         flow_out = float(y[rel_p, out_arcs].sum())
         if not np.isclose(flow_out, 1.0):
-            ec15.append({'pod': p_id, 'flow_out': flow_out})
-    if ec15:
-        viols['EC15'] = ec15
+            ec12.append({'pod': p_id, 'flow_out': flow_out})
+    if ec12:
+        viols['EC12'] = ec12
 
-    # EC16
-    ec16 = []
+    # EC13: flow conservation for each pod at every intermediate node of
+    # the time-expanded network (inflow == outflow).
+    ec13 = []
     for rel_p in range(len(d.from_RelPod_to_PodId)):
         for node in d.OptManager.nodes:
             if node[1] in (0, d.OptManager.N_TIME - 1):
@@ -528,13 +646,14 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             in_f  = float(y[rel_p, d.OptManager.incoming_arc_idx.get(node, [])].sum())
             out_f = float(y[rel_p, d.OptManager.outgoing_arc_idx.get(node, [])].sum())
             if not np.isclose(in_f - out_f, 0.0):
-                ec16.append({'pod': rel_p, 'node': node, 'imbalance': in_f - out_f})
-    if ec16:
-        viols['EC16'] = ec16
+                ec13.append({'pod': rel_p, 'node': node, 'imbalance': in_f - out_f})
+    if ec13:
+        viols['EC13'] = ec13
 
-    # EC18
+    # EC14: the pod supplying an item must actually be at the workstation
+    # at the time that item is first picked.
     first_pick_time = (x == 0).sum(axis=1)
-    ec18 = []
+    ec14 = []
     for im, first_t in enumerate(first_pick_time):
         if first_t < d.OptManager.N_TIME:
             _, m   = d.relevant_pairs_for_x[im]
@@ -542,17 +661,18 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             rel_p  = d.from_PodId_to_RelPod[d.pod_of_item[im]]
             t_arcs = d.OptManager.incoming_arc_idx.get((ws_p, first_t), [])
             if float(y[rel_p, t_arcs].sum()) < 1e-6:
-                ec18.append({'im': im, 't': first_t})
-    if ec18:
-        viols['EC18'] = ec18
+                ec14.append({'im': im, 't': first_t})
+    if ec14:
+        viols['EC18'] = ec14
 
-    # EC19
+    # EC15: x must be non-decreasing over time.
     dx  = np.diff(x, axis=1)
     bad = np.argwhere(dx < -1e-6)
     if bad.size:
-        viols['EC19'] = bad.tolist()
+        viols['EC15'] = bad.tolist()
 
-    # pick_only_if_active
+    # EC16 ("pick_only_if_active"): x can only increase while the order is
+    # in progress (v = 1); items can't be picked for an inactive order.
     poa = []
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         bad_ts = np.where(dx[im] > v[m, 1:] + 1e-6)[0] + 1
@@ -561,41 +681,42 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     if poa:
         viols['pick_only_if_active'] = poa
 
-    # EC20
+    # EC17: v must equal f - g.
     bad = np.argwhere(np.abs(v - (f - g)) > 1e-6)
     if bad.size:
-        viols['EC20'] = bad.tolist()
+        viols['EC17'] = bad.tolist()
 
-    # EC21
-    ec21 = []
+    # EC18: f[m,t] >= x[im,t] for every item im of order m.
+    ec18 = []
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         bad = np.where(f[m] < x[im] - 1e-6)[0]
         if bad.size:
-            ec21.append({'im': im, 'm': m, 'times': bad.tolist()})
-    if ec21:
-        viols['EC21'] = ec21
+            ec18.append({'im': im, 'm': m, 'times': bad.tolist()})
+    if ec18:
+        viols['EC21'] = ec18
 
-    # EC22
-    ec22 = []
+    # EC19: g[m,t] <= x[im,t-1] for every item im of order m.
+    ec19 = []
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         bad = np.where(g[m, 1:] > x[im, :-1] + 1e-6)[0] + 1
         if bad.size:
-            ec22.append({'im': im, 'm': m, 'times': bad.tolist()})
-    if ec22:
-        viols['EC22'] = ec22
+            ec19.append({'im': im, 'm': m, 'times': bad.tolist()})
+    if ec19:
+        viols['EC19'] = ec19
 
-    # f/g monotonicity
+    # EC20a / EC20b: f and g must each be non-decreasing over time.
     if (np.diff(f, axis=1) < -1e-6).any():
         viols['f_monotonicity'] = True
     if (np.diff(g, axis=1) < -1e-6).any():
         viols['g_monotonicity'] = True
 
-    # continuity_v
+    # EC21 ("continuity_v"): v cannot jump back up without passing through g.
     bad = np.argwhere(v[:, 1:] - (v[:, :-1] - g[:, 1:]) < -1e-6)
     if bad.size:
         viols['continuity_v'] = bad.tolist()
 
-    # g_lower_bound
+    # EC22 ("g_lower_bound"): g cannot be lower than what the picking
+    # progress of the order already guarantees.
     g_lb = []
     for m in range(len(d.orders)):
         ims     = d.items_of_order[m]
@@ -607,7 +728,9 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     if g_lb:
         viols['g_lower_bound'] = g_lb
 
-    # initial_cond / f_active_only_if_picked
+    # EC23 ("initial_cond" / "f_active_only_if_picked"): opened orders must
+    # start in progress (v[m,0] = 1); not-yet-opened orders can only be
+    # "active" (f = 1) once at least one item has actually been picked.
     for m, order in enumerate(d.orders):
         if order.order_id in d.opened_order_ids:
             if not np.isclose(float(v[m, 0]), 1.0):
@@ -622,7 +745,8 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
                     {'m': m, 'times': bad.tolist()}
                 )
 
-    # max_active_pods
+    # EC24 ("max_active_pods"): number of pods away from their storage
+    # location at any given time cannot exceed the number of robots.
     # Un pod occupa un robot durante [src_t, dst_t) se parte da una
     # location che non e' il suo storage (cioe' e' fuori storage).
     n_pods = y.shape[0]
@@ -653,8 +777,18 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
 
 
 ### NEIGHBOUR GENERATORS
+### Each helper builds a candidate x by shifting the pick time of one or
+### more items backwards in the horizon (a negative `variation`/`direction`
+### moves the pick earlier). They return None when the move is infeasible
+### purely on index-range grounds (out of [0, T) or [1, T)), letting the
+### caller skip it cheaply before running the more expensive feasibility
+### checks.
 
 def _make_move_1(x, ims, variation, first_one_idx, T):
+    """'item' / 'multi_item' move: shift the pick time of one or more items
+    (ims) by `variation` steps, rewriting each affected row of x as a step
+    function that turns on at the new time. Returns None if any new time
+    falls outside [0, T)."""
     x_cand = x.copy()
     for im in ims:
         t_new = int(first_one_idx[im]) + variation
@@ -666,6 +800,8 @@ def _make_move_1(x, ims, variation, first_one_idx, T):
 
 
 def _make_move_2(x, ims, variation, first_one_idx, T):
+    """'order' move: same as _make_move_1 but disallows t_new = 0 (an order
+    move cannot make an item picked at the very start of the horizon)."""
     x_cand = x.copy()
     for im in ims:
         t_new = int(first_one_idx[im]) + variation
@@ -677,6 +813,11 @@ def _make_move_2(x, ims, variation, first_one_idx, T):
 
 
 def _make_move_3(x, ims1, ims2, first_one_idx, T):
+    """'swap' move: exchange the (earliest) pick times of two orders'
+    item sets, shifting all items of order 1 by the same delta needed to
+    reach order 2's earliest pick time, and vice versa. Returns None if the
+    orders already start at the same time (no-op) or if any resulting time
+    falls outside [1, T)."""
     delta = (
         min(int(first_one_idx[im]) for im in ims2)
         - min(int(first_one_idx[im]) for im in ims1)
@@ -715,9 +856,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         im_by_order.setdefault(m, []).append(im)
 
-    # ------------------------------------------------------------------ #
-    # Initial solution
-    # ------------------------------------------------------------------ #
+    ### INITIAL SOLUTION
     print("\n[ls_stage2] Building initial solution ...")
     logging.info("[ls_stage2] Building initial solution ...")
 
@@ -728,6 +867,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     max_attempts = 10
     attempt = 1
 
+    # Retry with a fresh initial x until a feasible solution is found or
+    # the attempt budget is exhausted (mirrors the pattern used in Stage 1).
     while not feasible:
         print(f"[ls_stage2] violated = {list(viols.keys())} (attempt {attempt}/{max_attempts})")
         logging.info("[ls_stage2] violated = %s (attempt %d/%d)", list(viols.keys()), attempt, max_attempts)
@@ -754,9 +895,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     T = x_current.shape[1]
     item_ids = list(range(x_current.shape[0]))
 
-    # ------------------------------------------------------------------ #
-    # Main loop
-    # ------------------------------------------------------------------ #
+    ### MAIN LOOP
     am_I_stuck                   = False
     cont                         = 1
     iter_without_improvement     = 0
@@ -767,10 +906,15 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     print("[ls_stage2] Exploring neighbours ...")
 
     while not am_I_stuck and cont <= MAX_ITER:
+        # first_one_idx: earliest pick-time index per item-order pair in
+        # the current incumbent (used as the base for all move generators).
         first_one_idx = np.argmax(best_x > 0.5, axis=1)
         first_one_idx[best_x[:, -1] == 0] = T
         improved = False
 
+        # Best and second-best candidate found in this iteration (the
+        # second-best acts as a fallback if committing the best one turns
+        # out to be y-infeasible after the full check).
         best_obj_in_iter        = -np.inf
         best_x_in_iter          = None
         best_move               = None
@@ -785,8 +929,15 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         s_best_v_in_iter        = None
 
         # ---- Build move list ----------------------------------------- #
+        # moves[0]: item-level moves ('item' / 'multi_item')
+        # moves[1]: order-level moves ('order')
+        # moves[2]: pairwise 'swap' moves between orders at the same
+        #           workstation
         moves = [[], [], []]
 
+        # When stuck for a while, use small, conservative shifts (-1, -2);
+        # otherwise explore more aggressive shifts (-2 to -8) to escape
+        # local optima faster.
         if iter_without_improvement > 1:
             for im in range(x_current.shape[0]):
                 moves[0].append(('item', im, -1))
@@ -829,6 +980,9 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                 for m2 in order_list[i1 + 1:]:
                     moves[2].append(('swap', m1, m2))
 
+        # Cap the total neighbourhood size, subsampling each move category
+        # proportionally (40% item, 40% order, 20% swap) rather than
+        # truncating a single category entirely.
         total = sum(len(mv) for mv in moves)
         if total > MAX_NEIGH:
             for i, p in enumerate([0.4, 0.4, 0.2]):
@@ -879,6 +1033,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             if x_cand is None:
                 continue
 
+            # Cheap incremental f/g/v update + x-only feasibility check
+            # (EC10-EC13, EC17, EC19-EC23) before ever touching y.
             _, f_curr, g_curr, v_curr, _ = best_sol
             f_cand, g_cand, v_cand = _fast_update_fgv_from_move(
                 x_cand, f_curr, g_curr, v_curr,
@@ -888,6 +1044,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             if _check_x_fast(x_cand, f_cand, g_cand, v_cand, d):
                 obj = compute_objective(x_cand, f_cand, g_cand, d)
                 if obj is not None and obj > best_obj_in_iter:
+                    # New best in this iteration: demote the previous best
+                    # to second-best (kept as a fallback candidate).
                     second_best_obj_in_iter = best_obj_in_iter
                     second_best_x_in_iter   = best_x_in_iter
                     second_best_move        = best_move
@@ -911,12 +1069,19 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                     s_best_v_in_iter        = v_cand
 
         # ---- Attempt to commit best (then second-best) --------------- #
+        # A candidate that passes the x-only check may still violate a
+        # y-based constraint (EC14-EC16, EC18, EC26...). Try the best
+        # candidate first, and fall back to the second-best if the full
+        # check_constraints rejects it.
         sol_num = 1
         while best_x_in_iter is not None and sol_num <= 2:
             x_current = best_x_in_iter
 
             if best_obj_in_iter > best_obj - 1e-10:
                 if best_move[0] in ('item', 'order', 'multi_item', 'swap'):
+                    # Only the pods supplying the items touched by this
+                    # move need their y row rebuilt (cheap incremental
+                    # update instead of a full build_solution call).
                     if best_move[0] == 'item':
                         _, best_im, _ = best_move
                         affected_pods = {d.pod_of_item[int(best_im)]}
@@ -960,8 +1125,10 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                         "[ls_stage2] Iter %d: improved move=%s obj=%.4f",
                         cont, best_move, best_obj
                     )
-                    sol_num = 3
+                    sol_num = 3   # stop the fallback loop, committed successfully
                 else:
+                    # Best candidate is y-infeasible: retry with the
+                    # second-best candidate from this iteration, if any.
                     if second_best_x_in_iter is None:
                         break
                     best_x_in_iter   = second_best_x_in_iter
@@ -974,7 +1141,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             else:
                 break
 
-        # ---- Convergence check --------------------------------------- #
+        ### Convergence check
         if improved:
             iter_without_improvement = 0
         else:
