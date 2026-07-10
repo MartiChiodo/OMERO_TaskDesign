@@ -68,9 +68,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
     N_TIME               = data.OptManager.N_TIME
     warehouse            = data.state.warehouse   # single source of truth
 
-    # ------------------------------------------------------------------
-    # Step 1: workstation assignments and order start times
-    # ------------------------------------------------------------------
+    
+    ### Step 1: workstation assignments and order start times
+
     orders_by_workstation = [lst.copy() for lst in data.orders_by_workstation]
     order_start_time: dict[int, int] = {}
 
@@ -92,9 +92,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         else:
             order_start_time[m] = start_t
 
-    # ------------------------------------------------------------------
-    # Step 2: item → pod and item → pick-time lookups
-    # ------------------------------------------------------------------
+
+    ### Step 2: item → pod and item → pick-time lookups
+
     order_to_ws = data.order_to_ws   # order_idx → ws_idx
     item_to_pod = data.pod_of_item   # im → pod_id
 
@@ -105,10 +105,10 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         if t is not None:
             item_to_time[(i, m)] = t
 
-    # ------------------------------------------------------------------
-    # Step 3: build pick_at index
+
+    ### Step 3: build pick_at index
     # pick_at[(pod_id, t, w_idx)] → {items, orders} to service at that stop
-    # ------------------------------------------------------------------
+
     pick_at: dict[tuple[int, int, int], dict] = defaultdict(
         lambda: {"items": set(), "orders": set()}
     )
@@ -121,9 +121,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         pick_at[(p_id, t, w)]["items"].add(i)
         pick_at[(p_id, t, w)]["orders"].add(data.orders[m].order_id)
 
-    # ------------------------------------------------------------------
-    # Step 4: reconstruct pod trajectories from y_sol → Tasks
-    # ------------------------------------------------------------------
+
+    ### Step 4: reconstruct pod trajectories from y_sol → Tasks
+
     workstation_positions = set(data.OptManager._W)
     storage_positions     = set(data.OptManager._L)
     pos_to_ws = {
@@ -206,9 +206,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
                     priority=pr,
                 ))
 
-    # ------------------------------------------------------------------
-    # Step 5: refine priorities using travel time and sort tasks
-    # ------------------------------------------------------------------
+
+    ### Step 5: refine priorities using travel time and sort tasks
+
     for task in tasks:
         t_firstpick = task.priority
         pod = warehouse.pods[task.pod_id]
@@ -239,9 +239,9 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
             if o.order_id in involved_orders:
                 order_first_task[m] = min(order_first_task[m], task.priority)
 
-    # ------------------------------------------------------------------
-    # Step 6: sort orders within each workstation by (start_time, first_task)
-    # ------------------------------------------------------------------
+
+    ### Step 6: sort orders within each workstation by (start_time, first_task)
+
     ordered_orders_by_w = {
         w: sorted(
             idxs,
