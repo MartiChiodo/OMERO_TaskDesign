@@ -4,7 +4,7 @@
 
 ```
 Tesi_LM/Simulator/
-├──  run_simulation.py                     # Entry point: reads config, builds warehouse, runs simulation
+├── run_simulation.py                     # Entry point: reads config, builds warehouse, runs simulation
 ├── experiments.csv                        # Numeric parameters for the simulation scenario
 └── scripts/    
     ├── core/
