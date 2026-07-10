@@ -33,26 +33,32 @@ def check_constraints(
     """
     n_w = OptManager.n_workstations
 
+    num_constraints = 0
+
     # EC1: each order assigned to exactly one workstation
+    num_constraints += z.shape[0]
     if (z.sum(axis=1) != 1).any():
-        return False
+        return False, 0
 
     # EC2: each item retrieved from exactly one pod (among those stocking its sku)
     for im, (i, _) in enumerate(relevant_pairs_for_x):
+        num_constraints += 1
         if x[im, OptManager.pod_indices_by_sku[i]].sum() != 1:
-            return False
+            return False, 0
 
     # EC3: orders already opened at a workstation must stay pinned to it
     if fixed_orders:
+        num_constraints += len(fixed_orders)
         for m, w_fixed in fixed_orders.items():
             if z[m, w_fixed] != 1:
-                return False
+                return False, 0
 
     # EC4: y[w,p] >= x[im,p] + z[m,w] - 1  for all w, im, p
     for im, (_, m) in enumerate(relevant_pairs_for_x):
+        num_constraints += y.shape[0] * y.shape[1]
         required = np.outer(z[m], x[im])   # shape (n_w, n_p)
         if (y < required - 1e-6).any():
-            return False
+            return False, 0
 
     # EC5: workload balance (in terms of number of SKUs per workstation)
     sku_per_order = np.array([len(orders_items[m]) for m in range(len(orders))])
@@ -62,10 +68,12 @@ def check_constraints(
     upper_I = np.ceil(total_skus / n_w * 1.2)
 
     ws_loads = sku_per_order @ z          # shape (n_w,)
+    num_constraints += 2*ws_loads.shape[0]
     if (ws_loads > upper_I + 1e-6).any() or (ws_loads < lower_I - 1e-6).any():
-        return False
+        return False, 0
 
-    return True
+
+    return True, num_constraints
 
 
 def compute_objective(y: np.ndarray):
@@ -225,8 +233,10 @@ def local_search_stage1(
                                         OptManager, state, rng)
     attempt = 1
 
-    while not check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
-                                 x0, y0, z0, fixed_orders):
+    ok, num_constraints = check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
+                                 x0, y0, z0, fixed_orders)
+
+    while not ok:
         if attempt >= MAX_INIT_ATTEMPTS:
             msg = (f"[ls_stage1] Failed to find a feasible initial solution "
                    f"after {MAX_INIT_ATTEMPTS} attempts.")
@@ -242,11 +252,23 @@ def local_search_stage1(
         z0, x0, y0 = build_initial_solution(orders, orders_items, relevant_pairs_for_x,
                                             OptManager, state, rng)
 
+        ok, num_constraints = check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
+                                 x0, y0, z0, fixed_orders)
+
+
     best_sol = (x0, z0, y0)
     best_obj = compute_objective(y0)
     print(f"[ls_stage1] Feasible initial solution found at attempt "
           f"{attempt}/{MAX_INIT_ATTEMPTS}: obj = {best_obj:.4f}")
     logging.info("[ls_stage1] Feasible initial solution: obj = %.4f", best_obj)
+
+    logging.warning(
+            f"\nVariables size:\n"
+            f"  shape x = {x0.shape}\n"
+            f"  shape y = {y0.shape}\n"
+            f"  shape z = {z0.shape}\n"
+            f"  constraints_satisfied = {num_constraints}\n"
+        )
 
     ### MAIN LOOP
     MAX_ITER           = 50
@@ -300,8 +322,9 @@ def local_search_stage1(
                 continue
 
             x, z, y = sol_cand
-            if check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
-                                  x, y, z, fixed_orders):
+            ok, _ = check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
+                                  x, y, z, fixed_orders)
+            if ok:
                 obj = compute_objective(y)
                 if obj < best_iter_obj:
                     best_iter_obj  = obj

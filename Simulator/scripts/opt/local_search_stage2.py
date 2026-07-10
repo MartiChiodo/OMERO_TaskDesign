@@ -597,8 +597,11 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     n_travel = len(d.OptManager.travelling_arcs)
     viols: dict = {}
 
+    num_constraints = 0
+
     # EC10: per-workstation SKU-throughput capacity, evaluated via v.
     for w, order_ids in enumerate(d.orders_by_workstation):
+        num_constraints += 1
         cap = v[list(order_ids), :].sum(axis=0)
         bad = np.where(cap > d.OptManager.CAP_WS + 1e-6)[0]
         if bad.size:
@@ -613,6 +616,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
         ws_p  = d.ws_positions[w]
         ims_w = [im for im, (_, m) in enumerate(d.relevant_pairs_for_x) if m in order_ids]
         for t in range(1, T):
+            num_constraints += 1
             item_work = d.OptManager.DELTA_ITEM * (x[ims_w, t] - x[ims_w, t - 1]).sum()
             travel_arrivals = [
                 a for a in d.OptManager.incoming_arc_idx.get((ws_p, t), [])
@@ -628,6 +632,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # EC12: each pod must depart its storage location exactly once at t=0.
     ec12 = []
     for rel_p, p_id in enumerate(d.from_RelPod_to_PodId):
+        num_constraints += 1
         stor     = d.warehouse.pods[p_id].storage_location
         out_arcs = d.OptManager.outgoing_arc_idx.get((stor, 0), [])
         flow_out = float(y[rel_p, out_arcs].sum())
@@ -641,6 +646,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     ec13 = []
     for rel_p in range(len(d.from_RelPod_to_PodId)):
         for node in d.OptManager.nodes:
+            num_constraints += 1
             if node[1] in (0, d.OptManager.N_TIME - 1):
                 continue
             in_f  = float(y[rel_p, d.OptManager.incoming_arc_idx.get(node, [])].sum())
@@ -655,6 +661,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     first_pick_time = (x == 0).sum(axis=1)
     ec14 = []
     for im, first_t in enumerate(first_pick_time):
+        num_constraints += 1
         if first_t < d.OptManager.N_TIME:
             _, m   = d.relevant_pairs_for_x[im]
             ws_p   = d.ws_positions[d.order_to_ws[m]]
@@ -666,6 +673,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
         viols['EC18'] = ec14
 
     # EC15: x must be non-decreasing over time.
+    num_constraints += x.shape[0]* (x.shape[1] - 1)
     dx  = np.diff(x, axis=1)
     bad = np.argwhere(dx < -1e-6)
     if bad.size:
@@ -674,6 +682,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # EC16 ("pick_only_if_active"): x can only increase while the order is
     # in progress (v = 1); items can't be picked for an inactive order.
     poa = []
+    num_constraints += len(d.relevant_pairs_for_x) * (x.shape[1] - 1)
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         bad_ts = np.where(dx[im] > v[m, 1:] + 1e-6)[0] + 1
         if bad_ts.size:
@@ -682,6 +691,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
         viols['pick_only_if_active'] = poa
 
     # EC17: v must equal f - g.
+    num_constraints +=  v.shape[0]*v.shape[1]
     bad = np.argwhere(np.abs(v - (f - g)) > 1e-6)
     if bad.size:
         viols['EC17'] = bad.tolist()
@@ -689,6 +699,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # EC18: f[m,t] >= x[im,t] for every item im of order m.
     ec18 = []
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
+        num_constraints +=  f.shape[1]
         bad = np.where(f[m] < x[im] - 1e-6)[0]
         if bad.size:
             ec18.append({'im': im, 'm': m, 'times': bad.tolist()})
@@ -698,6 +709,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # EC19: g[m,t] <= x[im,t-1] for every item im of order m.
     ec19 = []
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
+        num_constraints +=  g.shape[1] - 1
         bad = np.where(g[m, 1:] > x[im, :-1] + 1e-6)[0] + 1
         if bad.size:
             ec19.append({'im': im, 'm': m, 'times': bad.tolist()})
@@ -705,12 +717,15 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
         viols['EC19'] = ec19
 
     # EC20a / EC20b: f and g must each be non-decreasing over time.
+    num_constraints += f.shape[0] * (f.shape[1] - 1)
+    num_constraints += g.shape[0] * (g.shape[1] - 1)
     if (np.diff(f, axis=1) < -1e-6).any():
         viols['f_monotonicity'] = True
     if (np.diff(g, axis=1) < -1e-6).any():
         viols['g_monotonicity'] = True
 
     # EC21 ("continuity_v"): v cannot jump back up without passing through g.
+    num_constraints += v.shape[0] * (v.shape[1] - 1)
     bad = np.argwhere(v[:, 1:] - (v[:, :-1] - g[:, 1:]) < -1e-6)
     if bad.size:
         viols['continuity_v'] = bad.tolist()
@@ -718,6 +733,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # EC22 ("g_lower_bound"): g cannot be lower than what the picking
     # progress of the order already guarantees.
     g_lb = []
+    num_constraints += g.shape[0] * (g.shape[1] - 1)
     for m in range(len(d.orders)):
         ims     = d.items_of_order[m]
         n_items = int(d.n_items_per_order[m])
@@ -733,12 +749,14 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # "active" (f = 1) once at least one item has actually been picked.
     for m, order in enumerate(d.orders):
         if order.order_id in d.opened_order_ids:
+            num_constraints += 1
             if not np.isclose(float(v[m, 0]), 1.0):
                 viols.setdefault('initial_cond', []).append(
                     {'m': m, 'v0': float(v[m, 0])}
                 )
         else:
             ims = d.items_of_order[m]
+            num_constraints += len(ims)
             bad = np.where(f[m] > x[ims, :].sum(axis=0) + 1e-6)[0]
             if bad.size:
                 viols.setdefault('f_active_only_if_picked', []).append(
@@ -751,6 +769,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # location che non e' il suo storage (cioe' e' fuori storage).
     n_pods = y.shape[0]
     active = np.zeros(T, dtype=int)
+    num_constraints += T
 
     for rel_p in range(n_pods):
         pod_id      = d.from_RelPod_to_PodId[rel_p]
@@ -773,7 +792,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             'values': active[bad_t].tolist(),
         }
 
-    return len(viols) == 0, viols
+    return len(viols) == 0, viols, num_constraints
 
 
 ### NEIGHBOUR GENERATORS
@@ -862,7 +881,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
     x_current = build_initial_x(rng, d)
     _, f0, g0, v0, y0 = build_solution(x_current, d)
-    feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
+    feasible, viols, num_constraints = check_constraints((x_current, f0, g0, v0, y0), d)
 
     max_attempts = 10
     attempt = 1
@@ -884,13 +903,23 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         attempt += 1
         x_current = build_initial_x(rng, d)
         _, f0, g0, v0, y0 = build_solution(x_current, d)
-        feasible, viols = check_constraints((x_current, f0, g0, v0, y0), d)
+        feasible, viols, num_constraints = check_constraints((x_current, f0, g0, v0, y0), d)
 
     best_x   = x_current.copy()
     best_sol = (best_x, f0, g0, v0, y0)
     best_obj = compute_objective(x_current, f0, g0, d)
     print(f"[ls_stage2] Feasible initial solution: obj = {best_obj:.4f}")
     logging.info("[ls_stage2] Feasible initial solution: obj = %.4f", best_obj)
+
+    logging.warning(
+        f"\Variables size:\n"
+        f"  x shape = {best_sol[0].shape}\n"
+        f"  f0 = {best_sol[1].shape}\n"
+        f"  g0 = {best_sol[2].shape}\n"
+        f"  v0 = {best_sol[3].shape}\n"
+        f"  y shape = {best_sol[4].shape}\n"
+        f"  num constraints satisfied = {num_constraints}\n"
+    )
     
     T = x_current.shape[1]
     item_ids = list(range(x_current.shape[0]))
@@ -1111,7 +1140,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                 else:
                     sol_curr = build_solution(best_x_in_iter, d)
 
-                feasible, _ = check_constraints(sol_curr, d)
+                feasible, _, _ = check_constraints(sol_curr, d)
                 if feasible:
                     improved = best_obj_in_iter >= best_obj
                     best_obj = best_obj_in_iter
