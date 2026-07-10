@@ -12,7 +12,7 @@ from scripts.core.enums import OrderStatus
 from scripts.opt.local_search_stage1 import local_search_stage1
 from scripts.opt.local_search_stage2 import local_search_stage2
 from scripts.opt.stage2_data import build_stage2_data
-from scripts.opt.utils import convert_OptSol_to_SimObj
+from scripts.opt.convert_OptSol_to_SimObj import convert_OptSol_to_SimObj
 
 
 ### CONSTANTS
