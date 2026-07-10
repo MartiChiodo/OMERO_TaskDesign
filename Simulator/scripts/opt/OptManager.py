@@ -237,9 +237,8 @@ class OptManager:
         """
         Run the full optimisation pipeline and convert the solution into Tasks.
 
-        Calls :func:`solve_by_decomposition` for Stage 1 (assignment) and
-        either Stage 2 MIP or local search (scheduling), then converts the
-        result into simulator Task objects via :func:`convert_OptSol_to_SimObj`.
+        The problem is solved by calling sequentiallt two local search heuristic
+        and lastly the function that converts decisional variables into Task objects.
 
         Returns
         -------
