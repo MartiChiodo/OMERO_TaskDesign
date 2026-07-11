@@ -1,19 +1,20 @@
 #!/bin/bash
 #SBATCH --job-name=seed050102
 #SBATCH --partition=cpu-long,cpu-unlimited,cpu-medium
-#SBATCH --mail-user=s343310@studenti.polito.it
+#SBATCH --mail-user=martina.chiodo@studenti.polito.it
 #SBATCH --mail-type=NONE
 #SBATCH --output=/beegfs/users/mchiodo/Simulator/slurm_logs/seed050102/output_%a.txt
 #SBATCH --error=/beegfs/users/mchiodo/Simulator/slurm_logs/seed050102/error_%a.txt
-#SBATCH --time=1-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=1
-#SBATCH --array=41,42,43,44
+#SBATCH --array=11,12,13,14,31,32,33,34,51,52,53,54
 
 # ============================================================
 # UNICO PARAMETRO DA MODIFICARE AD OGNI LANCIO
 # ============================================================
 export SIM_SEED=50102
+
 
 # ============================================================
 

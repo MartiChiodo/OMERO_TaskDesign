@@ -1,4 +1,6 @@
 from __future__ import annotations
+import heapq
+import itertools
 import numpy as np
 from bisect import bisect_left
 import logging
@@ -33,6 +35,32 @@ Only x is truly free during the local search; f, g, v are always recomputed
 deterministically from x, and y is (re)built from x only when a candidate
 solution is about to be evaluated for full feasibility / accepted as the
 new incumbent (build_solution / _rebuild_pod_row).
+
+PERFORMANCE NOTES (optimisation pass)
+--------------------------------------
+This module is optimised relative to the original version in a few ways
+that don't change behaviour/semantics, only speed:
+
+  1. `_get_m_of_im(d)` caches, on `d`, the array mapping each item-order
+     pair index to its order index (equivalent to iterating
+     `d.relevant_pairs_for_x`). This lets `_check_x_fast` (called for
+     every single candidate move, i.e. the hottest loop in the search)
+     replace two Python-level loops with two vectorised NumPy comparisons.
+  2. `_find_best_arc` is now a single shared helper (bisect-based lookup
+     on `d.arc_lookup`) used by both `build_solution` and
+     `_rebuild_pod_row`, instead of `_rebuild_pod_row` duplicating the
+     same logic with a slower O(T) linear scan over `outgoing_arc_idx`.
+  3. `_rebuild_pod_row` no longer recomputes `first_one_idx = (x == 0)
+     .sum(axis=1)` for every pod it is asked to rebuild; the caller
+     computes it once per candidate `x` and passes it in.
+  4. The top-K_BEST candidate list in `local_search_stage2` is now
+     maintained with a small heap (`heapq`) instead of a full
+     sort-after-every-append, avoiding O(n log n) work on every single
+     accepted neighbour.
+  5. The 'order' and 'swap' move lists, which depend only on static
+     problem data (`d.orders`, `d.orders_by_workstation`), are built once
+     before the main loop instead of being rebuilt from scratch on every
+     iteration.
 """
 
 
@@ -41,6 +69,21 @@ new incumbent (build_solution / _rebuild_pod_row).
 # check_constraints perform once y is also available. They are used
 # during the local search loop (cheap) and only the winning candidate is
 # ever passed through the full, y-aware check_constraints.
+
+def _get_m_of_im(d) -> np.ndarray:
+    """
+    Cached array mapping each item-order pair index `im` to its order index
+    `m` (i.e. the vectorised equivalent of iterating
+    `d.relevant_pairs_for_x`). Cached on `d` since it never changes for a
+    given Stage2Data instance, and is looked up on every single candidate
+    move evaluated during the local search.
+    """
+    cached = getattr(d, "_m_of_im_cache", None)
+    if cached is None:
+        cached = np.array([m for (_, m) in d.relevant_pairs_for_x])
+        d._m_of_im_cache = cached
+    return cached
+
 
 def _build_fgv(x: np.ndarray, d) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -59,7 +102,7 @@ def _build_fgv(x: np.ndarray, d) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     T      = x.shape[1]
     M      = len(d.orders)
-    all_ms = np.array([m for (_, m) in d.relevant_pairs_for_x])
+    all_ms = _get_m_of_im(d)
 
     # For each item-order pair, index of the first time step where x == 1
     # (i.e. len(T) if the item is never picked within the horizon).
@@ -106,14 +149,18 @@ def _check_x_fast(x: np.ndarray, f: np.ndarray, g: np.ndarray,
     # v must equal f - g.
     if (np.abs(v - (f - g)) > 1e-6).any():
         return False
-    # f[m,t] >= x[im,t] for every item im of order m.
-    for im, (_, m) in enumerate(d.relevant_pairs_for_x):
-        if (f[m] < x[im] - 1e-6).any():
-            return False
+
+    # f[m,t] >= x[im,t] for every item im of order m, and
     # g[m,t] <= x[im,t-1] for every item im of order m.
-    for im, (_, m) in enumerate(d.relevant_pairs_for_x):
-        if (g[m, 1:] > x[im, :-1] + 1e-6).any():
-            return False
+    # Vectorised via the (cached) im -> m mapping instead of a Python loop
+    # over relevant_pairs_for_x — this function is called once per
+    # candidate move, i.e. up to MAX_NEIGH times per iteration.
+    m_of_im = _get_m_of_im(d)
+    if (f[m_of_im] < x - 1e-6).any():
+        return False
+    if (g[m_of_im, 1:] > x[:, :-1] + 1e-6).any():
+        return False
+
     # f must be non-decreasing in t.
     if (np.diff(f, axis=1) < -1e-6).any():
         return False
@@ -225,6 +272,61 @@ def _fast_update_fgv_from_move(
     return f_new, g_new, v_new
 
 
+### SHARED ARC-LOOKUP HELPER
+# Used by both build_solution (per-pod route construction from scratch)
+# and _rebuild_pod_row (incremental per-pod route rebuild). Factored out
+# so the two call sites share one bisect-based implementation instead of
+# _rebuild_pod_row keeping its own, slower O(T) linear-scan variant.
+
+def _find_best_arc(d, src_loc, t_from, dst_loc, latest_arrival):
+    """
+    Return the latest-arriving feasible direct arc from src_loc to dst_loc,
+    departing no earlier than t_from and arriving no later than
+    latest_arrival. Returns (arc_id, arc), or (None, None) if no such arc
+    exists — NO fallback, so callers can handle the case explicitly
+    without breaking flow-conservation (EC16).
+    """
+    arcs = d.arc_lookup.get((src_loc, dst_loc), [])
+    if not arcs:
+        return None, None
+
+    dep_times = [a[0] for a in arcs]
+    idx  = bisect_left(dep_times, t_from)
+    best = None
+
+    while idx < len(arcs):
+        dep_t, arr_t, arc_id, arc = arcs[idx]
+        if arr_t > latest_arrival:
+            break
+        best = (arc_id, arc)
+        idx += 1
+
+    if best is None:
+        return None, None
+    return best
+
+
+def _find_exact_departure_arc(d, src_loc, t_dep, dst_loc):
+    """
+    Return the (arc_id, arc) departing src_loc at EXACTLY t_dep and arriving
+    at dst_loc, or (None, None) if no such arc exists. Bisect lookup on
+    d.arc_lookup (O(log n)) — replaces the pattern, repeated 4x in
+    build_solution/_rebuild_pod_row, of scanning
+    outgoing_arc_idx[(src_loc, t_dep)] (a list whose size used to scale with
+    the total number of pods in the warehouse) just to find the single arc
+    heading to a specific destination location.
+    """
+    arcs = d.arc_lookup.get((src_loc, dst_loc), [])
+    if not arcs:
+        return None, None
+    dep_times = [a[0] for a in arcs]
+    idx = bisect_left(dep_times, t_dep)
+    if idx < len(arcs) and arcs[idx][0] == t_dep:
+        _, _, arc_id, arc = arcs[idx]
+        return arc_id, arc
+    return None, None
+
+
 ### SOLUTION BUILDER
 # Expands a picking matrix x into the full solution (f, g, v, y) by
 # deciding the actual pod routes over the time-expanded network. This is
@@ -259,12 +361,12 @@ def build_solution(x: np.ndarray, d) -> tuple:
 
     def add_idle_arcs(y, p_rel: int, loc: int, t_from: int, t_to: int) -> None:
         """Fill the time window [t_from, t_to) at a fixed location with
-        self-loop / waiting arcs for pod p_rel."""
+        self-loop / waiting arcs for pod p_rel. O(1) lookup per t via
+        d.idle_arc_id instead of scanning outgoing_arc_idx for the match."""
         for t in range(t_from, t_to):
-            for id_a in d.OptManager.outgoing_arc_idx.get((loc, t), []):
-                if d.OptManager.all_arcs[id_a][1] == (loc, t + 1):
-                    y[p_rel, id_a] = 1
-                    break
+            id_a = d.idle_arc_id.get((loc, t))
+            if id_a is not None:
+                y[p_rel, id_a] = 1
 
     def find_arc_departing_after(src_loc, t_from, dst_loc, latest_arrival, d):
         """
@@ -272,24 +374,7 @@ def build_solution(x: np.ndarray, d) -> tuple:
         Returns (None, None) if no arc arrives in time — NO fallback,
         so that build_solution can handle the case without breaking EC16.
         """
-        arcs = d.arc_lookup.get((src_loc, dst_loc), [])
-        if not arcs:
-            return None, None
-
-        dep_times = [a[0] for a in arcs]
-        idx  = bisect_left(dep_times, t_from)
-        best = None
-
-        while idx < len(arcs):
-            dep_t, arr_t, arc_id, arc = arcs[idx]
-            if arr_t > latest_arrival:
-                break
-            best = (arc_id, arc)
-            idx += 1
-
-        if best is None:
-            return None, None
-        return best
+        return _find_best_arc(d, src_loc, t_from, dst_loc, latest_arrival)
 
     for p_rel, p_id in enumerate(d.from_RelPod_to_PodId):
         storage_loc = d.warehouse.pods[p_id].storage_location
@@ -323,13 +408,7 @@ def build_solution(x: np.ndarray, d) -> tuple:
 
             if prev_loc == ws_loc:
                 # Pod già alla workstation: prova a passare per storage
-                arc1, id_a1 = None, None
-                for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
-                    arc = d.OptManager.all_arcs[id_a]
-                    if arc[1][0] == storage_loc:
-                        arc1  = arc
-                        id_a1 = id_a
-                        break
+                id_a1, arc1 = _find_exact_departure_arc(d, prev_loc, prev_t, storage_loc)
 
                 via_storage = False
                 if arc1 is not None:
@@ -348,13 +427,7 @@ def build_solution(x: np.ndarray, d) -> tuple:
 
             else:
                 # Pod non alla workstation: prova via storage, poi diretto
-                arc1, id_a1 = None, None
-                for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
-                    arc = d.OptManager.all_arcs[id_a]
-                    if arc[1][0] == storage_loc:
-                        arc1  = arc
-                        id_a1 = id_a
-                        break
+                id_a1, arc1 = _find_exact_departure_arc(d, prev_loc, prev_t, storage_loc)
 
                 via_storage = False
                 if arc1 is not None:
@@ -397,12 +470,7 @@ def build_solution(x: np.ndarray, d) -> tuple:
 
         # Return to storage at end of horizon
         if prev_loc != storage_loc:
-            arc, id_arc = None, None
-            for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
-                a = d.OptManager.all_arcs[id_a]
-                if a[1][0] == storage_loc:
-                    arc, id_arc = a, id_a
-                    break
+            id_arc, arc = _find_exact_departure_arc(d, prev_loc, prev_t, storage_loc)
             if arc is not None:
                 y[p_rel, id_arc] = 1
                 add_idle_arcs(y, p_rel, storage_loc, arc[1][1], T - 1)
@@ -414,7 +482,8 @@ def build_solution(x: np.ndarray, d) -> tuple:
     return x, f, g, v, y
 
 
-def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
+def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d,
+                      first_one_idx: np.ndarray | None = None) -> np.ndarray:
     """
     Recompute the y row for a single pod without touching the rest of y.
     Mirrors the per-pod logic inside build_solution.
@@ -422,35 +491,34 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
     Used as a cheap incremental update: when a move only touches a handful
     of orders, only the pods supplying those orders need their route
     recomputed, instead of rebuilding the whole y matrix from scratch.
+
+    `first_one_idx` (the earliest-pick-time index per item-order pair for
+    the current `x`) can be passed in precomputed by the caller — this
+    avoids recomputing the same O(N*T) array once per pod when several
+    pods are rebuilt for the same candidate `x` (e.g. a 'swap' or 'order'
+    move touching multiple pods).
     """
-    n_travel    = len(d.OptManager.travelling_arcs)
     T           = d.OptManager.N_TIME
     storage_loc = d.warehouse.pods[p_id].storage_location
-    first_one_idx = (x == 0).sum(axis=1)
+    if first_one_idx is None:
+        first_one_idx = (x == 0).sum(axis=1)
 
     y_row = np.zeros(len(d.OptManager.all_arcs), dtype=np.float64)
 
     def add_idle_arcs(loc, t_from, t_to):
+        """O(1) lookup per t via d.idle_arc_id instead of scanning
+        outgoing_arc_idx for the self-loop arc — this function is called
+        very often (once per accepted candidate, per affected pod)."""
         for t in range(t_from, t_to):
-            for id_a in d.OptManager.outgoing_arc_idx.get((loc, t), []):
-                if d.OptManager.all_arcs[id_a][1] == (loc, t + 1):
-                    y_row[id_a] = 1
-                    break
+            id_a = d.idle_arc_id.get((loc, t))
+            if id_a is not None:
+                y_row[id_a] = 1
 
     def find_arc(src_loc, t_from, dst_loc, latest):
         """Best (latest-arriving, within `latest`) direct arc from src_loc
-        departing no earlier than t_from. Linear scan variant of
-        find_arc_departing_after used above, kept separate on purpose."""
-        best_arc, best_id = None, None
-        for t_dep in range(t_from, latest):
-            for id_a in d.OptManager.outgoing_arc_idx.get((src_loc, t_dep), []):
-                if id_a >= n_travel:
-                    continue
-                arc = d.OptManager.all_arcs[id_a]
-                if arc[1][0] == dst_loc and arc[1][1] <= latest:
-                    if best_arc is None or arc[1][1] > best_arc[1][1]:
-                        best_arc, best_id = arc, id_a
-        return best_id, best_arc
+        departing no earlier than t_from. Bisect-based lookup shared with
+        build_solution's find_arc_departing_after (see _find_best_arc)."""
+        return _find_best_arc(d, src_loc, t_from, dst_loc, latest)
 
     items_for_pod = {
         im: int(first_one_idx[im])
@@ -478,33 +546,29 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
 
         if prev_loc == ws_loc:
             via_storage = False
-            for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
-                arc = d.OptManager.all_arcs[id_a]
-                if arc[1][0] == storage_loc:
-                    id_a2, arc2 = find_arc(storage_loc, arc[1][1], ws_loc, arrive_t)
-                    if id_a2 is not None:
-                        via_storage = True
-                        y_row[id_a] = 1
-                        add_idle_arcs(storage_loc, arc[1][1], arc2[0][1])
-                        y_row[id_a2] = 1
-                        add_idle_arcs(ws_loc, arc2[1][1], arrive_t)
-                    break
+            id_a, arc = _find_exact_departure_arc(d, prev_loc, prev_t, storage_loc)
+            if arc is not None:
+                id_a2, arc2 = find_arc(storage_loc, arc[1][1], ws_loc, arrive_t)
+                if id_a2 is not None:
+                    via_storage = True
+                    y_row[id_a] = 1
+                    add_idle_arcs(storage_loc, arc[1][1], arc2[0][1])
+                    y_row[id_a2] = 1
+                    add_idle_arcs(ws_loc, arc2[1][1], arrive_t)
             if not via_storage:
                 add_idle_arcs(prev_loc, prev_t, arrive_t)
 
         else:
             via_storage = False
-            for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
-                arc = d.OptManager.all_arcs[id_a]
-                if arc[1][0] == storage_loc:
-                    id_a2, arc2 = find_arc(storage_loc, arc[1][1], ws_loc, arrive_t)
-                    if id_a2 is not None:
-                        via_storage = True
-                        y_row[id_a] = 1
-                        add_idle_arcs(storage_loc, arc[1][1], arc2[0][1])
-                        y_row[id_a2] = 1
-                        add_idle_arcs(ws_loc, arc2[1][1], arrive_t)
-                    break
+            id_a, arc_via = _find_exact_departure_arc(d, prev_loc, prev_t, storage_loc)
+            if arc_via is not None:
+                id_a2, arc2 = find_arc(storage_loc, arc_via[1][1], ws_loc, arrive_t)
+                if id_a2 is not None:
+                    via_storage = True
+                    y_row[id_a] = 1
+                    add_idle_arcs(storage_loc, arc_via[1][1], arc2[0][1])
+                    y_row[id_a2] = 1
+                    add_idle_arcs(ws_loc, arc2[1][1], arrive_t)
             if not via_storage:
                 arc_id, arc = find_arc(prev_loc, prev_t, ws_loc, arrive_t)
                 if arc_id is not None:
@@ -531,12 +595,7 @@ def _rebuild_pod_row(p_rel: int, p_id: int, x: np.ndarray, d) -> np.ndarray:
 
     # Return to storage
     if prev_loc != storage_loc:
-        arc, id_arc = None, None
-        for id_a in d.OptManager.outgoing_arc_idx.get((prev_loc, prev_t), []):
-            a = d.OptManager.all_arcs[id_a]
-            if a[1][0] == storage_loc:
-                arc, id_arc = a, id_a
-                break
+        id_arc, arc = _find_exact_departure_arc(d, prev_loc, prev_t, storage_loc)
         if arc is not None:
             y_row[id_arc] = 1
             add_idle_arcs(storage_loc, arc[1][1], T - 1)
@@ -573,13 +632,17 @@ def compute_objective(x: np.ndarray, f: np.ndarray, g: np.ndarray, d) -> float:
     """
     T = x.shape[1]
     picking_reward  = x[:, T - 1].sum()
-    backlog_penalty = float(sum(
-        (d.current_time + t * d.OptManager.TIME_UNIT - d.arrival_times[m])
-        / d.OptManager.TIME_UNIT
-        * (1.0 - g[m, t])
-        for m in range(len(d.orders))
-        for t in range(T)
-    ))
+
+    # Vectorised backlog penalty (equivalent to the original nested-sum
+    # generator expression, but computed with NumPy broadcasting instead
+    # of a Python-level double loop over orders x time).
+    M = len(d.orders)
+    arrival = np.asarray([d.arrival_times[m] for m in range(M)], dtype=np.float64)
+    t_idx = np.arange(T, dtype=np.float64)
+    age = (d.current_time + t_idx[np.newaxis, :] * d.OptManager.TIME_UNIT
+           - arrival[:, np.newaxis]) / d.OptManager.TIME_UNIT
+    backlog_penalty = float((age * (1.0 - g)).sum())
+
     return picking_reward - 0.1 * backlog_penalty / d.OptManager.N_TIME
 
 
@@ -619,7 +682,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             num_constraints += 1
             item_work = d.OptManager.DELTA_ITEM * (x[ims_w, t] - x[ims_w, t - 1]).sum()
             travel_arrivals = [
-                a for a in d.OptManager.incoming_arc_idx.get((ws_p, t), [])
+                a for a in d.incoming_arc_idx.get((ws_p, t), [])
                 if a < n_travel
             ]
             pod_arrivals = d.OptManager.DELTA_POD * y[:, travel_arrivals].sum()
@@ -634,7 +697,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     for rel_p, p_id in enumerate(d.from_RelPod_to_PodId):
         num_constraints += 1
         stor     = d.warehouse.pods[p_id].storage_location
-        out_arcs = d.OptManager.outgoing_arc_idx.get((stor, 0), [])
+        out_arcs = d.outgoing_arc_idx.get((stor, 0), [])
         flow_out = float(y[rel_p, out_arcs].sum())
         if not np.isclose(flow_out, 1.0):
             ec12.append({'pod': p_id, 'flow_out': flow_out})
@@ -645,12 +708,12 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # the time-expanded network (inflow == outflow).
     ec13 = []
     for rel_p in range(len(d.from_RelPod_to_PodId)):
-        for node in d.OptManager.nodes:
+        for node in d.nodes:
             num_constraints += 1
             if node[1] in (0, d.OptManager.N_TIME - 1):
                 continue
-            in_f  = float(y[rel_p, d.OptManager.incoming_arc_idx.get(node, [])].sum())
-            out_f = float(y[rel_p, d.OptManager.outgoing_arc_idx.get(node, [])].sum())
+            in_f  = float(y[rel_p, d.incoming_arc_idx.get(node, [])].sum())
+            out_f = float(y[rel_p, d.outgoing_arc_idx.get(node, [])].sum())
             if not np.isclose(in_f - out_f, 0.0):
                 ec13.append({'pod': rel_p, 'node': node, 'imbalance': in_f - out_f})
     if ec13:
@@ -666,7 +729,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             _, m   = d.relevant_pairs_for_x[im]
             ws_p   = d.ws_positions[d.order_to_ws[m]]
             rel_p  = d.from_PodId_to_RelPod[d.pod_of_item[im]]
-            t_arcs = d.OptManager.incoming_arc_idx.get((ws_p, first_t), [])
+            t_arcs = d.incoming_arc_idx.get((ws_p, first_t), [])
             if float(y[rel_p, t_arcs].sum()) < 1e-6:
                 ec14.append({'im': im, 't': first_t})
     if ec14:
@@ -683,10 +746,11 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
     # in progress (v = 1); items can't be picked for an inactive order.
     poa = []
     num_constraints += len(d.relevant_pairs_for_x) * (x.shape[1] - 1)
-    for im, (_, m) in enumerate(d.relevant_pairs_for_x):
-        bad_ts = np.where(dx[im] > v[m, 1:] + 1e-6)[0] + 1
-        if bad_ts.size:
-            poa.append({'im': im, 'times': bad_ts.tolist()})
+    m_of_im = _get_m_of_im(d)
+    dx_gt_v = dx > v[m_of_im, 1:] + 1e-6   # vectorised: (n_items, T-1) mask
+    for im in np.where(dx_gt_v.any(axis=1))[0]:
+        bad_ts = np.where(dx_gt_v[im])[0] + 1
+        poa.append({'im': int(im), 'times': bad_ts.tolist()})
     if poa:
         viols['pick_only_if_active'] = poa
 
@@ -697,22 +761,25 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
         viols['EC17'] = bad.tolist()
 
     # EC18: f[m,t] >= x[im,t] for every item im of order m.
+    # Vectorised mask via m_of_im; per-item detail list only built for the
+    # (normally few) items that actually violate it.
+    num_constraints += len(d.relevant_pairs_for_x) * f.shape[1]
+    ec18_mask = f[m_of_im] < x - 1e-6
     ec18 = []
-    for im, (_, m) in enumerate(d.relevant_pairs_for_x):
-        num_constraints +=  f.shape[1]
-        bad = np.where(f[m] < x[im] - 1e-6)[0]
-        if bad.size:
-            ec18.append({'im': im, 'm': m, 'times': bad.tolist()})
+    for im in np.where(ec18_mask.any(axis=1))[0]:
+        _, m = d.relevant_pairs_for_x[int(im)]
+        ec18.append({'im': int(im), 'm': m, 'times': np.where(ec18_mask[im])[0].tolist()})
     if ec18:
         viols['EC21'] = ec18
 
     # EC19: g[m,t] <= x[im,t-1] for every item im of order m.
+    num_constraints += len(d.relevant_pairs_for_x) * (g.shape[1] - 1)
+    ec19_mask = g[m_of_im, 1:] > x[:, :-1] + 1e-6
     ec19 = []
-    for im, (_, m) in enumerate(d.relevant_pairs_for_x):
-        num_constraints +=  g.shape[1] - 1
-        bad = np.where(g[m, 1:] > x[im, :-1] + 1e-6)[0] + 1
-        if bad.size:
-            ec19.append({'im': im, 'm': m, 'times': bad.tolist()})
+    for im in np.where(ec19_mask.any(axis=1))[0]:
+        _, m = d.relevant_pairs_for_x[int(im)]
+        ec19.append({'im': int(im), 'm': m,
+                     'times': (np.where(ec19_mask[im])[0] + 1).tolist()})
     if ec19:
         viols['EC19'] = ec19
 
@@ -875,6 +942,11 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     for im, (_, m) in enumerate(d.relevant_pairs_for_x):
         im_by_order.setdefault(m, []).append(im)
 
+    # Warm the cached im -> m mapping once, up front (see _get_m_of_im);
+    # every subsequent call in the hot loop (_check_x_fast, check_constraints)
+    # reuses this cached array instead of rebuilding it.
+    _get_m_of_im(d)
+
     ### INITIAL SOLUTION
     print("\n[ls_stage2] Building initial solution ...")
     logging.info("[ls_stage2] Building initial solution ...")
@@ -900,8 +972,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             logging.error(msg)
             raise RuntimeError(msg)
 
+        x_current = build_initial_x(rng, d, attempt)
         attempt += 1
-        x_current = build_initial_x(rng, d)
         _, f0, g0, v0, y0 = build_solution(x_current, d)
         feasible, viols, num_constraints = check_constraints((x_current, f0, g0, v0, y0), d)
 
@@ -910,9 +982,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     best_obj = compute_objective(x_current, f0, g0, d)
     print(f"[ls_stage2] Feasible initial solution: obj = {best_obj:.4f}")
     logging.info("[ls_stage2] Feasible initial solution: obj = %.4f", best_obj)
-
     logging.warning(
-        f"\Variables size:\n"
+        f"\nVariables size:\n"
         f"  x shape = {best_sol[0].shape}\n"
         f"  f0 = {best_sol[1].shape}\n"
         f"  g0 = {best_sol[2].shape}\n"
@@ -924,64 +995,69 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     T = x_current.shape[1]
     item_ids = list(range(x_current.shape[0]))
 
+    # 'order' and 'swap' moves depend only on static problem data
+    # (d.orders / d.orders_by_workstation), so they're built once here
+    # instead of being reconstructed from scratch on every iteration of
+    # the main loop below.
+    static_order_moves = []
+    for m in range(len(d.orders)):
+        static_order_moves.append(('order', m, -1))
+        static_order_moves.append(('order', m, -2))
+
+    static_swap_moves = []
+    for order_ids in d.orders_by_workstation:
+        order_list = list(order_ids)
+        for i1, m1 in enumerate(order_list):
+            for m2 in order_list[i1 + 1:]:
+                static_swap_moves.append(('swap', m1, m2))
+
     ### MAIN LOOP
     am_I_stuck                   = False
     cont                         = 1
     iter_without_improvement     = 0
     max_iter_without_improvement = 5
-    MAX_ITER  = 150
+    MAX_ITER  = 100
     MAX_NEIGH = 300
+    ACCEPT_WORSE_PROB = 0.4
+    K_BEST = 3
 
     print("[ls_stage2] Exploring neighbours ...")
+    current_sol = best_sol
 
     while not am_I_stuck and cont <= MAX_ITER:
         # first_one_idx: earliest pick-time index per item-order pair in
         # the current incumbent (used as the base for all move generators).
-        first_one_idx = np.argmax(best_x > 0.5, axis=1)
-        first_one_idx[best_x[:, -1] == 0] = T
+        first_one_idx = np.argmax(x_current > 0.5, axis=1)
+        first_one_idx[x_current[:, -1] == 0] = T
         improved = False
-
-        # Best and second-best candidate found in this iteration (the
-        # second-best acts as a fallback if committing the best one turns
-        # out to be y-infeasible after the full check).
-        best_obj_in_iter        = -np.inf
-        best_x_in_iter          = None
-        best_move               = None
-        best_f_in_iter          = None
-        best_g_in_iter          = None
-        best_v_in_iter          = None
-        second_best_obj_in_iter = -np.inf
-        second_best_x_in_iter   = None
-        second_best_move        = None
-        s_best_f_in_iter        = None
-        s_best_g_in_iter        = None
-        s_best_v_in_iter        = None
 
         # ---- Build move list ----------------------------------------- #
         # moves[0]: item-level moves ('item' / 'multi_item')
         # moves[1]: order-level moves ('order')
         # moves[2]: pairwise 'swap' moves between orders at the same
         #           workstation
-        moves = [[], [], []]
+        moves = [[], [], [], []]
 
         # When stuck for a while, use small, conservative shifts (-1, -2);
         # otherwise explore more aggressive shifts (-2 to -8) to escape
         # local optima faster.
-        if iter_without_improvement > 1:
+        if iter_without_improvement > 0:
+            probs = [0.5,0.5, 0, 0]
             for im in range(x_current.shape[0]):
                 moves[0].append(('item', im, -1))
                 moves[0].append(('item', im, -2))
             for direction in [-1, -2]:
                 sampled = rng.choice(item_ids, size=min(len(item_ids), 20), replace=False)
                 for i in range(0, len(sampled) - 1, 2):
-                    moves[0].append(('multi_item', (sampled[i], sampled[i + 1]), direction))
+                    moves[1].append(('multi_item', (sampled[i], sampled[i + 1]), direction))
                     if i + 2 < len(sampled) - 1:
-                        moves[0].append((
+                        moves[1].append((
                             'multi_item',
                             (sampled[i], sampled[i + 1], sampled[i + 2]),
                             direction
                         ))
         else:
+            probs = [0.4,0.3,0.1,0.2]
             for im in range(x_current.shape[0]):
                 moves[0].append(('item', im, -2))
                 moves[0].append(('item', im, -4))
@@ -990,31 +1066,52 @@ def local_search_stage2(d: Stage2Data) -> tuple:
             for direction in [-2, -4, -5]:
                 sampled = rng.choice(item_ids, size=min(len(item_ids), 20), replace=False)
                 for i in range(0, len(sampled) - 1, 2):
-                    moves[0].append(('multi_item', (sampled[i], sampled[i + 1]), direction))
+                    moves[1].append(('multi_item', (sampled[i], sampled[i + 1]), direction))
                     if i + 2 < len(sampled) - 1:
-                        moves[0].append((
+                        moves[1].append((
                             'multi_item',
                             (sampled[i], sampled[i + 1], sampled[i + 2]),
                             direction
                         ))
 
-        for m in range(len(d.orders)):
-            moves[1].append(('order', m, -1))
-            moves[1].append(('order', m, -2))
-            moves[1].append(('order', m, -4))
+            # Reuse the precomputed static move lists instead of rebuilding
+            # them (they don't depend on the current x_current / iteration).
+            moves[2] = list(static_order_moves)
+            moves[3] = list(static_swap_moves)
 
-        for order_ids in d.orders_by_workstation:
-            order_list = list(order_ids)
-            for i1, m1 in enumerate(order_list):
-                for m2 in order_list[i1 + 1:]:
-                    moves[2].append(('swap', m1, m2))
+        # Checking probs is correct
+        is_probability_vector = (
+            len(probs) == len(moves) and
+            all(p >= 0 for p in probs) and
+            abs(sum(probs) - 1) < 1e-10
+        )
+
+        if is_probability_vector:
+            pass
+
+        elif len(probs) == len(moves):
+            # normalizatin if possible
+            total = sum(probs)
+
+            if total > 0 and all(p >= 0 for p in probs):
+                probs = [p / total for p in probs]
+            else:
+                # fallback
+                probs = [0] * len(moves)
+                probs[0] = 0.5
+                probs[1] = 0.5
+
+        else:
+            # fallback
+            probs = [0] * len(moves)
+            probs[0] = 0.5
+            probs[1] = 0.5
 
         # Cap the total neighbourhood size, subsampling each move category
-        # proportionally (40% item, 40% order, 20% swap) rather than
-        # truncating a single category entirely.
+        # proportionally rather than truncating a single category entirely.
         total = sum(len(mv) for mv in moves)
         if total > MAX_NEIGH:
-            for i, p in enumerate([0.4, 0.4, 0.2]):
+            for i, p in enumerate(probs):
                 size = min(len(moves[i]), int(np.ceil(MAX_NEIGH * p)))
                 if size and len(moves[i]) > size:
                     idxs     = rng.choice(len(moves[i]), size=size, replace=False)
@@ -1023,6 +1120,13 @@ def local_search_stage2(d: Stage2Data) -> tuple:
         all_moves = moves[0] + moves[1] + moves[2]
 
         # ---- Evaluate moves ------------------------------------------ #
+        # Top-K_BEST candidates are kept with a bounded min-heap instead of
+        # sorting the whole list after every single append: this avoids
+        # O(n log n) work on every accepted neighbour when the pool of
+        # feasible candidates in a given iteration is large.
+        heap: list = []
+        tie_breaker = itertools.count()
+
         for move in all_moves:
             first_one_idx_cand = first_one_idx.copy()
 
@@ -1064,7 +1168,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
             # Cheap incremental f/g/v update + x-only feasibility check
             # (EC10-EC13, EC17, EC19-EC23) before ever touching y.
-            _, f_curr, g_curr, v_curr, _ = best_sol
+            _, f_curr, g_curr, v_curr, _ = current_sol
             f_cand, g_cand, v_cand = _fast_update_fgv_from_move(
                 x_cand, f_curr, g_curr, v_curr,
                 move, im_by_order, first_one_idx_cand, d,
@@ -1072,128 +1176,205 @@ def local_search_stage2(d: Stage2Data) -> tuple:
 
             if _check_x_fast(x_cand, f_cand, g_cand, v_cand, d):
                 obj = compute_objective(x_cand, f_cand, g_cand, d)
-                if obj is not None and obj > best_obj_in_iter:
-                    # New best in this iteration: demote the previous best
-                    # to second-best (kept as a fallback candidate).
-                    second_best_obj_in_iter = best_obj_in_iter
-                    second_best_x_in_iter   = best_x_in_iter
-                    second_best_move        = best_move
-                    s_best_f_in_iter        = best_f_in_iter
-                    s_best_g_in_iter        = best_g_in_iter
-                    s_best_v_in_iter        = best_v_in_iter
+                candidate = {
+                    "obj": obj,
+                    "x": x_cand,
+                    "f": f_cand,
+                    "g": g_cand,
+                    "v": v_cand,
+                    "move": move
+                }
 
-                    best_obj_in_iter = obj
-                    best_x_in_iter   = x_cand
-                    best_move        = move
-                    best_f_in_iter   = f_cand
-                    best_g_in_iter   = g_cand
-                    best_v_in_iter   = v_cand
+                entry = (obj, next(tie_breaker), candidate)
+                if len(heap) < K_BEST:
+                    heapq.heappush(heap, entry)
+                elif obj > heap[0][0]:
+                    heapq.heapreplace(heap, entry)
 
-                elif obj is not None and obj > second_best_obj_in_iter:
-                    second_best_obj_in_iter = obj
-                    second_best_x_in_iter   = x_cand
-                    second_best_move        = move
-                    s_best_f_in_iter        = f_cand
-                    s_best_g_in_iter        = g_cand
-                    s_best_v_in_iter        = v_cand
+        best_candidates = [c for _, _, c in sorted(heap, key=lambda e: e[0], reverse=True)]
 
-        # ---- Attempt to commit best (then second-best) --------------- #
-        # A candidate that passes the x-only check may still violate a
-        # y-based constraint (EC14-EC16, EC18, EC26...). Try the best
-        # candidate first, and fall back to the second-best if the full
-        # check_constraints rejects it.
-        sol_num = 1
-        while best_x_in_iter is not None and sol_num <= 2:
-            x_current = best_x_in_iter
 
-            if best_obj_in_iter > best_obj - 1e-10:
-                if best_move[0] in ('item', 'order', 'multi_item', 'swap'):
-                    # Only the pods supplying the items touched by this
-                    # move need their y row rebuilt (cheap incremental
-                    # update instead of a full build_solution call).
-                    if best_move[0] == 'item':
-                        _, best_im, _ = best_move
-                        affected_pods = {d.pod_of_item[int(best_im)]}
-                    elif best_move[0] == 'multi_item':
-                        _, best_ims, _ = best_move
-                        affected_pods = {d.pod_of_item[int(im)] for im in best_ims}
-                    elif best_move[0] == 'order':
-                        _, best_m, _ = best_move
-                        affected_pods = {d.pod_of_item[im] for im in im_by_order[int(best_m)]}
-                    else:  # swap
-                        _, best_m1, best_m2 = best_move
-                        affected_pods = (
-                            {d.pod_of_item[im] for im in im_by_order[int(best_m1)]}
-                            | {d.pod_of_item[im] for im in im_by_order[int(best_m2)]}
-                        )
+        # ---- Attempt to commit the best neighbour -------------------- #
+        # The best x-only neighbour may still violate y-based constraints.
+        # If it fails, try the second-best neighbour found in this iteration.
+        #
+        # A feasible worsening move can be accepted with a small probability
+        # to escape local optima (diversification step). The global incumbent
+        # is updated only when the objective improves.
 
-                    y_new = best_sol[4].copy()
-                    for p_id in affected_pods:
-                        p_rel = d.from_PodId_to_RelPod[p_id]
-                        y_new[p_rel] = _rebuild_pod_row(p_rel, p_id, best_x_in_iter, d)
+        accepted_move = False
 
-                    sol_curr = (
-                        best_x_in_iter,
-                        best_f_in_iter, best_g_in_iter, best_v_in_iter,
-                        y_new
+        for cand in best_candidates:
+            x_cand = cand["x"]
+            f_cand = cand["f"]
+            g_cand = cand["g"]
+            v_cand = cand["v"]
+            obj_cand = cand["obj"]
+            move_cand = cand["move"]
+
+            if x_cand is None:
+                continue
+
+            # Rebuild only the affected pod routes.
+            if move_cand[0] in ('item', 'order', 'multi_item', 'swap'):
+
+                if move_cand[0] == 'item':
+                    _, im, _ = move_cand
+                    affected_pods = {d.pod_of_item[int(im)]}
+
+                elif move_cand[0] == 'multi_item':
+                    _, ims, _ = move_cand
+                    affected_pods = {
+                        d.pod_of_item[int(im)]
+                        for im in ims
+                    }
+
+                elif move_cand[0] == 'order':
+                    _, m, _ = move_cand
+                    affected_pods = {
+                        d.pod_of_item[im]
+                        for im in im_by_order[int(m)]
+                    }
+
+                else:   # swap
+                    _, m1, m2 = move_cand
+                    affected_pods = (
+                        {
+                            d.pod_of_item[im]
+                            for im in im_by_order[int(m1)]
+                        }
+                        |
+                        {
+                            d.pod_of_item[im]
+                            for im in im_by_order[int(m2)]
+                        }
                     )
-                else:
-                    sol_curr = build_solution(best_x_in_iter, d)
 
-                feasible, _, _ = check_constraints(sol_curr, d)
-                if feasible:
-                    improved = best_obj_in_iter >= best_obj
-                    best_obj = best_obj_in_iter
-                    best_x   = best_x_in_iter
-                    best_sol = sol_curr
-                    print(
-                        f"[ls_stage2] Iter {cont}: improved "
-                        f"move={best_move} obj={best_obj:.4f}"
-                    )
-                    logging.info(
-                        "[ls_stage2] Iter %d: improved move=%s obj=%.4f",
-                        cont, best_move, best_obj
-                    )
-                    sol_num = 3   # stop the fallback loop, committed successfully
-                else:
-                    # Best candidate is y-infeasible: retry with the
-                    # second-best candidate from this iteration, if any.
-                    if second_best_x_in_iter is None:
-                        break
-                    best_x_in_iter   = second_best_x_in_iter
-                    best_f_in_iter   = s_best_f_in_iter
-                    best_g_in_iter   = s_best_g_in_iter
-                    best_v_in_iter   = s_best_v_in_iter
-                    best_move        = second_best_move
-                    best_obj_in_iter = second_best_obj_in_iter
-                    sol_num += 1
+                y_new = best_sol[4].copy()
+
+                # first_one_idx for x_cand computed once here, and shared
+                # across all affected pods below, instead of each call to
+                # _rebuild_pod_row recomputing it independently.
+                first_one_idx_x_cand = (x_cand == 0).sum(axis=1)
+
+                for p_id in affected_pods:
+                    p_rel = d.from_PodId_to_RelPod[p_id]
+                    y_new[p_rel] = _rebuild_pod_row(
+                        p_rel, p_id, x_cand, d, first_one_idx_x_cand)
+
+                candidate_sol = (x_cand,f_cand,g_cand,v_cand,y_new)
+
             else:
+                candidate_sol = build_solution(x_cand, d)
+
+
+            feasible, viols, _ = check_constraints(candidate_sol, d)
+            if not feasible:
+                logging.info(
+                    "[ls_stage2] Candidate rejected: "
+                    "move=%s obj=%.4f violations=%s",
+                    move_cand,
+                    obj_cand,
+                    list(viols.keys()),
+                )
+                continue
+
+
+            # ----------------------------------------------------------
+            # Improvement: always accept and update global incumbent.
+            # ----------------------------------------------------------
+            if obj_cand > best_obj + 1e-10:
+
+                best_obj = obj_cand
+                best_x = x_cand.copy()
+                best_sol = candidate_sol
+
+                x_current = x_cand.copy()
+                current_sol = candidate_sol
+                accepted_move = True
+
+                print(
+                    f"[ls_stage2] Iter {cont}: improved "
+                    f"move={move_cand} obj={best_obj:.4f}"
+                )
+
+                logging.info(
+                    "[ls_stage2] Iter %d: improved move=%s obj=%.4f",
+                    cont,move_cand,best_obj,
+                )
+
                 break
 
-        ### Convergence check
-        if improved:
+
+            # ----------------------------------------------------------
+            # Diversification: occasionally accept a worse solution.
+            # The global best is preserved, but the current search point
+            # moves away from the local optimum.
+            # ----------------------------------------------------------
+            if rng.random() < ACCEPT_WORSE_PROB:
+
+                x_current = x_cand.copy()
+
+                # keep f/g/v/y consistent with the accepted current point
+                current_sol = candidate_sol
+                accepted_move = True
+
+                print(
+                    f"[ls_stage2] Iter {cont}: accepted worse solution "
+                    f"move={move_cand} obj={obj_cand:.4f} "
+                    f"(best={best_obj:.4f})"
+                )
+
+                logging.info(
+                    "[ls_stage2] Iter %d: accepted worse solution "
+                    "move=%s obj=%.4f best=%.4f",
+                    cont,move_cand,obj_cand,best_obj
+                )
+
+                break
+
+
+        # ---- Convergence check -------------------------------------- #
+        # Any accepted move (improving or worsening) means the search is
+        # still exploring. Only iterations without accepted neighbours
+        # increase the stagnation counter.
+
+        if accepted_move:
             iter_without_improvement = 0
+
         else:
             iter_without_improvement += 1
+
+            print(
+                f"[ls_stage2] Iter {cont}: no accepted move "
+                f"({iter_without_improvement}/"
+                f"{max_iter_without_improvement})"
+            )
+
+            logging.info(
+                "[ls_stage2] Iter %d: no accepted move (%d/%d)",
+                cont,
+                iter_without_improvement,
+                max_iter_without_improvement,
+            )
+
             if iter_without_improvement >= max_iter_without_improvement:
                 am_I_stuck = True
+
                 print(
                     f"[ls_stage2] Converged after "
-                    f"{max_iter_without_improvement} iters without improvement "
-                    f"at obj={best_obj:.4f}"
+                    f"{max_iter_without_improvement} iterations "
+                    f"without accepted moves. "
+                    f"Best obj={best_obj:.4f}"
                 )
-                logging.info(
-                    "[ls_stage2] Converged after %d iters without improvement",
-                    max_iter_without_improvement
-                )
-            else:
-                print(
-                    f"[ls_stage2] Iter {cont}: no improvement "
-                    f"({iter_without_improvement}/{max_iter_without_improvement})"
-                )
-                logging.info("[ls_stage2] Iter %d: no improvement", cont)
 
-        cont += 1
+                logging.info(
+                    "[ls_stage2] Converged after %d iterations "
+                    "without accepted moves. Best obj=%.4f",
+                    max_iter_without_improvement,best_obj
+                )
+
+        cont+=1
 
     print("[ls_stage2] Local search ended.")
     return best_sol

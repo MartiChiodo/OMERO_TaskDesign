@@ -27,7 +27,7 @@ def check_constraints(
     y: np.ndarray,
     z: np.ndarray,
     fixed_orders: dict[int, int] | None = None,
-) -> bool:
+    ) -> bool:
     """
     Verify that a candidate (x, y, z) solution satisfies all Stage-1 constraints.<
     """
@@ -76,9 +76,55 @@ def check_constraints(
     return True, num_constraints
 
 
-def compute_objective(y: np.ndarray):
-    """Stage-1 objective: total number of (workstation, pod) visits, i.e. sum(y)."""
-    return y.sum()
+import numpy as np
+
+
+def _get_ws_pod_distance_matrix(state) -> np.ndarray:
+    """
+    Cached Manhattan-distance matrix between every workstation and every pod
+    storage location, shape (n_workstations, n_pods).
+
+    Computed once per `state` (positions never change during the local
+    search), instead of calling cell2coord() and recomputing the distance
+    for every (w_id, p_id) pair on every single call to compute_objective —
+    which, for n_ws x n_pods = 4 x 300 = 1200 pairs, is called many times
+    per local-search run.
+    """
+    cached = getattr(state, "_ws_pod_dist_matrix", None)
+    if cached is not None:
+        return cached
+
+    ws_coords = np.array([
+        state.warehouse.cell2coord(ws.position)
+        for ws in state.warehouse.workstations
+    ])
+    pod_coords = np.array([
+        state.warehouse.cell2coord(p.storage_location)
+        for p in state.warehouse.pods
+    ])
+
+    # Manhattan distance via broadcasting:
+    # ws_coords[:, None, :] has shape (n_ws, 1, 2)
+    # pod_coords[None, :, :] has shape (1, n_pods, 2)
+    # -> abs-diff-sum over the last axis gives (n_ws, n_pods)
+    dist_matrix = np.abs(
+        ws_coords[:, None, :] - pod_coords[None, :, :]
+    ).sum(axis=2)
+
+    state._ws_pod_dist_matrix = dist_matrix
+    return dist_matrix
+
+
+def compute_objective(y: np.ndarray, state) -> float:
+    """
+    Stage-1 objective: total number of (workstation, pod) visits, i.e.
+    sum(y), plus a small penalty proportional to the Manhattan distance of
+    each visit.
+    """
+    num_visits = float(y.sum())
+    dist_matrix = _get_ws_pod_distance_matrix(state)
+    distance_penalty = float((y * dist_matrix).sum())
+    return num_visits + 0.01 * distance_penalty
 
 
 def get_fixed_orders(orders, state, n_w: int) -> dict[int, int]:
@@ -202,66 +248,46 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
 def local_search_stage1(
     orders, orders_items, relevant_pairs_for_x,
     OptManager, state, n_w: int,
-) -> tuple[dict, dict]:
-    """
-    Local search for Stage-1: order-to-workstation and item-to-pod assignment.
-
-    Minimises the number of distinct (workstation, pod) pairs — equivalent
-    to minimising sum(y), the Stage-1 objective — while respecting all
-    constraints, including EC9 (orders already opened at a workstation stay
-    pinned there).
-
-    Neighbourhood moves explored at each iteration:
-    - 'swap'   : exchange the workstations of two (non-fixed) orders.
-    - 'moveto' : move a single (non-fixed) order to a different workstation.
-    - 'repod'  : change the pod used to retrieve a given item-order pair.
-    """
+    ):
     n_orders = len(orders)
-    rng      = np.random.default_rng(seed=42)
+    rng = np.random.default_rng(seed=42)
 
-    # Orders already opened at a workstation (EC3): fixed, cannot be moved
     fixed_orders = get_fixed_orders(orders, state, n_w)
     fixed_z = set(fixed_orders.keys())
 
-    ### INITIAL SOLUTION
     print("\n[ls_stage1] Building initial solution ...")
-    logging.info("\n[ls_stage1] Building initial solution ...")
+    logging.info("[ls_stage1] Building initial solution ...")
 
     MAX_INIT_ATTEMPTS = 10
 
-    z0, x0, y0 = build_initial_solution(orders, orders_items, relevant_pairs_for_x,
-                                        OptManager, state, rng)
     attempt = 1
+    while True:
+        z0, x0, y0 = build_initial_solution(
+            orders, orders_items, relevant_pairs_for_x,
+            OptManager, state, rng
+        )
 
-    ok, num_constraints = check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
-                                 x0, y0, z0, fixed_orders)
+        ok, num_constraints = check_constraints(
+            orders, orders_items, OptManager,
+            relevant_pairs_for_x, x0, y0, z0, fixed_orders
+        )
 
-    while not ok:
+        if ok:
+            break
+
         if attempt >= MAX_INIT_ATTEMPTS:
-            msg = (f"[ls_stage1] Failed to find a feasible initial solution "
-                   f"after {MAX_INIT_ATTEMPTS} attempts.")
-            print(msg)
-            logging.error(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError("[ls_stage1] Failed to build feasible initial solution")
 
         attempt += 1
-        print(f"[ls_stage1] Infeasible initial solution, retrying "
-              f"(attempt {attempt}/{MAX_INIT_ATTEMPTS}) ...")
-        logging.info("[ls_stage1] Infeasible initial solution, retrying (attempt %d/%d)",
-                     attempt, MAX_INIT_ATTEMPTS)
-        z0, x0, y0 = build_initial_solution(orders, orders_items, relevant_pairs_for_x,
-                                            OptManager, state, rng)
-
-        ok, num_constraints = check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
-                                 x0, y0, z0, fixed_orders)
-
+        logging.info("[ls_stage1] Retry initial solution (%d/%d)", attempt, MAX_INIT_ATTEMPTS)
 
     best_sol = (x0, z0, y0)
-    best_obj = compute_objective(y0)
-    print(f"[ls_stage1] Feasible initial solution found at attempt "
-          f"{attempt}/{MAX_INIT_ATTEMPTS}: obj = {best_obj:.4f}")
-    logging.info("[ls_stage1] Feasible initial solution: obj = %.4f", best_obj)
+    best_obj = compute_objective(y0, state)
 
+    current_sol = best_sol
+    current_obj = best_obj
+
+    logging.info("[ls_stage1] Initial objective = %.4f", best_obj)
     logging.warning(
             f"\nVariables size:\n"
             f"  shape x = {x0.shape}\n"
@@ -271,98 +297,113 @@ def local_search_stage1(
         )
 
     ### MAIN LOOP
-    MAX_ITER           = 50
-    MAX_NEIGH          = 600
-    max_no_improve     = 3
-    iter_without_improvement = 0
-    am_I_stuck         = False
-    cont               = 1
 
-    print("[ls_stage1] Exploring neighbours ...")
+    MAX_ITER = 100
+    MAX_NEIGH = 600
+    max_no_improve = 10
+    ACCEPT_WORSE_PROB = 0.4
+
+    iter_without_improvement = 0
+    cont = 1
+    am_I_stuck = False
 
     while cont <= MAX_ITER and not am_I_stuck:
-        best_iter_obj  = np.inf
-        best_iter_move = None
-        best_iter_sol  = None
 
-        # Generate candidate moves. Only non-fixed orders (not in fixed_z)
-        # are eligible for 'swap' and 'moveto' moves, so that EC9 orders
-        # never leave their pinned workstation.
+        best_iter_sol = None
+        best_iter_move = None
+        best_iter_obj = np.inf
+
+        # Generating a neighborhoud
+
         moves = []
 
-        # Swap workstations between 2 (non-fixed) orders
         order_list = [m for m in range(n_orders) if m not in fixed_z]
         pairs = [(order_list[i], order_list[j])
                  for i in range(len(order_list))
                  for j in range(i + 1, len(order_list))]
-        moves += [('swap', m1, m2) for m1, m2 in pairs]
+        moves += [('swap', a, b) for a, b in pairs]
 
-        # Change workstation of a (non-fixed) order
         for m in order_list:
             for w in range(n_w):
                 moves.append(('moveto', m, w))
 
-        # Re-pod moves: change which pod supplies a given item-order pair
         for im, (i, _) in enumerate(relevant_pairs_for_x):
-            pods = OptManager.pod_indices_by_sku[i]
-            for p in pods:
+            for p in OptManager.pod_indices_by_sku[i]:
                 moves.append(('repod', im, p))
 
         rng.shuffle(moves)
-        moves = moves[:min(MAX_NEIGH + 1, len(moves))]
+        moves = moves[:min(MAX_NEIGH, len(moves))]
 
         for move in moves:
-            if move[0] == 'swap':
-                sol_cand = _make_swap(best_sol, move[1], move[2], relevant_pairs_for_x)
-            elif move[0] == 'moveto':
-                sol_cand = _make_moveto(best_sol, move[1], move[2], relevant_pairs_for_x)
-            elif move[0] == 'repod':
-                sol_cand = _make_repod(best_sol, move[1], move[2], relevant_pairs_for_x)
+            if move[0] == "swap":
+                cand = _make_swap(current_sol, move[1], move[2], relevant_pairs_for_x)
+            elif move[0] == "moveto":
+                cand = _make_moveto(current_sol, move[1], move[2], relevant_pairs_for_x)
             else:
+                cand = _make_repod(current_sol, move[1], move[2], relevant_pairs_for_x)
+
+            x, z, y = cand
+            ok, _ = check_constraints(
+                orders, orders_items, OptManager,
+                relevant_pairs_for_x, x, y, z, fixed_orders
+            )
+
+            if not ok:
                 continue
 
-            x, z, y = sol_cand
-            ok, _ = check_constraints(orders, orders_items, OptManager, relevant_pairs_for_x,
-                                  x, y, z, fixed_orders)
-            if ok:
-                obj = compute_objective(y)
-                if obj < best_iter_obj:
-                    best_iter_obj  = obj
-                    best_iter_sol  = sol_cand
-                    best_iter_move = move
+            obj = compute_objective(y, state)
+            if obj < best_iter_obj:
+                best_iter_obj = obj
+                best_iter_sol = cand
+                best_iter_move = move
 
-        if best_iter_sol is not None:
-            if best_iter_obj < best_obj:
-                best_sol = best_iter_sol
-                best_obj = best_iter_obj
-                print(f"[ls_stage1] Iter {cont}: Improved with move "
-                      f"{best_iter_move} → {best_obj:.4f}")
-                logging.info("[ls_stage1] Iter %i: Improved with move %s → %.4f",
-                             cont, best_iter_move, best_obj)
-                iter_without_improvement = 0
+        if best_iter_sol is None:
+            logging.info("[ls_stage1] Iter %d: NO FEASIBLE NEIGHBOUR", cont)
+            print(f"[ls_stage1] Iter {cont}: NO FEASIBLE NEIGHBOUR")
+            iter_without_improvement += 1
+
+        elif best_iter_obj < best_obj:
+            current_sol = best_iter_sol
+            current_obj = best_iter_obj
+            best_sol = best_iter_sol
+            best_obj = best_iter_obj
+            iter_without_improvement = 0
+            logging.info("[ls_stage1] Iter %d: IMPROVEMENT move=%s obj=%.4f",
+                         cont, best_iter_move, best_obj)
+            print(f"[ls_stage1] Iter {cont}: IMPROVEMENT move={best_iter_move} obj={best_obj}")
+
+        elif best_iter_obj == current_obj:
+            current_sol = best_iter_sol
+            current_obj = best_iter_obj
+            iter_without_improvement += 1
+            logging.info("[ls_stage1] Iter %d: PLATEAU move=%s obj=%.4f",
+                         cont, best_iter_move, current_obj)
+            print(f"[ls_stage1] Iter {cont}: PLATEAU move={best_iter_move} obj={current_obj}")
+
+        else:
+            if rng.random() < ACCEPT_WORSE_PROB:
+                current_sol = best_iter_sol
+                current_obj = best_iter_obj
+                logging.info("[ls_stage1] Iter %d: WORSE ACCEPTED move=%s obj=%.4f best=%.4f",
+                             cont, best_iter_move, current_obj, best_obj)
+                print(f"[ls_stage1] Iter {cont}: WORSE ACCEPTED move={best_iter_move} obj={current_obj} best={best_obj}")
             else:
-                if best_iter_obj == best_obj:
-                    # Moving along a plateau (same objective, different solution)
-                    best_sol = best_iter_sol
-                    best_obj = best_iter_obj
+                logging.info("[ls_stage1] Iter %d: WORSE REJECTED neigh=%.4f current=%.4f best=%.4f",
+                             cont, best_iter_obj, current_obj, best_obj)
+                print(f"[ls_stage1] Iter {cont}: WORSE REJECTED move={best_iter_move} obj={current_obj} best={best_obj}")
+            iter_without_improvement += 1
 
-                iter_without_improvement += 1
-                if iter_without_improvement >= max_no_improve:
-                    am_I_stuck = True
-                    print(f"[ls_stage1] Converged after {max_no_improve} "
-                          f"iters without improvement at {best_obj:.4f}")
-                    logging.info("[ls_stage1] Converged after %i iters without improvement",
-                                 max_no_improve)
-                else:
-                    print(f"[ls_stage1] Iter {cont}: No improvement "
-                          f"({iter_without_improvement}/{max_no_improve})")
-                    logging.info("[ls_stage1] Iter %i: No improvement", cont)
+        if iter_without_improvement >= max_no_improve:
+            logging.info("[ls_stage1] Converged after %d iterations without imprevement.", iter_without_improvement)
+            print(f"[ls_stage1] Converged after {iter_without_improvement} iterations without imprevement.")
+            am_I_stuck = True
 
         cont += 1
 
-    print(f"[ls_stage1] Final obj = {best_obj}")
     x, z, y = best_sol
+    logging.info("[ls_stage1] Final objective = %.4f", best_obj)
     return x, z
+
 
 
 # ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ from scripts.opt.convert_OptSol_to_SimObj import convert_OptSol_to_SimObj
 
 
 ### CONSTANTS
-OBATCH_SIZE = 300   # max orders pulled from the backlog per optimisation cycle
+OBATCH_SIZE = 250   # max orders pulled from the backlog per optimisation cycle
 TIME_UNIT   = 20    # seconds per discrete time period
 N_TIME      = 100    # number of discrete periods in the scheduling horizon
 
@@ -38,6 +38,20 @@ class OptManager:
     incoming_arc_idx : dict[tuple, list[int]]  Arc indices arriving at each node.
     outgoing_arc_idx : dict[tuple, list[int]]  Arc indices leaving each node.
     pod_indices_by_sku : dict[int, list[int]]  Pod indices that stock each SKU.
+    arc_lookup       : dict[tuple, list]       (src_loc,dst_loc) -> sorted-by-
+                                                departure list of travel arcs.
+                                                Static — built once here since
+                                                it only depends on the network
+                                                topology, not on which pods a
+                                                given Stage-2 call selects.
+                                                Stage2Data filters/reuses this
+                                                instead of rebuilding it from
+                                                scratch on every call.
+    idle_arc_id      : dict[tuple, int]        (loc, t) -> arc_id of the
+                                                self-loop ("stay in place")
+                                                arc departing that node. O(1)
+                                                alternative to scanning
+                                                outgoing_arc_idx for it.
     """
 
     def __init__(self, warehouse: Warehouse) -> None:
@@ -77,6 +91,31 @@ class OptManager:
         for idx, (src, dst) in enumerate(self.all_arcs):
             self.outgoing_arc_idx[src].append(idx)
             self.incoming_arc_idx[dst].append(idx)
+
+        # Precompute direct travel arcs grouped by (src_loc, dst_loc),
+        # sorted by departure time. This enables O(log n) "latest arc
+        # arriving within a deadline" lookups via bisect (see the stage-2
+        # local search's _find_best_arc), instead of scanning per
+        # (location, time) node. Built once here — purely a function of
+        # the static network topology, not of any particular
+        # optimisation cycle's pod/order selection — so Stage2Data no
+        # longer needs to rebuild it (filtered) on every single call.
+        n_travel = len(self.travelling_arcs)
+        arc_lookup: dict[tuple, list] = defaultdict(list)
+        for arc_id, (src, dst) in enumerate(self.travelling_arcs):
+            key = (src[0], dst[0])
+            arc_lookup[key].append((src[1], dst[1], arc_id, (src, dst)))
+        for key in arc_lookup:
+            arc_lookup[key].sort(key=lambda z: z[0])
+        self.arc_lookup: dict[tuple, list] = dict(arc_lookup)
+
+        # O(1) lookup of the "stay in place" (idle) arc departing from a
+        # given (location, time) node — avoids scanning outgoing_arc_idx
+        # just to find the single self-loop arc, in the hot per-pod
+        # routing loops of Stage 2 (add_idle_arcs).
+        self.idle_arc_id: dict[tuple, int] = {}
+        for offset, (src, dst) in enumerate(self.idle_arcs):
+            self.idle_arc_id[src] = n_travel + offset
 
         logging.info(
             "[OptManager] Network ready: %d nodes, %d travelling arcs, %d idle arcs.",

@@ -919,7 +919,7 @@ def _sample_sku(gen, N):
     Sample a SKU index from a truncated normal distribution over [0, N).
     """
     while True:
-        id_s = int(gen.normal(0.5 * N, N/6))
+        id_s = int(gen.normal(0.5 * N, N/4))
         if 0 <= id_s < N:
             return id_s
   

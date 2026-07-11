@@ -1,0 +1,186 @@
+2026-07-11 18:42:59 INFO: Warehouse initialization | grid=30x30, physical=63x35, num_skus=13500, num_robots=40, num_ws=12
+2026-07-11 18:43:00 INFO: Warehouse initialized | 900 pods  (average number of skus per pod = 20.93), 12 workstations, 40 robots
+2026-07-11 18:43:00 INFO: [OptManager] Building time-space network ...
+2026-07-11 18:43:06 INFO: [OptManager] Network ready: 91200 nodes, 2035798 travelling arcs, 90288 idle arcs.
+2026-07-11 18:43:06 INFO: 
+=============================================
+2026-07-11 18:43:06 INFO:   START SIMULATION  {TIME HORIZON = 01:00:00}
+2026-07-11 18:43:06 DEBUG:    EVENT NUM 1     current_time = 00:00:00   ARRIVAL_ORDER         [queue size = 1]
+2026-07-11 18:43:06 DEBUG: Order 0 arrived: items_required = [9018].     [orders_in_system = 1]
+2026-07-11 18:43:06 DEBUG: Order 1 arrived: items_required = [1621, 7453].     [orders_in_system = 2]
+2026-07-11 18:43:06 DEBUG: Order 2 arrived: items_required = [11477, 3676].     [orders_in_system = 3]
+2026-07-11 18:43:06 DEBUG: Order 3 arrived: items_required = [10118, 6633, 9061].     [orders_in_system = 4]
+2026-07-11 18:43:06 DEBUG: Order 4 arrived: items_required = [8773, 8530].     [orders_in_system = 5]
+2026-07-11 18:43:06 DEBUG: Order 5 arrived: items_required = [8465, 11103, 8478, 1137].     [orders_in_system = 6]
+2026-07-11 18:43:06 DEBUG: Order 6 arrived: items_required = [9546].     [orders_in_system = 7]
+2026-07-11 18:43:06 DEBUG: Order 7 arrived: items_required = [10536, 5877, 5751].     [orders_in_system = 8]
+2026-07-11 18:43:06 DEBUG: Order 8 arrived: items_required = [6642].     [orders_in_system = 9]
+2026-07-11 18:43:06 DEBUG: Order 9 arrived: items_required = [13475, 4546].     [orders_in_system = 10]
+2026-07-11 18:43:06 DEBUG: Order 10 arrived: items_required = [11841].     [orders_in_system = 11]
+2026-07-11 18:43:06 DEBUG: Order 11 arrived: items_required = [4533, 4509, 4880, 11764, 12915].     [orders_in_system = 12]
+2026-07-11 18:43:06 DEBUG: Order 12 arrived: items_required = [3300].     [orders_in_system = 13]
+2026-07-11 18:43:06 DEBUG: Order 13 arrived: items_required = [7337, 1478].     [orders_in_system = 14]
+2026-07-11 18:43:06 DEBUG: Order 14 arrived: items_required = [1657, 4277].     [orders_in_system = 15]
+2026-07-11 18:43:06 DEBUG: Order 15 arrived: items_required = [7749, 7778].     [orders_in_system = 16]
+2026-07-11 18:43:06 DEBUG: Order 16 arrived: items_required = [7703, 5150, 12446, 9513].     [orders_in_system = 17]
+2026-07-11 18:43:06 DEBUG: Order 17 arrived: items_required = [7841, 3184, 9843, 188].     [orders_in_system = 18]
+2026-07-11 18:43:06 DEBUG: Order 18 arrived: items_required = [9064].     [orders_in_system = 19]
+2026-07-11 18:43:06 DEBUG: Order 19 arrived: items_required = [4657].     [orders_in_system = 20]
+2026-07-11 18:43:06 DEBUG: Order 20 arrived: items_required = [5715, 5155].     [orders_in_system = 21]
+2026-07-11 18:43:06 DEBUG: Order 21 arrived: items_required = [6880, 5710].     [orders_in_system = 22]
+2026-07-11 18:43:06 DEBUG: Order 22 arrived: items_required = [6864].     [orders_in_system = 23]
+2026-07-11 18:43:06 DEBUG: Order 23 arrived: items_required = [10786, 5407].     [orders_in_system = 24]
+2026-07-11 18:43:06 DEBUG: Order 24 arrived: items_required = [11442, 4159].     [orders_in_system = 25]
+2026-07-11 18:43:06 DEBUG: Order 25 arrived: items_required = [4844].     [orders_in_system = 26]
+2026-07-11 18:43:06 DEBUG: Order 26 arrived: items_required = [2688].     [orders_in_system = 27]
+2026-07-11 18:43:06 DEBUG: Order 27 arrived: items_required = [901].     [orders_in_system = 28]
+2026-07-11 18:43:06 DEBUG: Order 28 arrived: items_required = [5050, 7908].     [orders_in_system = 29]
+2026-07-11 18:43:06 DEBUG: Order 29 arrived: items_required = [9120, 10382].     [orders_in_system = 30]
+2026-07-11 18:43:06 DEBUG: Order 30 arrived: items_required = [4238].     [orders_in_system = 31]
+2026-07-11 18:43:06 DEBUG: Order 31 arrived: items_required = [848, 5561].     [orders_in_system = 32]
+2026-07-11 18:43:06 DEBUG: Order 32 arrived: items_required = [2760].     [orders_in_system = 33]
+2026-07-11 18:43:06 DEBUG: Order 33 arrived: items_required = [6251].     [orders_in_system = 34]
+2026-07-11 18:43:06 DEBUG: Order 34 arrived: items_required = [6466, 5392].     [orders_in_system = 35]
+2026-07-11 18:43:06 DEBUG: Order 35 arrived: items_required = [7920, 8823].     [orders_in_system = 36]
+2026-07-11 18:43:06 DEBUG: Order 36 arrived: items_required = [6617, 3999, 1409].     [orders_in_system = 37]
+2026-07-11 18:43:06 DEBUG: Order 37 arrived: items_required = [6248].     [orders_in_system = 38]
+2026-07-11 18:43:06 DEBUG: Order 38 arrived: items_required = [3025, 4559, 6211].     [orders_in_system = 39]
+2026-07-11 18:43:06 DEBUG: Order 39 arrived: items_required = [4510].     [orders_in_system = 40]
+2026-07-11 18:43:06 DEBUG: Order 40 arrived: items_required = [4309, 9092].     [orders_in_system = 41]
+2026-07-11 18:43:06 DEBUG: Order 41 arrived: items_required = [9393, 6919].     [orders_in_system = 42]
+2026-07-11 18:43:06 DEBUG: Order 42 arrived: items_required = [7106].     [orders_in_system = 43]
+2026-07-11 18:43:06 DEBUG: Order 43 arrived: items_required = [4553, 8869, 8325].     [orders_in_system = 44]
+2026-07-11 18:43:06 DEBUG: Order 44 arrived: items_required = [4181].     [orders_in_system = 45]
+2026-07-11 18:43:06 DEBUG: Order 45 arrived: items_required = [9282, 10037].     [orders_in_system = 46]
+2026-07-11 18:43:06 DEBUG: Order 46 arrived: items_required = [1221, 7365].     [orders_in_system = 47]
+2026-07-11 18:43:06 DEBUG: Order 47 arrived: items_required = [6418, 7982].     [orders_in_system = 48]
+2026-07-11 18:43:06 DEBUG: Order 48 arrived: items_required = [3603, 1901, 6581].     [orders_in_system = 49]
+2026-07-11 18:43:06 DEBUG: Order 49 arrived: items_required = [7564].     [orders_in_system = 50]
+2026-07-11 18:43:06 DEBUG: Order 50 arrived: items_required = [5659].     [orders_in_system = 51]
+2026-07-11 18:43:06 DEBUG: Order 51 arrived: items_required = [2438].     [orders_in_system = 52]
+2026-07-11 18:43:06 DEBUG: Order 52 arrived: items_required = [5786].     [orders_in_system = 53]
+2026-07-11 18:43:06 DEBUG: Order 53 arrived: items_required = [8205].     [orders_in_system = 54]
+2026-07-11 18:43:06 DEBUG: Order 54 arrived: items_required = [5719, 4117].     [orders_in_system = 55]
+2026-07-11 18:43:06 DEBUG: Order 55 arrived: items_required = [5700].     [orders_in_system = 56]
+2026-07-11 18:43:06 DEBUG: Order 56 arrived: items_required = [12987, 10157, 5738].     [orders_in_system = 57]
+2026-07-11 18:43:06 DEBUG: Order 57 arrived: items_required = [6529, 5985, 8373].     [orders_in_system = 58]
+2026-07-11 18:43:06 DEBUG: Order 58 arrived: items_required = [7644].     [orders_in_system = 59]
+2026-07-11 18:43:06 DEBUG: Order 59 arrived: items_required = [4971].     [orders_in_system = 60]
+2026-07-11 18:43:06 DEBUG: Order 60 arrived: items_required = [5090].     [orders_in_system = 61]
+2026-07-11 18:43:06 DEBUG: Order 61 arrived: items_required = [3132].     [orders_in_system = 62]
+2026-07-11 18:43:06 DEBUG: Order 62 arrived: items_required = [10896, 7885].     [orders_in_system = 63]
+2026-07-11 18:43:06 DEBUG: Order 63 arrived: items_required = [4554].     [orders_in_system = 64]
+2026-07-11 18:43:06 DEBUG: Order 64 arrived: items_required = [2878].     [orders_in_system = 65]
+2026-07-11 18:43:06 DEBUG: Order 65 arrived: items_required = [6452, 1793].     [orders_in_system = 66]
+2026-07-11 18:43:06 DEBUG: Order 66 arrived: items_required = [5083, 546].     [orders_in_system = 67]
+2026-07-11 18:43:06 DEBUG: Order 67 arrived: items_required = [6383, 5908, 10031].     [orders_in_system = 68]
+2026-07-11 18:43:06 DEBUG: Order 68 arrived: items_required = [3608, 5161].     [orders_in_system = 69]
+2026-07-11 18:43:06 DEBUG: Order 69 arrived: items_required = [4170, 1292].     [orders_in_system = 70]
+2026-07-11 18:43:06 DEBUG: Order 70 arrived: items_required = [13451].     [orders_in_system = 71]
+2026-07-11 18:43:06 DEBUG: Order 71 arrived: items_required = [6586].     [orders_in_system = 72]
+2026-07-11 18:43:06 DEBUG: Order 72 arrived: items_required = [9184].     [orders_in_system = 73]
+2026-07-11 18:43:06 DEBUG: Order 73 arrived: items_required = [8856, 10322].     [orders_in_system = 74]
+2026-07-11 18:43:06 DEBUG: Order 74 arrived: items_required = [7061, 7254].     [orders_in_system = 75]
+2026-07-11 18:43:06 DEBUG: Order 75 arrived: items_required = [11664].     [orders_in_system = 76]
+2026-07-11 18:43:06 DEBUG: Order 76 arrived: items_required = [4845].     [orders_in_system = 77]
+2026-07-11 18:43:06 DEBUG: Order 77 arrived: items_required = [1505].     [orders_in_system = 78]
+2026-07-11 18:43:06 DEBUG: Order 78 arrived: items_required = [4953, 7152].     [orders_in_system = 79]
+2026-07-11 18:43:06 DEBUG: Order 79 arrived: items_required = [12013].     [orders_in_system = 80]
+2026-07-11 18:43:06 DEBUG: Order 80 arrived: items_required = [7949, 9247].     [orders_in_system = 81]
+2026-07-11 18:43:06 DEBUG: Order 81 arrived: items_required = [9080].     [orders_in_system = 82]
+2026-07-11 18:43:06 DEBUG: Order 82 arrived: items_required = [12831, 4102, 6476].     [orders_in_system = 83]
+2026-07-11 18:43:06 DEBUG: Order 83 arrived: items_required = [1859].     [orders_in_system = 84]
+2026-07-11 18:43:06 DEBUG: Order 84 arrived: items_required = [5743].     [orders_in_system = 85]
+2026-07-11 18:43:06 DEBUG: Order 85 arrived: items_required = [10762, 5563].     [orders_in_system = 86]
+2026-07-11 18:43:06 DEBUG: Order 86 arrived: items_required = [7914, 4606].     [orders_in_system = 87]
+2026-07-11 18:43:06 DEBUG: Order 87 arrived: items_required = [6613].     [orders_in_system = 88]
+2026-07-11 18:43:06 DEBUG: Order 88 arrived: items_required = [6741, 2234, 4416].     [orders_in_system = 89]
+2026-07-11 18:43:06 DEBUG: Order 89 arrived: items_required = [10436].     [orders_in_system = 90]
+2026-07-11 18:43:06 DEBUG: Order 90 arrived: items_required = [8138, 2411, 7429].     [orders_in_system = 91]
+2026-07-11 18:43:06 DEBUG: Order 91 arrived: items_required = [5396, 8333].     [orders_in_system = 92]
+2026-07-11 18:43:06 DEBUG: Order 92 arrived: items_required = [5563].     [orders_in_system = 93]
+2026-07-11 18:43:06 DEBUG: Order 93 arrived: items_required = [7233].     [orders_in_system = 94]
+2026-07-11 18:43:06 DEBUG: Order 94 arrived: items_required = [4816].     [orders_in_system = 95]
+2026-07-11 18:43:06 DEBUG: Order 95 arrived: items_required = [10071].     [orders_in_system = 96]
+2026-07-11 18:43:06 DEBUG: Order 96 arrived: items_required = [5994, 8238].     [orders_in_system = 97]
+2026-07-11 18:43:06 DEBUG: Order 97 arrived: items_required = [5753, 6944, 5023].     [orders_in_system = 98]
+2026-07-11 18:43:06 DEBUG: Order 98 arrived: items_required = [4779, 9584].     [orders_in_system = 99]
+2026-07-11 18:43:06 DEBUG: Order 99 arrived: items_required = [7100].     [orders_in_system = 100]
+2026-07-11 18:43:06 DEBUG:    EVENT NUM 2     current_time = 00:00:01   RUN_OPTIMIZER         [queue size = 1]
+2026-07-11 18:43:06 INFO: Solving stage 1 ... 
+2026-07-11 18:43:06 INFO: [ls_stage1] Building initial solution ...
+2026-07-11 18:43:06 INFO: [ls_stage1] Initial objective = 220.7800
+2026-07-11 18:43:06 WARNING: 
+Variables size:
+  shape x = (175, 900)
+  shape y = (12, 900)
+  shape z = (100, 12)
+  constraints_satisfied = 1890299
+
+2026-07-11 18:43:09 INFO: [ls_stage1] Iter 1: IMPROVEMENT move=('swap', 78, 93) obj=219.1000
+2026-07-11 18:43:11 INFO: [ls_stage1] Iter 2: IMPROVEMENT move=('swap', 54, 69) obj=217.5000
+2026-07-11 18:43:14 INFO: [ls_stage1] Iter 3: IMPROVEMENT move=('swap', 8, 84) obj=215.8500
+2026-07-11 18:43:17 INFO: [ls_stage1] Iter 4: IMPROVEMENT move=('swap', 10, 39) obj=214.7300
+2026-07-11 18:43:20 INFO: [ls_stage1] Iter 5: IMPROVEMENT move=('swap', 60, 82) obj=213.2300
+2026-07-11 18:43:23 INFO: [ls_stage1] Iter 6: IMPROVEMENT move=('swap', 7, 60) obj=211.7200
+2026-07-11 18:43:26 INFO: [ls_stage1] Iter 7: IMPROVEMENT move=('swap', 9, 90) obj=210.1800
+2026-07-11 18:43:29 INFO: [ls_stage1] Iter 8: IMPROVEMENT move=('swap', 19, 94) obj=208.8600
+2026-07-11 18:43:32 INFO: [ls_stage1] Iter 9: IMPROVEMENT move=('moveto', 86, 11) obj=207.6300
+2026-07-11 18:43:35 INFO: [ls_stage1] Iter 10: IMPROVEMENT move=('swap', 1, 36) obj=206.8200
+2026-07-11 18:43:38 INFO: [ls_stage1] Iter 11: IMPROVEMENT move=('swap', 48, 49) obj=205.5000
+2026-07-11 18:43:41 INFO: [ls_stage1] Iter 12: IMPROVEMENT move=('repod', 154, 97) obj=203.9200
+2026-07-11 18:43:44 INFO: [ls_stage1] Iter 13: IMPROVEMENT move=('swap', 1, 45) obj=203.2000
+2026-07-11 18:43:46 INFO: [ls_stage1] Iter 14: IMPROVEMENT move=('swap', 90, 96) obj=201.9200
+2026-07-11 18:43:49 INFO: [ls_stage1] Iter 15: IMPROVEMENT move=('swap', 79, 81) obj=201.5200
+2026-07-11 18:43:52 INFO: [ls_stage1] Iter 16: IMPROVEMENT move=('swap', 6, 91) obj=200.4600
+2026-07-11 18:43:55 INFO: [ls_stage1] Iter 17: IMPROVEMENT move=('swap', 6, 21) obj=199.9200
+2026-07-11 18:43:58 INFO: [ls_stage1] Iter 18: IMPROVEMENT move=('swap', 10, 65) obj=199.5800
+2026-07-11 18:44:01 INFO: [ls_stage1] Iter 19: IMPROVEMENT move=('swap', 77, 93) obj=199.1400
+2026-07-11 18:44:04 INFO: [ls_stage1] Iter 20: IMPROVEMENT move=('swap', 26, 71) obj=198.7400
+2026-07-11 18:44:07 INFO: [ls_stage1] Iter 21: IMPROVEMENT move=('repod', 153, 710) obj=198.3800
+2026-07-11 18:44:10 INFO: [ls_stage1] Iter 22: IMPROVEMENT move=('swap', 14, 49) obj=198.0800
+2026-07-11 18:44:12 INFO: [ls_stage1] Iter 23: IMPROVEMENT move=('swap', 33, 70) obj=197.7800
+2026-07-11 18:44:15 INFO: [ls_stage1] Iter 24: IMPROVEMENT move=('repod', 171, 896) obj=197.5700
+2026-07-11 18:44:18 INFO: [ls_stage1] Iter 25: IMPROVEMENT move=('repod', 9, 736) obj=197.2600
+2026-07-11 18:44:21 INFO: [ls_stage1] Iter 26: IMPROVEMENT move=('repod', 161, 574) obj=196.9800
+2026-07-11 18:44:24 INFO: [ls_stage1] Iter 27: IMPROVEMENT move=('swap', 59, 75) obj=196.8000
+2026-07-11 18:44:27 INFO: [ls_stage1] Iter 28: IMPROVEMENT move=('swap', 5, 44) obj=196.5000
+2026-07-11 18:44:30 INFO: [ls_stage1] Iter 29: IMPROVEMENT move=('repod', 62, 698) obj=196.3200
+2026-07-11 18:44:33 INFO: [ls_stage1] Iter 30: IMPROVEMENT move=('repod', 66, 423) obj=196.1300
+2026-07-11 18:44:36 INFO: [ls_stage1] Iter 31: IMPROVEMENT move=('swap', 6, 34) obj=194.7600
+2026-07-11 18:44:39 INFO: [ls_stage1] Iter 32: IMPROVEMENT move=('repod', 37, 762) obj=194.5700
+2026-07-11 18:44:41 INFO: [ls_stage1] Iter 33: IMPROVEMENT move=('repod', 22, 488) obj=194.3800
+2026-07-11 18:44:44 INFO: [ls_stage1] Iter 34: IMPROVEMENT move=('repod', 109, 821) obj=194.1200
+2026-07-11 18:44:47 INFO: [ls_stage1] Iter 35: IMPROVEMENT move=('swap', 7, 20) obj=192.9800
+2026-07-11 18:44:50 INFO: [ls_stage1] Iter 36: IMPROVEMENT move=('moveto', 12, 10) obj=192.8000
+2026-07-11 18:44:53 INFO: [ls_stage1] Iter 37: IMPROVEMENT move=('moveto', 25, 10) obj=192.6200
+2026-07-11 18:44:56 INFO: [ls_stage1] Iter 38: IMPROVEMENT move=('repod', 40, 802) obj=192.3900
+2026-07-11 18:44:59 INFO: [ls_stage1] Iter 39: IMPROVEMENT move=('swap', 27, 72) obj=192.2300
+2026-07-11 18:45:02 INFO: [ls_stage1] Iter 40: IMPROVEMENT move=('swap', 10, 19) obj=192.1500
+2026-07-11 18:45:05 INFO: [ls_stage1] Iter 41: IMPROVEMENT move=('swap', 14, 65) obj=192.0700
+2026-07-11 18:45:08 INFO: [ls_stage1] Iter 42: IMPROVEMENT move=('repod', 14, 648) obj=191.8400
+2026-07-11 18:45:11 INFO: [ls_stage1] Iter 43: IMPROVEMENT move=('moveto', 6, 5) obj=190.6100
+2026-07-11 18:45:13 INFO: [ls_stage1] Iter 44: IMPROVEMENT move=('swap', 31, 47) obj=190.4100
+2026-07-11 18:45:16 INFO: [ls_stage1] Iter 45: IMPROVEMENT move=('moveto', 23, 11) obj=190.2500
+2026-07-11 18:45:19 INFO: [ls_stage1] Iter 46: IMPROVEMENT move=('swap', 30, 59) obj=190.1700
+2026-07-11 18:45:22 INFO: [ls_stage1] Iter 47: IMPROVEMENT move=('repod', 171, 522) obj=190.0100
+2026-07-11 18:45:25 INFO: [ls_stage1] Iter 48: IMPROVEMENT move=('repod', 156, 895) obj=189.9400
+2026-07-11 18:45:28 INFO: [ls_stage1] Iter 49: IMPROVEMENT move=('repod', 74, 198) obj=189.7400
+2026-07-11 18:45:31 INFO: [ls_stage1] Iter 50: IMPROVEMENT move=('repod', 1, 795) obj=189.5600
+2026-07-11 18:45:34 INFO: [ls_stage1] Iter 51: IMPROVEMENT move=('swap', 27, 73) obj=189.4800
+2026-07-11 18:45:37 INFO: [ls_stage1] Iter 52: IMPROVEMENT move=('moveto', 83, 11) obj=189.4200
+2026-07-11 18:45:39 INFO: [ls_stage1] Iter 53: IMPROVEMENT move=('repod', 25, 516) obj=189.2700
+2026-07-11 18:45:42 INFO: [ls_stage1] Iter 54: IMPROVEMENT move=('swap', 0, 87) obj=189.2100
+2026-07-11 18:45:45 INFO: [ls_stage1] Iter 55: IMPROVEMENT move=('moveto', 22, 5) obj=189.1700
+2026-07-11 18:45:48 INFO: [ls_stage1] Iter 56: IMPROVEMENT move=('swap', 17, 33) obj=189.1100
+2026-07-11 18:45:51 INFO: [ls_stage1] Iter 57: IMPROVEMENT move=('swap', 35, 66) obj=189.0700
+2026-07-11 18:45:54 INFO: [ls_stage1] Iter 58: IMPROVEMENT move=('swap', 1, 63) obj=189.0300
+2026-07-11 18:45:57 INFO: [ls_stage1] Iter 59: IMPROVEMENT move=('moveto', 37, 0) obj=188.9700
+2026-07-11 18:46:00 INFO: [ls_stage1] Iter 60: IMPROVEMENT move=('repod', 67, 304) obj=187.7000
+2026-07-11 18:46:03 INFO: [ls_stage1] Iter 61: IMPROVEMENT move=('repod', 40, 649) obj=187.6800
+2026-07-11 18:46:06 INFO: [ls_stage1] Iter 62: IMPROVEMENT move=('swap', 27, 87) obj=186.5600
+2026-07-11 18:46:09 INFO: [ls_stage1] Iter 63: IMPROVEMENT move=('swap', 1, 87) obj=186.5400
+2026-07-11 18:46:12 INFO: [ls_stage1] Iter 64: IMPROVEMENT move=('moveto', 87, 10) obj=186.5000
+2026-07-11 18:46:14 INFO: [ls_stage1] Iter 65: IMPROVEMENT move=('repod', 108, 891) obj=186.3800
+2026-07-11 18:46:17 INFO: [ls_stage1] Iter 66: IMPROVEMENT move=('swap', 45, 51) obj=186.3600
+2026-07-11 18:46:20 INFO: [ls_stage1] Iter 67: IMPROVEMENT move=('repod', 99, 638) obj=186.2600

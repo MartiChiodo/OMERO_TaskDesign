@@ -1,0 +1,2 @@
+2026-07-10 16:42:14 INFO: Warehouse initialization | grid=10x20, physical=23x25, num_skus=3000, num_robots=20, num_ws=4
+2026-07-10 16:42:14 INFO: Warehouse initialized | 200 pods  (average number of skus per pod = 26.21), 4 workstations, 20 robots

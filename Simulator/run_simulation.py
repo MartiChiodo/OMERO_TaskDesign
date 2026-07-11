@@ -39,7 +39,7 @@ def main():
     else:
         SEED = 343310  
 
-    OPTIM = False
+    OPTIM = True
 
     print(f"Usando SEED={SEED}, EXPERIMENT_IDS={EXPERIMENT_IDS}")
 

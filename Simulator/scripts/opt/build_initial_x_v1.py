@@ -33,7 +33,7 @@ def _travel_time_between(src_loc: int, dst_loc: int, d) -> int:
 # Main function
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
+def build_initial_x(rng: np.random.Generator, d, attempt_idx = 0) -> np.ndarray:
     """
     Builds a feasible initial picking matrix x.
 
@@ -55,7 +55,7 @@ def build_initial_x(rng: np.random.Generator, d) -> np.ndarray:
     """
     T        = d.OptManager.N_TIME
     n_im     = len(d.relevant_pairs_for_x)
-    CAP_WS   = d.OptManager.CAP_WS
+    CAP_WS   = d.OptManager.CAP_WS -  (attempt_idx > 1)  -  (attempt_idx > 3) 
     n_pods   = len(d.from_RelPod_to_PodId)
     n_robots = len(d.warehouse.robots)
     n_ws     = len(d.warehouse.workstations)

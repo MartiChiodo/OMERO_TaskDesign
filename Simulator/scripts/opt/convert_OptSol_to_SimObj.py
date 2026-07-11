@@ -246,8 +246,8 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
         w: sorted(
             idxs,
             key=lambda m: (
-                order_start_time.get(m, N_TIME),   # safe fallback if missing
                 order_first_task[m],
+                order_start_time.get(m, N_TIME),   # safe fallback if missing
             ),
         )
         for w, idxs in enumerate(orders_by_workstation)
