@@ -1,5 +1,13 @@
-# Ignore venv folder
+# Ignore some files
 TesiEnv/
+Simulator/slurm_logs
+Simulator/plot_carini
+Simulator/counting_vars
+Simulator/cute_plots_order_generation.py
+Simulator/cute_plots_sku_distribution.py
+Simulator/run_counting_varibales.py
+Simulator/job.sh
+comandi_cluster.txt
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
