@@ -5,7 +5,7 @@ Simulator/plot_carini
 Simulator/counting_vars
 Simulator/cute_plots_order_generation.py
 Simulator/cute_plots_sku_distribution.py
-Simulator/run_counting_varibales.py
+Simulator/run_counting_variables.py
 Simulator/job.sh
 comandi_cluster.txt
 
