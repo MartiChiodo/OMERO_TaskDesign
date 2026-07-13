@@ -1,9 +1,9 @@
 """
 Event handlers for the warehouse simulator.
 
-Each handler has signature ``(event, state, sim)`` where:
-- *state* : SimulatorState  — all mutable queues, counters, and warehouse.
-- *sim*   : Simulator       — immutable config (sim.config) and RNG (sim.RANDOM_GENERATOR).
+Each handler has signature (event, state, sim): state holds all the
+mutable queues, counters and the warehouse, sim holds the immutable
+config and the random generator.
 """
 
 import logging, time
@@ -13,19 +13,12 @@ from scripts.core.enums import OrderStatus, RobotStatus, PodStatus, WorkstationP
 from scripts.opt.policies import assign_order_to_workstation_policy, design_tasks_for_ws, get_nearest_idle_robot
 from scripts.core.queues import PriorityQueue
 
+# A pod waiting longer than this at a workstation is considered stuck
 TIME_LIMIT_AT_WS = 600
 
 def arrival_order(event: Event, state, sim) -> None:
-    """
-    Handle a new customer order arrival.
-
-    Generates an order following Barnhart et al. 2024: single-item with
-    probability p, otherwise geometric(p) + 2 items. Adds the order to
-    the system backlog and schedules the next order arrival.
-
-    If optimization is disabled, immediately assigns the order to the
-    least-loaded workstation and opens it if a slot is available.
-    """
+    """Handle new customer orders: generate them, push them to the
+    backlog and schedule the next arrival."""
     assert len(sim.config.order_gen_config) == 3, (
         f"order_gen_config must have 3 elements (interarrival, p_single, p_geo), "
         f"got {len(sim.config.order_gen_config)}"
@@ -38,6 +31,8 @@ def arrival_order(event: Event, state, sim) -> None:
         order_id = state.orders_counter
         state.orders_counter += 1
 
+        # Order size follows Barnhart et al. 2024: single item with
+        # probability p, otherwise geometric plus two
         order_size = _generate_order_size(sim.RANDOM_GENERATOR,
                                         sim.config.order_gen_config[1],
                                         sim.config.order_gen_config[2])
@@ -60,6 +55,7 @@ def arrival_order(event: Event, state, sim) -> None:
         logging.debug("Order %i arrived: items_required = %s.     [orders_in_system = %i]",
                     order_id, sku_list, state.orders_counter - _count_closed(state))
         
+        # Without the optimizer, orders go straight to a workstation
         if not sim.config.optimization_enabled:
             st = time.time()
             workstation_id = assign_order_to_workstation_policy(
@@ -92,13 +88,8 @@ def arrival_order(event: Event, state, sim) -> None:
 
 
 def open_order(event: Event, state, sim) -> None:
-    """
-    Open an order at its assigned workstation.
-
-    Transitions the order from WAITING to OPEN status and registers it
-    in the workstation's active orders. If optimization is disabled,
-    immediately designs tasks to fetch pods matching the order SKUs.
-    """
+    """Open an order at its assigned workstation, or buffer it if the
+    station is already at capacity."""
     o = event.info
 
     if o.workstation_id is None:
@@ -110,13 +101,14 @@ def open_order(event: Event, state, sim) -> None:
 
     workstation = state.warehouse.get_workstation(o.workstation_id)
 
+    # Can happen when multiple orders arrive at once
     if len(workstation.opened_orders) > workstation.order_capacity -1:
         workstation.order_buffer.append(o.order_id)
-        # Can happen when multiple orders arrive at once
         logging.debug("Order %i queued at workstation %i.   [order_queue len = %i]",
                             o.order_id, o.workstation_id, len(workstation.order_buffer))
         return
 
+    # Take the slot
     o.status = OrderStatus.OPEN
     workstation.opened_orders.add(o.order_id)
 
@@ -129,6 +121,7 @@ def open_order(event: Event, state, sim) -> None:
                   o.order_id, o.items_required, o.workstation_id,
                   len(workstation.opened_orders), workstation.order_capacity)
 
+    # Without the optimizer, fetch the pods for this order right away
     if not sim.config.optimization_enabled:
         st = time.time()
         tasks, state.task_counter = design_tasks_for_ws(
@@ -153,6 +146,7 @@ def open_order(event: Event, state, sim) -> None:
             logging.debug("No tasks designed (all SKUs already covered)")
 
     elif len(state.released_tasks) > 0:
+        # A newly opened order may unblock a released task
         state.future_events.push(Event(
                     time=state.current_time,
                     type=EventType.START_TASK
@@ -168,13 +162,8 @@ def open_order(event: Event, state, sim) -> None:
                 
 
 def release_task(event: Event, state, sim) -> None:
-    """
-    Release a task to the execution queue.
-
-    Moves a task from scheduled_tasks or event payload to released_tasks,
-    making it eligible for execution by an idle robot. Immediately triggers
-    START_TASK if an idle robot is available.
-    """
+    """Move a task into the released queue, making it eligible for
+    execution by an idle robot."""
     if sim.config.optimization_enabled:
         task = event.info
     else:
@@ -182,6 +171,7 @@ def release_task(event: Event, state, sim) -> None:
 
     assert task is not None, "release_task: task is None after retrieval"
 
+    # update() if a version of this task is already queued
     if state.released_tasks.get(task.task_id) is not None:
         state.released_tasks.update(task)
     else:
@@ -202,20 +192,17 @@ def release_task(event: Event, state, sim) -> None:
 
 
 def start_task(event: Event, state, sim) -> None:
-    """
-    Start executing a task with the nearest idle robot.
-
-    Assigns the highest-priority released task to the nearest idle robot.
-    Skips tasks whose pod is currently BUSY, re-queuing them for later.
-    Updates pod and robot status to BUSY, registers visits as active,
-    and schedules pod arrival at the first workstation.
-    """
+    """Assign the best executable released task to the nearest idle
+    robot and send the pod towards its first workstation."""
     if state.released_tasks.is_empty():
         return
     
     skipped_t = []
     task = None
 
+    # Pop candidates in priority order until one is executable: its pod
+    # must be idle and, with the optimizer on, at least one of its
+    # orders must be open (or next in line) somewhere
     loop_ended = len(state.released_tasks) == 0
     while not loop_ended:
         candidate = state.released_tasks.pop()
@@ -243,7 +230,7 @@ def start_task(event: Event, state, sim) -> None:
                     candidate.task_id, candidate.pod_id, len(state.released_tasks))
         skipped_t.append(candidate)
 
-
+    # Skipped candidates go back in the queue, they may run later
     for t in skipped_t:
         state.released_tasks.push(t)
 
@@ -262,6 +249,7 @@ def start_task(event: Event, state, sim) -> None:
     robot = state.warehouse.get_robot(robot_id)
     assert robot.status == RobotStatus.IDLE, f"Robot {robot_id} should be IDLE before task start"
 
+    # Lock both resources and bind the robot to the task
     state.active_tasks[task.task_id] = task
     pod.status   = PodStatus.BUSY
     robot.status = RobotStatus.BUSY
@@ -272,11 +260,13 @@ def start_task(event: Event, state, sim) -> None:
         info=[robot.robot_id, RobotStatus.BUSY, state.current_time]
     )
 
+    # Every workstation on the route now sees this task as active
     for visit in task.stops:
         ws = state.warehouse.get_workstation(visit.workstation_id)
         ws.active_tasks.add(task.task_id)
         ws.released_tasks.discard(task.task_id)
 
+    # Send the pod towards its first stop
     first_visit = task.stops[0]
     first_workstation = state.warehouse.get_workstation(first_visit.workstation_id)
     travel_time = state.warehouse.travel_time(
@@ -306,12 +296,8 @@ def start_task(event: Event, state, sim) -> None:
     
 
 def arrival_pod_wst(event: Event, state, sim) -> None:
-    """
-    Handle pod arrival at a workstation.
-
-    Updates robot position and checks if the workstation is idle.
-    If idle, immediately starts picking; otherwise, queues the pod.
-    """
+    """Handle a pod arriving at a workstation: queue it and start
+    picking right away if the station is idle."""
     task = event.info
     current_visit = task.stops[0]
     workstation = state.warehouse.get_workstation(current_visit.workstation_id)
@@ -321,11 +307,13 @@ def arrival_pod_wst(event: Event, state, sim) -> None:
         f"Robot {task.robot_id} should be BUSY on pod arrival, got {robot.status.name}"
     )
 
+    # The robot parks at the workstation together with its pod
     robot.position = workstation.position
 
     logging.debug("Pod %i arrived at workstation %i - status = %s",
                   task.pod_id, current_visit.workstation_id, workstation.status.name)
 
+    # Arrival time is stored so start_picking can serve oldest first
     workstation.picking_buffer[(task.task_id)] = state.current_time
     logging.debug("Pod queued at workstation.    [picking_buffer = %s]",
                       workstation.picking_buffer)
@@ -339,20 +327,16 @@ def arrival_pod_wst(event: Event, state, sim) -> None:
 
 
 def start_picking(event: Event, state, sim) -> None:
-    """
-    Start picking items from an arrived pod.
-
-    Sets workstation status to BUSY and schedules picking completion
-    based on the number of items at this visit.
-    """
+    """Pick the oldest actionable pod in the buffer and schedule the
+    end of the picking operation."""
     workstation_id        = event.info
     workstation = state.warehouse.get_workstation(workstation_id)
 
-    # Race-condition guard: another START_PICKING already won, nothing to do
+    # Race condition guard: another START_PICKING already won
     if workstation.status == WorkstationPickingStatus.BUSY:
         return
 
-    # Find the oldest task in the buffer whose orders are currently open
+    # Oldest task in the buffer whose orders are currently open
     task = None
     for id_t, _ in sorted(workstation.picking_buffer.items(), key=lambda x: x[1]):
         candidate = state.active_tasks.get(id_t)
@@ -364,7 +348,6 @@ def start_picking(event: Event, state, sim) -> None:
             break
 
     if task is None:
-        # No task in buffer has a currently open order — nothing to start
         logging.debug("start_picking: WS %i has no actionable task in buffer.", workstation_id)
         return
     
@@ -378,6 +361,7 @@ def start_picking(event: Event, state, sim) -> None:
     logging.debug("Processing task %i at workstation %i: picking items %s for orders %s",
                   task.task_id, visit.workstation_id, visit.items, visit.orders)
 
+    # Picking duration scales with the number of items at this visit
     picking_time = workstation.estimated_picking_time(len(visit.items))
     state.future_events.push(Event(
         time=state.current_time + picking_time,
@@ -387,14 +371,8 @@ def start_picking(event: Event, state, sim) -> None:
 
 
 def end_picking(event: Event, state, sim) -> None:
-    """
-    Handle picking completion at a workstation.
-
-    Drains the picking buffer first (unconditionally), then schedules the
-    pod's next stop or return to storage. Finally updates order states and
-    closes any completed orders. Task redesign is skipped if any order closed
-    (the close_order handler will open a new one and trigger redesign).
-    """
+    """Close a picking operation: update the served orders, send the
+    pod to its next stop or back to storage, unstick the buffer."""
     task             = event.info
     completed_visit  = task.stops[0]
     workstation      = state.warehouse.get_workstation(completed_visit.workstation_id)
@@ -419,7 +397,7 @@ def end_picking(event: Event, state, sim) -> None:
 
     
 
-    # Update order states 
+    # Update order states, closing the ones with nothing left pending
     completed_orders = []
     list_o = list(completed_visit.orders)
     for order_id in list_o:
@@ -447,7 +425,8 @@ def end_picking(event: Event, state, sim) -> None:
                     info=order
                 ))
 
-    # If some orders that should be served was not I re-schedule the Visit
+    # Orders that were not open yet stay in the visit, so the stop is
+    # kept alive and can be served later
     task.stops[0] = completed_visit
     if len(task.stops[0].orders) == 0 :
         task.stops.pop(0)
@@ -482,17 +461,17 @@ def end_picking(event: Event, state, sim) -> None:
         logging.debug("Task %i heading to workstation %i.", task.task_id, next_visit.workstation_id)
 
     
-    # Drain picking buffer 
+    # Drain the picking buffer, evicting pods stuck past the time limit
     if workstation.picking_buffer:
-        # Check if some pod got stuck in the buffer
         for id_t, t_arr in list(workstation.picking_buffer.items()):
             t = state.active_tasks.get(id_t)
             if state.current_time - t_arr > TIME_LIMIT_AT_WS:
 
-                # Performing pop/remove I would do if Visit was done
-                t.stops.pop(0) # would be done in end_picking
-                workstation.picking_buffer.pop(id_t) # would be done in start_picking
-                workstation.active_tasks.discard(id_t) # would be done in end_picking
+                # Do the bookkeeping start_picking and end_picking
+                # would have done, then move the pod along
+                t.stops.pop(0)
+                workstation.picking_buffer.pop(id_t)
+                workstation.active_tasks.discard(id_t)
 
                 if len(t.stops) == 0: 
                     pod_t = state.warehouse.pods[t.pod_id]
@@ -558,12 +537,8 @@ def end_picking(event: Event, state, sim) -> None:
             
 
 def return_pod(event: Event, state, sim) -> None:
-    """
-    Return a pod to its storage location after task completion.
-
-    Releases the robot and pod, marking them as IDLE. Triggers execution
-    of the next available task if any exist.
-    """
+    """Return a pod to storage, free its robot and trigger the next
+    released task if any."""
     task  = event.info
     pod   = state.warehouse.get_pod(task.pod_id)
     robot = state.warehouse.get_robot(task.robot_id)
@@ -575,6 +550,7 @@ def return_pod(event: Event, state, sim) -> None:
     assert pod.status   == PodStatus.BUSY,   f"Pod {task.pod_id} should be BUSY at return"
     assert robot.status == RobotStatus.BUSY, f"Robot {task.robot_id} should be BUSY at return"
 
+    # Free both resources and archive the task
     robot.status = RobotStatus.IDLE
     robot.position = pod.storage_location
     pod.status = PodStatus.IDLE
@@ -592,6 +568,7 @@ def return_pod(event: Event, state, sim) -> None:
         idle_robots, len(state.warehouse.robots), len(state.released_tasks)
     )
 
+    # A freed robot and pod may unblock a waiting task
     if not state.released_tasks.is_empty():
         state.future_events.push(Event(time=state.current_time, type=EventType.START_TASK))
 
@@ -603,12 +580,8 @@ def return_pod(event: Event, state, sim) -> None:
 
 
 def close_order(event: Event, state, sim) -> None:
-    """
-    Close a completed order and attempt to open the next queued order.
-
-    Transitions order to CLOSED status and removes it from the workstation.
-    If there are pending orders in the workstation queue, opens the first one.
-    """
+    """Close a completed order and open the next one waiting in the
+    workstation buffer, if any."""
     order = event.info
 
     assert len(order.items_pending) == 0, (
@@ -618,6 +591,7 @@ def close_order(event: Event, state, sim) -> None:
         f"Order {order.order_id} expected OPEN at close, got {order.status.name}"
     )
 
+    # Detach the order from its workstation
     workstation  = state.warehouse.get_workstation(order.workstation_id)
     order.status  = OrderStatus.CLOSED
     workstation.opened_orders.discard(order.order_id)
@@ -638,6 +612,7 @@ def close_order(event: Event, state, sim) -> None:
         len(workstation.opened_orders), workstation.order_capacity
     )
 
+    # The freed slot goes to the first order waiting in the buffer
     if workstation.order_buffer:
         next_order_id = workstation.order_buffer.pop(0)
         next_order    = state.orders_in_system.get(next_order_id)
@@ -651,25 +626,24 @@ def close_order(event: Event, state, sim) -> None:
 
 
 def run_optimizer(event: Event, state, sim) -> None:
-    """
-    Execute one optimization cycle: design tasks, assign orders to workstations,
-    schedule release events, and queue the next optimization run.
-    """      
+    """Run one optimization cycle: reconcile the active tasks with the
+    new plan, solve, then dispatch the fresh orders and tasks."""
 
-    # Managing active tasks
+    ### Reconcile active tasks with the world the optimizer is about
+    ### to redraw: drop stops whose orders are no longer open, then
+    ### reroute or recall each pod depending on where it is now
     for id_t, task in list(state.active_tasks.items()):
 
         # Ignore tasks already marked with no remaining stops
         if len(task.stops) == 0:
             continue
 
-        # Store the workstation the pod was originally targeting before redesign
+        # Remember where the pod was headed before the redesign
         old_target_ws = state.warehouse.workstations[
             task.stops[0].workstation_id
         ]
 
-        
-        # Redesign task: remove stops whose orders are no open
+        # Keep only the stops that still serve an open order
         original_ws_ids = {stop.workstation_id for stop in task.stops}
 
         task.stops = [
@@ -690,22 +664,19 @@ def run_optimizer(event: Event, state, sim) -> None:
             state.warehouse.workstations[ws_id].active_tasks.discard(id_t)
 
 
-        # CASE 1-3: task still has remaining stops
+        ### Task still has remaining stops
         if len(task.stops) > 0:
 
             new_target_ws = state.warehouse.workstations[
                 task.stops[0].workstation_id
             ]
 
-            
-            # CASE 1: target unchanged
-            # Pod is still going to / waiting at the correct workstation.
-            # Keep current routing and scheduled events unchanged.
+            # Case 1: target unchanged, keep routing and events as they are
             if old_target_ws.workstation_id == new_target_ws.workstation_id:
                 pass
 
-            # CASE 2: target changed, pod already at old workstation
-            # Remove from picking buffer and reroute directly.
+            # Case 2: target changed and the pod already sits at the old
+            # workstation, pull it from the buffer and reroute directly
             elif id_t in old_target_ws.picking_buffer:
 
                 old_target_ws.picking_buffer.pop(id_t)
@@ -721,12 +692,14 @@ def run_optimizer(event: Event, state, sim) -> None:
                     info=task,
                 ))
 
-            # CASE 3: target changed, pod still traveling
-            # Cancel old ARRIVAL event and replace with new destination.
+            # Case 3: target changed while the pod is still traveling,
+            # cancel the old arrival event and append the detour
             else:
                 time_occ = None
                 ev_l = []
 
+                # The event queue has no targeted delete, so pop
+                # everything and push back what we keep
                 while len(state.future_events) > 0:
                     e = state.future_events.pop()
 
@@ -760,12 +733,11 @@ def run_optimizer(event: Event, state, sim) -> None:
                 ))
 
 
-        # CASE 4-5: task has no remaining stops -> return pod to storage
+        ### No stops left, the pod must go back to storage
         else:
             pod = state.warehouse.pods[task.pod_id]
 
-            # CASE 4: pod already at workstation
-            # Send directly back to storage.
+            # Case 4: pod already at the workstation, send it home
             if id_t in old_target_ws.picking_buffer:
 
                 old_target_ws.picking_buffer.pop(id_t)
@@ -781,8 +753,8 @@ def run_optimizer(event: Event, state, sim) -> None:
                     info=task,
                 ))
 
-            # CASE 5: pod still traveling to workstation
-            # Cancel arrival and redirect to storage.
+            # Case 5: pod still traveling, cancel the arrival and let it
+            # bounce off the old workstation back to storage
             else:
                 time_occ = None
                 ev_l = []
@@ -823,11 +795,12 @@ def run_optimizer(event: Event, state, sim) -> None:
 
 
 
+    ### Solve and dispatch
     st = time.time()
     orders, ordered_orders_by_w, tasks = sim.OPT_MANAGER.solve_task_design_and_assignment(sim, state)
     sim.STAT_MANAGER.decisions_computing_time += time.time() - st
 
-    # Reset released_tasks queue
+    # Fresh released queue: idle pods first, then task priority
     state.released_tasks = PriorityQueue(
         key=lambda t: (
             state.warehouse.pods[t.pod_id].status != PodStatus.IDLE,
@@ -836,7 +809,7 @@ def run_optimizer(event: Event, state, sim) -> None:
         id_attr="task_id",
     )
 
-    # Flush RELEASE_TASK events from the future queue, preserving all other event types
+    # Flush stale RELEASE_TASK events, keep every other event type
     ev_l = []
     while len(state.future_events) > 0:
         e = state.future_events.pop()
@@ -845,8 +818,8 @@ def run_optimizer(event: Event, state, sim) -> None:
     for ev in ev_l:
         state.future_events.push(ev)
 
-    # Assign orders to workstations.
-    # `ordered_orders_by_w` uses indices into `orders` (not order_id),
+    # Assign orders to workstations. Note that ordered_orders_by_w uses
+    # indices into orders, not order ids
     for w, elem in ordered_orders_by_w.items():
         state.warehouse.workstations[w].order_buffer = []
         ability_to_open = (
@@ -884,7 +857,7 @@ def run_optimizer(event: Event, state, sim) -> None:
                         len(state.warehouse.workstations[w].order_buffer),
                     )
 
-    # Schedule task release events; offset by priority to stagger execution
+    # Schedule task release events, offset by priority to stagger execution
     logging.warning("Task designing ended. Optimizer designed %i tasks.", len(tasks))
     for t in tasks:
         state.future_events.push(Event(
@@ -906,18 +879,14 @@ def run_optimizer(event: Event, state, sim) -> None:
     
 
 
-# ---------------------------------------------------------------------------
-# Utilities
-# ---------------------------------------------------------------------------
+### Utilities
 
 def _count_closed(state) -> int:
-    """Count closed orders in the system. O(n) — consider a dedicated counter."""
+    """Count closed orders in the system, scanning the whole queue."""
     return sum(1 for o in state.orders_in_system if o.status == OrderStatus.CLOSED)
 
 def _sample_sku(gen, N):
-    """
-    Sample a SKU index from a truncated normal distribution over [0, N).
-    """
+    """Sample a SKU index from a truncated normal over [0, N)."""
     while True:
         id_s = int(gen.normal(0.5 * N, N/4))
         if 0 <= id_s < N:
@@ -926,13 +895,15 @@ def _sample_sku(gen, N):
         
 MAX_SIZE = 15
 def _generate_order_size(gen, prob_single, geom_p):
+    """Draw an order size: single item with probability prob_single,
+    otherwise geometric, capped at MAX_SIZE."""
     if gen.random() < prob_single:
         return 1
 
-    for _ in range(1000):          # rejection loop (converges fast for reasonable geom_p)
+    # Rejection loop, converges fast for reasonable geom_p
+    for _ in range(1000):
         size = int(gen.geometric(p=geom_p)) + 1
         if size <= MAX_SIZE:
             return size
 
-    return MAX_SIZE              
-        
+    return MAX_SIZE

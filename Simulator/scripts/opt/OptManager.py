@@ -25,9 +25,9 @@ class OptManager:
     """
     Manages the MIP optimisation pipeline for the warehouse simulator.
 
-    Static data (warehouse topology, time-space network) is computed once at
-    construction time.  Simulation-dependent data (orders, tasks) is injected
-    at each optimisation call via :meth:`solve_task_design_and_assignment`.
+    Static data (warehouse topology, time space network) is computed once
+    at construction time. Simulation dependent data (orders, tasks) is
+    injected at each optimisation call via solve_task_design_and_assignment.
 
     Attributes
     ----------
@@ -38,20 +38,17 @@ class OptManager:
     incoming_arc_idx : dict[tuple, list[int]]  Arc indices arriving at each node.
     outgoing_arc_idx : dict[tuple, list[int]]  Arc indices leaving each node.
     pod_indices_by_sku : dict[int, list[int]]  Pod indices that stock each SKU.
-    arc_lookup       : dict[tuple, list]       (src_loc,dst_loc) -> sorted-by-
-                                                departure list of travel arcs.
-                                                Static — built once here since
-                                                it only depends on the network
-                                                topology, not on which pods a
-                                                given Stage-2 call selects.
-                                                Stage2Data filters/reuses this
-                                                instead of rebuilding it from
-                                                scratch on every call.
-    idle_arc_id      : dict[tuple, int]        (loc, t) -> arc_id of the
-                                                self-loop ("stay in place")
-                                                arc departing that node. O(1)
-                                                alternative to scanning
-                                                outgoing_arc_idx for it.
+    arc_lookup       : dict[tuple, list]       (src_loc, dst_loc) to the travel
+                                               arcs between them, sorted by
+                                               departure time. Static, built
+                                               once here: it depends on the
+                                               network topology only, so
+                                               Stage2Data reuses it instead of
+                                               rebuilding it on every call.
+    idle_arc_id      : dict[tuple, int]        (loc, t) to the arc id of the
+                                               stay in place arc departing that
+                                               node, one lookup instead of
+                                               scanning outgoing_arc_idx.
     """
 
     def __init__(self, warehouse: Warehouse) -> None:
@@ -85,21 +82,18 @@ class OptManager:
 
         self.all_arcs = self.travelling_arcs + self.idle_arcs
 
-        # Index arcs by destination and source node for O(1) constraint lookup
+        # Index arcs by source and destination node, the constraint
+        # checks keep asking for them
         self.incoming_arc_idx: dict[tuple, list[int]] = defaultdict(list)
         self.outgoing_arc_idx: dict[tuple, list[int]] = defaultdict(list)
         for idx, (src, dst) in enumerate(self.all_arcs):
             self.outgoing_arc_idx[src].append(idx)
             self.incoming_arc_idx[dst].append(idx)
 
-        # Precompute direct travel arcs grouped by (src_loc, dst_loc),
-        # sorted by departure time. This enables O(log n) "latest arc
-        # arriving within a deadline" lookups via bisect (see the stage-2
-        # local search's _find_best_arc), instead of scanning per
-        # (location, time) node. Built once here — purely a function of
-        # the static network topology, not of any particular
-        # optimisation cycle's pod/order selection — so Stage2Data no
-        # longer needs to rebuild it (filtered) on every single call.
+        # Travel arcs grouped by (src_loc, dst_loc) and sorted by
+        # departure: lets Stage 2 bisect for the latest arc arriving
+        # within a deadline. Depends on topology only, so it is built
+        # once here and Stage2Data just reuses it.
         n_travel = len(self.travelling_arcs)
         arc_lookup: dict[tuple, list] = defaultdict(list)
         for arc_id, (src, dst) in enumerate(self.travelling_arcs):
@@ -109,10 +103,8 @@ class OptManager:
             arc_lookup[key].sort(key=lambda z: z[0])
         self.arc_lookup: dict[tuple, list] = dict(arc_lookup)
 
-        # O(1) lookup of the "stay in place" (idle) arc departing from a
-        # given (location, time) node — avoids scanning outgoing_arc_idx
-        # just to find the single self-loop arc, in the hot per-pod
-        # routing loops of Stage 2 (add_idle_arcs).
+        # Direct handle on the stay in place arc of each (location, time)
+        # node, used by the hot per pod routing loops of Stage 2
         self.idle_arc_id: dict[tuple, int] = {}
         for offset, (src, dst) in enumerate(self.idle_arcs):
             self.idle_arc_id[src] = n_travel + offset
@@ -132,12 +124,12 @@ class OptManager:
         W: list[int],
     ) -> tuple[list, list, list]:
         """
-        Build the time-space network for pod routing.
+        Build the time space network for pod routing.
 
-        Nodes are (location, time) pairs.  Travelling arcs connect locations
+        Nodes are (location, time) pairs. Travelling arcs connect locations
         reachable within the horizon; idle arcs represent staying in place.
-        Only pod↔workstation and workstation↔workstation movements are modelled
-        (pod↔pod arcs are excluded by design).
+        Only pod↔workstation and workstation↔workstation movements are
+        modelled (pod↔pod arcs are excluded by design).
 
         Parameters
         ----------
@@ -153,7 +145,8 @@ class OptManager:
         all_locations = L + W
         nodes = list(product(all_locations, range(N_TIME)))
 
-        # Discretise pairwise travel times (ceiling to nearest time unit)
+        # Discretise pairwise travel times, with a 20 percent safety
+        # margin on the nominal time, rounded up to whole periods
         travel_dt: dict[tuple, int] = {}
         for l1 in all_locations:
             for l2 in all_locations:
@@ -170,12 +163,13 @@ class OptManager:
         travelling_arcs: list = []
 
         def _add_arcs(sources: list, destinations: list) -> None:
-            """Append all time-feasible arcs from each source to each destination."""
+            """Append all time feasible arcs from each source to each destination."""
             for l1 in sources:
                 for l2 in destinations:
                     if l1 == l2:
                         continue
                     dt = travel_dt[(l1, l2)]
+                    # Trips longer than the horizon can never be used
                     if dt >= N_TIME:
                         continue
                     for t1 in range(N_TIME - dt):
@@ -222,7 +216,7 @@ class OptManager:
                 if visit.workstation_id == ws.workstation_id
             ]
 
-            # Buffered orders — all items still pending
+            # Buffered orders: all their items are still pending
             for order_id in ws.order_buffer:
                 o = state.orders_in_system.get(order_id)
                 if o is not None:
@@ -231,7 +225,8 @@ class OptManager:
                     ws_orders_items.append(list(o.items_required))
                     assigned.add(order_id)
 
-            # Open orders — exclude items already claimed by active task visits
+            # Open orders: skip the items already claimed by active
+            # task visits, the optimiser must not schedule them twice
             for order_id in ws.opened_orders:
                 o = state.orders_in_system.get(order_id)
                 if o is None:
@@ -249,12 +244,15 @@ class OptManager:
                     assigned.add(order_id)
                     
 
-        # Backlog orders — pull up to OBATCH_SIZE - (already collected)
+        # Backlog orders: pull until the batch budget is filled, minus
+        # what the workstations already contributed
         backlog       = []
         backlog_items = []
         n_to_consider = min(OBATCH_SIZE - len(ws_orders), len(state.orders_in_system))
         l_to_push     = []
 
+        # The queue has no filtered scan, so pop everything we inspect
+        # and push it back afterwards
         while len(backlog) < n_to_consider and len(state.orders_in_system) > 0:
             o = state.orders_in_system.pop()
             l_to_push.append(o)
@@ -276,8 +274,10 @@ class OptManager:
         """
         Run the full optimisation pipeline and convert the solution into Tasks.
 
-        The problem is solved by calling sequentiallt two local search heuristic
-        and lastly the function that converts decisional variables into Task objects.
+        The problem is solved by calling sequentially the two local search
+        heuristics (Stage 1 assigns orders to workstations and items to
+        pods, Stage 2 schedules the picks over time) and lastly the
+        function that converts decision variables into Task objects.
 
         Returns
         -------
@@ -290,6 +290,8 @@ class OptManager:
         logging.info("Solving stage 1 ... ")
         orders, orders_items = self.extract_orders(state)
         n_orders = len(orders)
+
+        # One index im per (item, order) pair, the unit Stage 2 works on
         relevant_pairs_for_x = [(i, m) for m in range(n_orders) for i in orders_items[m]]
         items_of_order: dict[int, list[int]] = {m: [] for m in range(n_orders)}
         for im, (_, m) in enumerate(relevant_pairs_for_x):
@@ -302,7 +304,7 @@ class OptManager:
         x1, z1 = local_search_stage1(orders, orders_items, relevant_pairs_for_x, self, state, self.n_workstations)
         logging.info("Stage 1 solved.")
 
-        # Extract stage-1 solution: map each order to its workstation and each (item, order) to its pod
+        # Extract stage 1 solution: map each order to its workstation and each (item, order) to its pod
         orders_by_workstation = [set() for _ in range(self.n_workstations)] # workstation index w → order index m
         order_to_ws_m: dict[int, int] = {}   # order index m → workstation index w
         pod_of_item = {}  # (sku, order_idx) -> pod_idx
@@ -318,6 +320,8 @@ class OptManager:
                     pod_of_item[im] = p
                     break
 
+        # Compact pod indexing: only the pods actually used by the
+        # solution get a relative id, Stage 2 never sees the others
         from_RelPod_to_PodId = list(set(pod_of_item.values()))
         from_PodId_to_RelPod = {id_p:rel_p for rel_p, id_p in enumerate(from_RelPod_to_PodId)}
 

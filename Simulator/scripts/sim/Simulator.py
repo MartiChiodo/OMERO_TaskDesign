@@ -152,10 +152,6 @@ class Simulator:
         at the very start, so consecutive calls are fully independent replicas
         with no shared mutable state.
 
-        Parameters
-        ----------
-        time_horizon : float
-            Simulation end time in seconds (e.g. ``8 * 3600``).
         """
         # Reset: build a clean state for this replica 
         fresh_warehouse   = self._warehouse_factory()

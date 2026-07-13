@@ -20,12 +20,6 @@ class ResourceTracker:
 
     Accumulates time spent in each discrete state using a last-event clock.
     State indices must match the .value of the corresponding enum.
-
-    Parameters
-    ----------
-    n : int                      Number of resources in the pool.
-    n_states : int               Number of possible states (e.g. 2 for IDLE/BUSY).
-    default_idle_state : int     State index assumed at initialization (typically IDLE.value).
     """
 
     def __init__(self, n: int, n_states: int, default_idle_state: int) -> None:
@@ -115,11 +109,6 @@ class TimeWeightedMeanTracker:
 
     Uses area accumulation: integral of signal over time, divided by
     elapsed time, gives the time-average.
-
-    Parameters
-    ----------
-    n : int              Number of resources.
-    warm_up : float      Warm-up end time; accumulation starts from this point.
     """
 
     def __init__(self, n: int, warm_up: float) -> None:

@@ -11,7 +11,9 @@ from scripts.core.enums import PodStatus, WorkstationPickingStatus, RobotStatus
 from scripts.core.entities import Pod, Workstation, Robot
 
 
-# Layout constants
+### Layout constants
+# MARGIN: empty border around the pod grid, robots need room to move.
+# MIN_SPACING: minimum gap between workstations.
 MARGIN = 3
 MIN_SPACING = 2
 
@@ -59,7 +61,7 @@ class Warehouse:
         Initialize warehouse.
         """
 
-        # Validation
+        # Fail loudly here rather than with a weird index error later
         if num_pods != grid_rows * grid_cols:
             raise ValueError(
                 f"Warehouse layout mismatch: num_pods ({num_pods}) must equal "
@@ -78,7 +80,8 @@ class Warehouse:
         self.robot_speed = robot_speed
         self.num_skus = num_skus
 
-        # Compute physical dimensions
+        # Physical footprint: pod rows plus one aisle every two rows,
+        # plus the outer margin on both sides.
         self.X = grid_rows + 2 * ((grid_rows - 1) // 2) + 2 * MARGIN - 1
         self.Y = grid_cols + 2 * MARGIN - 1
 
@@ -88,7 +91,7 @@ class Warehouse:
             grid_rows, grid_cols, self.X, self.Y, num_skus, num_robots, num_workstations
         )
 
-        # Generate entities
+        # Generate entities (workstations need self.X and self.Y first)
         self.pods = self._generate_pods(
             random_generator, num_pods, num_skus, grid_rows, grid_cols, num_skus_per_pod
         )
@@ -126,24 +129,25 @@ class Warehouse:
         """
         Generate pods.
 
-        Uses truncated-normal distribution for more realistic SKU distribution:
-        - Some SKUs appear in many pods (popular items)
-        - Other SKUs appear in few pods (niche items)
+        SKUs are sampled from a truncated normal: catalogue centre ends
+        up in many pods (popular items), the extremes in few (niche ones).
         """
 
-        # Pre-allocate list
+        # Preallocate, pods are placed by id rather than appended
         pods = [None] * num_pods
 
-        # Assign SKUs to pods
+        # Walk the grid column by column, pod ids grow along each column
         for col in range(grid_cols):
             for row in range(grid_rows):
                 pod_id = col * grid_rows + row
 
-                # Compute grid position
+                # The 2 * (row // 2) offset skips the aisle after every
+                # pair of rows, same convention as the footprint above
                 x_position = MARGIN + row + 2 * (row // 2)
                 y_position = self.Y - MARGIN - col
 
-                # Sample SKUs for this pod 
+                # Rounded, clipped, deduplicated by the set below: the
+                # 0.7 factor keeps the surviving count near the target
                 samples = random_generator.normal(loc=num_skus/2, scale=num_skus/5, size=int(0.7*num_skus_per_pod))
                 samples = np.round(samples).astype(int)
                 pod_skus = samples[(samples >= 0) & (samples <= num_skus-1)]
@@ -155,7 +159,8 @@ class Warehouse:
                     status=PodStatus.IDLE
                 )
 
-        # Verify all SKUs appear at least once (coverage check)
+        # Coverage fix: a SKU stored nowhere would make its orders
+        # unservable, so park each missing one in the emptiest pod
         all_skus = set()
         for pod in pods:
             all_skus.update(pod.items)
@@ -181,16 +186,17 @@ class Warehouse:
         item_process_time: float
     ) -> list[Workstation]:
         """
-        Generate workstations.
+        Generate workstations: a symmetric line on the bottom edge when
+        they fit, otherwise they spill onto the perimeter anticlockwise.
         """
 
         workstations = [None] * num_workstations
 
-        # Check if symmetric bottom placement is possible
+        # How many stations fit on the bottom edge at MIN_SPACING apart
         max_bottom_slots = (self.X - 2) // MIN_SPACING + 1
 
         if num_workstations <= max_bottom_slots:
-            # Symmetric placement on bottom edge
+            # Bottom edge, centred: start half the line left of centre
             center_x = self.X // 2
             start_offset = -(num_workstations // 2) * MIN_SPACING
 
@@ -207,7 +213,7 @@ class Warehouse:
 
             return workstations
 
-        # Perimeter placement (anti-clockwise)
+        # Perimeter walk, anticlockwise, one edge per branch below
         x_position, y_position = self.X // 2, 0
 
         for ws_id in range(num_workstations):
@@ -220,17 +226,20 @@ class Warehouse:
                 item_process_time=item_process_time
             )
 
-            # Advance anti-clockwise
             if y_position == 0:
+                # Bottom edge heading right, turn up at the corner
                 x_position = x_position + MIN_SPACING if x_position + MIN_SPACING < self.X else self.X
                 y_position = 0 if x_position != self.X else MIN_SPACING
             elif x_position == self.X:
+                # Right edge heading up, turn onto the top at the corner
                 y_position = y_position + MIN_SPACING if y_position + MIN_SPACING < self.Y else self.Y
                 x_position = self.X if y_position != self.Y else (self.X - MIN_SPACING)
             elif y_position == self.Y:
+                # Top edge heading left, turn down at the corner
                 x_position = x_position - MIN_SPACING if x_position - MIN_SPACING > 0 else 0
                 y_position = self.Y if x_position != 0 else (self.Y - MIN_SPACING)
             elif x_position == 0:
+                # Left edge heading down, close the loop on the bottom
                 y_position = y_position - MIN_SPACING if y_position - MIN_SPACING > 0 else 0
                 x_position = 0 if y_position != 0 else MIN_SPACING
 
@@ -242,13 +251,15 @@ class Warehouse:
         num_robots: int
     ) -> list[Robot]:
         """
-        Generate robots with collision avoidance (same as before).
+        Generate robots, scattered at random over the inner area.
         """
 
         robots = [None] * num_robots
         assigned_positions = set()
 
         for robot_id in range(num_robots):
+            # Rejection sampling: redraw until the cell is free, cheap
+            # since robots are far fewer than cells
             while True:
                 x_position = random_generator.integers(1, self.X - 1)
                 y_position = random_generator.integers(1, self.Y - 1)
@@ -270,18 +281,15 @@ class Warehouse:
 
     def _build_indices(self) -> None:
         """
-        Build fast-lookup indices.
-
-        Creates O(1) lookup dictionaries instead of O(n) linear search.
-        Also builds SKU reverse index for optimized task design.
+        Build fast lookup indices.
         """
 
-        # O(1) entity lookups
+        # entity lookups
         self.pods_by_id = {pod.pod_id: pod for pod in self.pods}
         self.robots_by_id = {robot.robot_id: robot for robot in self.robots}
         self.workstations_by_id = {ws.workstation_id: ws for ws in self.workstations}
 
-        # SKU reverse index: SKU → list of pod IDs
+        # Reverse index answering "who stores this SKU?" in one lookup
         self.pods_by_sku: dict[int, list[int]] = defaultdict(list)
         for pod in self.pods:
             for sku in pod.items:
@@ -292,9 +300,11 @@ class Warehouse:
     ### DISTANCE AND TRAVEL TIME
 
     def coord2cell(self, position_x: int, position_y: int) -> int:
+        # Row major encoding: cell id = x + X * y
         return position_x + self.X * position_y
     
     def cell2coord(self, cell_id: int) -> int:
+        # Inverse of coord2cell: x is the remainder, y the quotient
         return (cell_id % self.X, math.floor(cell_id/self.X))
 
     @staticmethod
@@ -314,15 +324,15 @@ class Warehouse:
         """
         Estimate travel time between two positions.
 
-        Computed as Manhattan distance divided by robot speed.
-        Optional noise for realism.
+        Manhattan distance over robot speed, the natural metric on a
+        grid. Optional noise for realism.
         """
 
         nominal_time = self.manhattan_distance(position_a, position_b) / self.robot_speed
 
         if random_generator is not None:
-            # Noise is drawn from a Beta(2,10) with support [0, 0.5*nominal_time]
-            # Mean is 2/(2+10)*0.5*nominal_time = 0.0833*nominal_time
+            # Beta(2,10) on [0, 0.5*nominal_time], mean 0.0833*nominal_time:
+            # most trips barely late, big delays rare, never early
             noise = random_generator.beta(a=2, b = 10)*0.5*nominal_time
             return nominal_time + noise
 
@@ -333,7 +343,7 @@ class Warehouse:
 
     def get_pod(self, pod_id: int) -> Pod:
         """
-        Retrieve a pod by ID - O(1) with index.
+        Retrieve a pod by ID.
         """
         pod = self.pods_by_id.get(pod_id)
         if pod is None:
@@ -342,7 +352,7 @@ class Warehouse:
 
     def get_workstation(self, workstation_id: int) -> Workstation:
         """
-        Retrieve a workstation by ID - O(1) with index.
+        Retrieve a workstation by ID.
         """
         workstation = self.workstations_by_id.get(workstation_id)
         if workstation is None:
@@ -351,7 +361,7 @@ class Warehouse:
 
     def get_robot(self, robot_id: int) -> Robot:
         """
-        Retrieve a robot by ID - O(1) with index.
+        Retrieve a robot by ID.
         """
         robot = self.robots_by_id.get(robot_id)
         if robot is None:
@@ -360,7 +370,7 @@ class Warehouse:
 
     def get_pods_containing_sku(self, sku_id: int) -> list[Pod]:
         """
-        Get all pods containing a specific SKU - O(k) where k = pods with SKU.
+        Get all pods containing a specific SKU.
         """
         pod_ids = self.pods_by_sku.get(sku_id, [])
         return [self.pods_by_id[pod_id] for pod_id in pod_ids]
@@ -373,12 +383,14 @@ class Warehouse:
         save: bool = True,
         folder: str = r"Simulator\output\plots",
     ) -> None:
-        """Plot warehouse layout."""
+        """Plot warehouse layout: black squares are pods, red circles
+        are workstations, blue squares are robots."""
 
         scale = 0.8
         fig, ax = plt.subplots(figsize=(self.X * scale, self.Y * scale))
         ax.set_aspect('equal')
 
+        # Pods, with their id in the middle
         for pod in self.pods:
             x, y = self.cell2coord(pod.storage_location)
             ax.add_patch(plt.Rectangle((x - 0.4, y - 0.4), 0.8, 0.8,
@@ -386,12 +398,14 @@ class Warehouse:
             ax.text(x, y, str(pod.pod_id), ha='center', va='center',
                    fontsize=6, color='black')
 
+        # Workstations, a bit bigger so they stand out
         for workstation in self.workstations:
             x, y = self.cell2coord(workstation.position)
             ax.add_patch(plt.Circle((x, y), 0.5, fill=False, color='red', linewidth=1))
             ax.text(x, y, str(workstation.workstation_id), ha='center', va='center',
                    fontsize=8, color='red', fontweight='bold')
 
+        # Robots, wherever they happen to be
         for robot in self.robots:
             x, y = self.cell2coord(robot.position)
             ax.add_patch(plt.Rectangle((x - 0.25, y - 0.25), 0.5, 0.5,
@@ -399,6 +413,7 @@ class Warehouse:
             ax.text(x, y, str(robot.robot_id), ha='center', va='center',
                    fontsize=6, color='blue')
 
+        # Red frame marking the physical boundary
         ax.add_patch(plt.Rectangle((0, 0), self.X, self.Y, fill=False,
                                   edgecolor='red', linewidth=2.5))
 

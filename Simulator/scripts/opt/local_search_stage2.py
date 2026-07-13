@@ -6,7 +6,7 @@ from bisect import bisect_left
 import logging
 
 from .stage2_data import Stage2Data
-from .build_initial_x_v1 import build_initial_x
+from .build_initial_x_stage2 import build_initial_x
 
 """
 Stage-2 local search: picking-time scheduling (x) and pod routing (y) over a

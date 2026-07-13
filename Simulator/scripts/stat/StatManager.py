@@ -5,29 +5,22 @@ from scripts.core.enums import WorkstationPickingStatus, RobotStatus, OrderStatu
 from scripts.stat.core import *
 
 
-#  Main coordinator 
+### Main coordinator
 
 class StatManager:
     """
-    Collects and manages performance statistics for the warehouse simulation.
+    Collects and manages performance statistics for the simulation.
 
-    Delegates measurement to specialised sub-trackers:
-    - ``ResourceTracker``       workstation and robot utilization
-    - ``OrderFlowTracker``      per-size order flow times
-    - ``TimeWeightedMeanTracker``  average open orders per workstation
-
-    The public ``update_statistic`` interface is preserved for compatibility
-    with the event handlers. Internally, the *type* argument is coerced to
-    ``StatType``.
-
-    Parameters
-    ----------
-    warehouse : Warehouse        Warehouse instance providing resource counts.
-    warm_up : float, optional    Simulation time before which statistics are not collected.
+    Measurement is delegated to specialised sub trackers: ResourceTracker
+    for workstation and robot utilization, OrderFlowTracker for per size
+    flow times, TimeWeightedMeanTracker for time averaged quantities.
+    Event handlers only ever call update_statistic, which dispatches to
+    the right tracker.
     """
 
     def __init__(self, warehouse, warm_up: float = 0.0) -> None:
         
+        # Statistics before this instant are not collected
         self.WARM_UP = warm_up
 
         n_ws = len(warehouse.workstations)
@@ -38,36 +31,23 @@ class StatManager:
         self.oft_tracker = OrderFlowTracker()
         self.oo_tracker  = TimeWeightedMeanTracker(n_ws, warm_up)
 
-        # Time spent in computation for decision-making
+        # Time spent in computation for decision making
         self.decisions_computing_time = 0
 
-        # Pod Moved and throughput
+        # Pods moved and throughput
         self.avg_number_pod_moving = TimeWeightedMeanTracker(1, warm_up)
         self.throughput = 0
 
      
 
     def update_statistic(self, type: str, info: list) -> None:
-        """
-        Dispatch a statistic update to the appropriate sub-tracker.
-
-        Parameters
-        ----------
-        type : str | StatType
-            One of "OFT", "WS_FREQ", "RB_FREQ", "WS_AVG_OO".
-        info : list
-            Payload whose structure depends on *type*:
-            - OFT        : [order, completion_time]
-            - WS_FREQ    : [ws_id, WorkstationPickingStatus, clock]
-            - RB_FREQ    : [robot_id, RobotStatus, clock]
-            - WS_AVG_OO  : [ws_id, new_open_order_count, clock]
-            - POD_AVG_MOVING : [variation, clock]
-        """
+        """Dispatch a statistic update to the appropriate sub tracker."""
         stat = StatType(type)
 
         match stat:
 
             case StatType.ORDER_FLOW_TIME:
+                # info = [order, completion_time]
                 order, completion_time = info[0], info[1]
                 if completion_time < self.WARM_UP:
                     return
@@ -75,6 +55,8 @@ class StatManager:
                 self.oft_tracker.record(order.order_size, flow_time)
 
             case StatType.WS_UTILIZATION:
+                # info = [ws_id, new status, clock]. Before warm up only
+                # the state is reseeded, no time gets accounted
                 ws_id, new_state, clock = info[0], info[1], info[2]
                 if clock < self.WARM_UP:
                     self.ws_tracker.seed_state(ws_id, new_state.value)
@@ -82,6 +64,7 @@ class StatManager:
                     self.ws_tracker.record(ws_id, new_state.value, clock)
 
             case StatType.ROBOT_UTILIZATION:
+                # info = [robot_id, new status, clock], same warm up logic
                 rb_id, new_state, clock = info[0], info[1], info[2]
                 if clock < self.WARM_UP:
                     self.rb_tracker.seed_state(rb_id, new_state.value)
@@ -89,19 +72,22 @@ class StatManager:
                     self.rb_tracker.record(rb_id, new_state.value, clock)
 
             case StatType.WS_AVG_OPEN_ORDER:
+                # info = [ws_id, variation, clock]. The counter moves even
+                # during warm up, but time is charged from WARM_UP onwards
                 ws_id, variation, clock = info[0], info[1], info[2]
                 new_value = self.oo_tracker.last_val[ws_id] + variation
                 effective_clock = max(clock, self.WARM_UP)       
                 self.oo_tracker.record(ws_id, new_value, effective_clock)
 
             case StatType.POD_AVG_MOVING:
+                # info = [variation, clock], single global counter
                 variation, clock = info[0], info[1]
                 new_value = self.avg_number_pod_moving.last_val[0] + variation
                 effective_clock = max(clock, self.WARM_UP)
                 self.avg_number_pod_moving.record(0, new_value, effective_clock)
 
 
-    #  Report 
+    ### Report
 
     def return_statistics(self, sim_config, state, output_path: str) -> None:
         """Compute, print, and save a summary report."""
@@ -116,20 +102,23 @@ class StatManager:
         logging.info("Report saved to: %s", output_path)
 
     def build_report(self, config, end_time, state) -> str:
-        """Return the full report as a string."""
+        """Assemble the full report as a single string."""
         lines: list[str] = []
+
+        # Run header and global figures
         lines.append(f"Simulation with time-horizon = {config.time_horizon} sec and warm-up = {config.warm_up} sec.")
         lines.append(f"Optimization enabled = {config.optimization_enabled}")
 
         lines.append(f"\nTotal number of items picked (throughtput) = {self.throughput}.\nAverage number of pod moving simultaneously = {self.avg_number_pod_moving.mean(0, end_time)}.")
         lines.append(f"Computational time spent for making decisions = {self.decisions_computing_time} sec.")
 
+        # Orders: closed by size, then whatever is still in the system
         lines += self.format_closed_orders_table()
         lines.append(f"\nIn the system there are still {len([o for o in state.orders_in_system if o.status == OrderStatus.BACKLOG])} order(s) in backlog, {len([o for o in state.orders_in_system if o.status == OrderStatus.WAITING])} order(s) enqueued at a workstation and {len([o for o in state.orders_in_system if o.status == OrderStatus.OPEN])} order(s) open at a workstation.")
         if len([o for o in state.orders_in_system if o.status == OrderStatus.BACKLOG]) > 0:
             lines+=self.format_backlog_orders_table(state.orders_in_system, end_time)
         
-
+        # Resource utilization tables
         lines += self.format_resource_table("ROBOTS", self.rb_tracker, with_avg_oo=False, time_horizon=end_time)
         lines += self.format_resource_table("WORKSTATIONS", self.ws_tracker, with_avg_oo=True, time_horizon=end_time)
         lines.append("\n" + "=" * 60)
@@ -138,6 +127,8 @@ class StatManager:
     def format_resource_table(
         self, name: str, tracker: ResourceTracker, with_avg_oo: bool, time_horizon : float
     ) -> list[str]:
+        """Format the utilization table of one resource family, with the
+        average open orders column for workstations only."""
         lines = []
         lines.append(f"\n{'=' * 60}\n  {name}\n{'=' * 60}")
 
@@ -151,9 +142,9 @@ class StatManager:
 
         lines.append("-" * 60)
 
+        # One row per resource
         for i in range(len(usage)):
             if with_avg_oo:
-                # Use a placeholder end_clock that matches last recorded clock
                 avg_oo = self.oo_tracker.mean(i, time_horizon)
                 lines.append(
                     f"  {i:<6} {usage[i,0]:>10.2f} {usage[i,1]:>10.2f} "
@@ -166,6 +157,8 @@ class StatManager:
 
         lines.append("-" * 60)
 
+        # Summary rows: per resource mean and spread, then the global
+        # utilization computed over the pooled busy time
         total_time = usage.sum()
         total_busy = usage[:, 1].sum()
         global_util = total_busy / total_time if total_time > 0 else 0.0
@@ -177,6 +170,7 @@ class StatManager:
         return lines
 
     def format_closed_orders_table(self) -> list[str]:
+        """Format the closed orders table, one row per order size."""
         lines = []
         lines.append(f"\n{'=' * 60}\n  ORDERS BY SIZE\n{'=' * 60}")
         lines.append(f"  {'Size':<8} {'Closed':>8} {'Avg Flow (sec)':>17}")
@@ -198,11 +192,14 @@ class StatManager:
         return lines
     
     def format_backlog_orders_table(self,orders_in_system, end_time) -> list[str]:
+        """Format the backlog table: count and average waiting time of
+        the orders still unserved, grouped by size."""
         lines = []
         lines.append(f"\n{'=' * 60}\n  BACKLOG ORDERS \n{'=' * 60}")
         lines.append(f"  {'Size':<8} {'Number':>8} {'Avg waiting time (sec)':>25}")
         lines.append("-" * 60)
 
+        # Accumulate count and total waiting time per order size
         tot_backlog = 0
         backlog = {}
         for o in orders_in_system:
@@ -223,15 +220,10 @@ class StatManager:
         lines.append("-" * 60)
         return lines
 
-    #  Reset 
+    ### Reset
 
     def reset_statistics(self) -> None:
-        """
-        Reset all collected statistics.
-
-        Safe to call between replications. Resets all sub-trackers,
-        including WS_AVG_OO which was previously omitted.
-        """
+        """Reset every tracker and counter, safe between replications."""
         self.ws_tracker.reset()
         self.rb_tracker.reset()
         self.oft_tracker.reset()

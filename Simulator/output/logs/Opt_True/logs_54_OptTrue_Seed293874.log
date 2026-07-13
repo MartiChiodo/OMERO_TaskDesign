@@ -24696,3 +24696,67 @@ Variables size:
 2026-07-13 12:06:29 INFO: [ls_stage2] Candidate rejected: move=('order', 105, -2) obj=-1765.8551 violations=['EC11']
 2026-07-13 12:12:28 INFO: [ls_stage2] Iter 1: improved move=('order', 209, -2) obj=-1766.9266
 2026-07-13 12:18:29 INFO: [ls_stage2] Candidate rejected: move=('order', 173, -1) obj=-1755.9266 violations=['EC11']
+2026-07-13 12:24:31 INFO: [ls_stage2] Candidate rejected: move=('order', 197, -1) obj=-1760.9266 violations=['EC11']
+2026-07-13 12:30:34 INFO: [ls_stage2] Candidate rejected: move=('order', 171, -1) obj=-1762.9266 violations=['EC11']
+2026-07-13 12:30:34 INFO: [ls_stage2] Iter 2: no accepted move (1/5)
+2026-07-13 12:36:38 INFO: [ls_stage2] Iter 3: improved move=('multi_item', (np.int64(189), np.int64(550), np.int64(195)), -1) obj=-1764.9266
+2026-07-13 12:42:41 INFO: [ls_stage2] Candidate rejected: move=('order', 243, -2) obj=-1757.7945 violations=['EC11']
+2026-07-13 12:48:41 INFO: [ls_stage2] Iter 4: improved move=('order', 231, -2) obj=-1761.7915
+2026-07-13 12:54:44 INFO: [ls_stage2] Candidate rejected: move=('order', 197, -1) obj=-1755.7915 violations=['EC11']
+2026-07-13 13:00:45 INFO: [ls_stage2] Candidate rejected: move=('order', 171, -2) obj=-1757.6415 violations=['EC11']
+2026-07-13 13:06:44 INFO: [ls_stage2] Candidate rejected: move=('order', 126, -2) obj=-1758.6070 violations=['EC11']
+2026-07-13 13:06:44 INFO: [ls_stage2] Iter 5: no accepted move (1/5)
+2026-07-13 13:12:46 INFO: [ls_stage2] Iter 6: improved move=('multi_item', (np.int64(442), np.int64(573)), -1) obj=-1759.7915
+2026-07-13 13:18:46 INFO: [ls_stage2] Candidate rejected: move=('order', 173, -2) obj=-1748.6420 violations=['EC11', 'max_active_pods']
+2026-07-13 13:24:45 INFO: [ls_stage2] Candidate rejected: move=('order', 173, -1) obj=-1748.7915 violations=['EC11']
+2026-07-13 13:30:45 INFO: [ls_stage2] Candidate rejected: move=('order', 142, -1) obj=-1754.7915 violations=['EC11']
+2026-07-13 13:30:45 INFO: [ls_stage2] Iter 7: no accepted move (1/5)
+2026-07-13 13:36:46 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(443), np.int64(416), np.int64(286)), -1) obj=-1757.6450 violations=['EC11']
+2026-07-13 13:42:45 INFO: [ls_stage2] Iter 8: improved move=('multi_item', (np.int64(51), np.int64(497), np.int64(443)), -1) obj=-1757.7125
+2026-07-13 13:42:48 WARNING: _rebuild_pod_row: pod 784 at 33 t=99 > arrive_t=98 — skipping
+2026-07-13 13:48:46 INFO: [ls_stage2] Candidate rejected: move=('order', 243, -2) obj=-1750.5804 violations=['EC11', 'EC18']
+2026-07-13 13:54:46 INFO: [ls_stage2] Candidate rejected: move=('order', 148, -2) obj=-1751.5474 violations=['EC11']
+2026-07-13 14:00:48 INFO: [ls_stage2] Iter 9: improved move=('order', 210, -1) obj=-1754.7125
+2026-07-13 14:06:49 INFO: [ls_stage2] Candidate rejected: move=('order', 173, -1) obj=-1743.7125 violations=['EC11']
+2026-07-13 14:12:53 INFO: [ls_stage2] Candidate rejected: move=('order', 124, -2) obj=-1747.5269 violations=['EC11']
+2026-07-13 14:18:52 INFO: [ls_stage2] Candidate rejected: move=('order', 197, -2) obj=-1750.5689 violations=['EC11']
+2026-07-13 14:18:52 INFO: [ls_stage2] Iter 10: no accepted move (1/5)
+2026-07-13 14:24:53 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(121), np.int64(259), np.int64(134)), -1) obj=-1752.7125 violations=['EC11']
+2026-07-13 14:30:53 INFO: [ls_stage2] Iter 11: improved move=('multi_item', (np.int64(428), np.int64(427)), -1) obj=-1752.7125
+2026-07-13 14:30:55 WARNING: _rebuild_pod_row: pod 472 cannot reach ws 33 by t=99 from 29 t=99 — staying put
+2026-07-13 14:36:54 INFO: [ls_stage2] Candidate rejected: move=('order', 113, -1) obj=-1749.7125 violations=['EC18']
+2026-07-13 14:42:54 INFO: [ls_stage2] Iter 12: improved move=('item', 180, -6) obj=-1750.6760
+2026-07-13 14:48:55 INFO: [ls_stage2] Candidate rejected: move=('order', 164, -2) obj=-1744.5232 violations=['EC11']
+2026-07-13 14:54:56 INFO: [ls_stage2] Iter 13: improved move=('multi_item', (np.int64(168), np.int64(551)), -4) obj=-1748.3666
+2026-07-13 15:00:56 INFO: [ls_stage2] Candidate rejected: move=('order', 164, -2) obj=-1742.2138 violations=['EC11']
+2026-07-13 15:06:56 INFO: [ls_stage2] Candidate rejected: move=('order', 58, -1) obj=-1744.3666 violations=['EC11']
+2026-07-13 15:12:56 INFO: [ls_stage2] Iter 14: improved move=('multi_item', (np.int64(138), np.int64(64), np.int64(169)), -5) obj=-1744.7512
+2026-07-13 15:18:59 INFO: [ls_stage2] Candidate rejected: move=('order', 124, -1) obj=-1737.7512 violations=['EC11']
+2026-07-13 15:24:59 INFO: [ls_stage2] Candidate rejected: move=('order', 148, -2) obj=-1738.5862 violations=['EC11']
+2026-07-13 15:31:00 INFO: [ls_stage2] Candidate rejected: move=('order', 228, -1) obj=-1739.7512 violations=['EC11']
+2026-07-13 15:31:00 INFO: [ls_stage2] Iter 15: no accepted move (1/5)
+2026-07-13 15:37:01 INFO: [ls_stage2] Iter 16: improved move=('multi_item', (np.int64(193), np.int64(298), np.int64(392)), -1) obj=-1742.6292
+2026-07-13 15:37:03 WARNING: _rebuild_pod_row: pod 775 cannot reach ws 39 by t=99 from 31 t=99 — staying put
+2026-07-13 15:43:02 INFO: [ls_stage2] Candidate rejected: move=('order', 62, -1) obj=-1735.6292 violations=['EC11', 'EC18']
+2026-07-13 15:49:04 INFO: [ls_stage2] Candidate rejected: move=('order', 228, -2) obj=-1737.4934 violations=['EC11']
+2026-07-13 15:55:07 INFO: [ls_stage2] Candidate rejected: move=('order', 130, -2) obj=-1738.4476 violations=['EC11']
+2026-07-13 15:55:07 INFO: [ls_stage2] Iter 17: no accepted move (1/5)
+2026-07-13 16:01:08 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(265), np.int64(452), np.int64(578)), -1) obj=-1739.6292 violations=['EC11']
+2026-07-13 16:07:11 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(265), np.int64(452)), -1) obj=-1740.6292 violations=['EC11']
+2026-07-13 16:13:11 INFO: [ls_stage2] Iter 18: improved move=('item', 281, -2) obj=-1741.4496
+2026-07-13 16:19:12 INFO: [ls_stage2] Candidate rejected: move=('order', 197, -1) obj=-1737.4496 violations=['EC11']
+2026-07-13 16:25:14 INFO: [ls_stage2] Candidate rejected: move=('order', 70, -1) obj=-1738.4496 violations=['EC11']
+2026-07-13 16:31:13 INFO: [ls_stage2] Iter 19: improved move=('multi_item', (np.int64(456), np.int64(181), np.int64(39)), -5) obj=-1739.0292
+2026-07-13 16:37:13 INFO: [ls_stage2] Candidate rejected: move=('order', 126, -2) obj=-1735.8446 violations=['EC11']
+2026-07-13 16:43:13 INFO: [ls_stage2] Candidate rejected: move=('order', 70, -2) obj=-1735.8666 violations=['EC11']
+2026-07-13 16:49:12 INFO: [ls_stage2] Iter 20: improved move=('item', 280, -8) obj=-1736.7916
+2026-07-13 16:49:14 WARNING: _rebuild_pod_row: pod 784 at 33 t=99 > arrive_t=98 — skipping
+2026-07-13 16:55:12 INFO: [ls_stage2] Candidate rejected: move=('order', 243, -2) obj=-1729.6595 violations=['EC11', 'EC18', 'max_active_pods']
+2026-07-13 17:01:12 INFO: [ls_stage2] Candidate rejected: move=('order', 124, -1) obj=-1729.7916 violations=['EC11']
+2026-07-13 17:07:13 INFO: [ls_stage2] Candidate rejected: move=('order', 48, -1) obj=-1732.7916 violations=['EC11']
+2026-07-13 17:07:13 INFO: [ls_stage2] Iter 21: no accepted move (1/5)
+2026-07-13 17:13:14 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(498), np.int64(233), np.int64(145)), -1) obj=-1733.7916 violations=['EC11']
+2026-07-13 17:19:14 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(178), np.int64(136), np.int64(266)), -1) obj=-1734.5585 violations=['EC11']
+2026-07-13 17:25:16 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(266), np.int64(380), np.int64(508)), -1) obj=-1734.7916 violations=['EC11']
+2026-07-13 17:25:16 INFO: [ls_stage2] Iter 22: no accepted move (2/5)
+2026-07-13 17:31:17 INFO: [ls_stage2] Candidate rejected: move=('multi_item', (np.int64(432), np.int64(93), np.int64(301)), -1) obj=-1734.6628 violations=['EC11']
