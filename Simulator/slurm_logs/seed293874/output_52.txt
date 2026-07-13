@@ -1,1 +1,0 @@
-Avvio esperimento 52 con seed 293874 su lagrange-c03.hpcdisma.polito.it alle Sat 11 Jul 12:12:37 CEST 2026

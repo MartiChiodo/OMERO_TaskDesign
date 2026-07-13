@@ -27,7 +27,7 @@ def check_constraints(
     y: np.ndarray,
     z: np.ndarray,
     fixed_orders: dict[int, int] | None = None,
-    ) -> bool:
+) -> bool:
     """
     Verify that a candidate (x, y, z) solution satisfies all Stage-1 constraints.<
     """

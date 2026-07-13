@@ -1,1 +1,0 @@
-Avvio esperimento 12 con seed 343310 su lagrange-c01.hpcdisma.polito.it alle Sat 11 Jul 18:42:58 CEST 2026

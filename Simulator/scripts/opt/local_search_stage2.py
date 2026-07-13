@@ -961,8 +961,8 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     # Retry with a fresh initial x until a feasible solution is found or
     # the attempt budget is exhausted (mirrors the pattern used in Stage 1).
     while not feasible:
-        print(f"[ls_stage2] violated = {list(viols.keys())} (attempt {attempt}/{max_attempts})")
-        logging.info("[ls_stage2] violated = %s (attempt %d/%d)", list(viols.keys()), attempt, max_attempts)
+        print(f"[ls_stage2] violated = {list(viols)} (attempt {attempt}/{max_attempts})")
+        logging.info("[ls_stage2] violated = %s (attempt %d/%d)", viols, attempt, max_attempts)
         for k, vv in viols.items():
             print(f"  {k}: {vv[:3] if isinstance(vv, list) else vv}")
 

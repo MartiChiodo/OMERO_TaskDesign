@@ -1,4 +1,0 @@
-
-[notice] A new release of pip is available: 23.2.1 -> 26.1.2
-[notice] To update, run: pip install --upgrade pip
-[2026-07-11T09:37:56.444] error: *** JOB 2189573 ON lagrange-c11 CANCELLED AT 2026-07-11T09:37:56 DUE to SIGNAL Terminated ***

@@ -1,1 +1,0 @@
-Avvio esperimento 32 con seed 301060 su lagrange-c11.hpcdisma.polito.it alle Sat 11 Jul 06:04:01 CEST 2026
