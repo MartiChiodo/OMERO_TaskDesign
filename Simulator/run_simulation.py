@@ -29,7 +29,7 @@ def main():
         EXPERIMENT_IDS = [int(slurm_id)]
     else:
         # Siamo in locale: lista manuale
-        EXPERIMENT_IDS  = [41,42,43,44]
+        EXPERIMENT_IDS  = [51]
 
     # Seed: su cluster viene da variabile d'ambiente impostata nel job.sh (congelata al momento del submit)
     # In locale usa il valore di default sotto, oppure imposta SIM_SEED manualmente

@@ -1017,9 +1017,9 @@ def local_search_stage2(d: Stage2Data) -> tuple:
     iter_without_improvement     = 0
     max_iter_without_improvement = 5
     MAX_ITER  = 100
-    MAX_NEIGH = 300
+    MAX_NEIGH = 400
     ACCEPT_WORSE_PROB = 0.4
-    K_BEST = 3
+    K_BEST = 4
 
     print("[ls_stage2] Exploring neighbours ...")
     current_sol = best_sol
@@ -1117,7 +1117,7 @@ def local_search_stage2(d: Stage2Data) -> tuple:
                     idxs     = rng.choice(len(moves[i]), size=size, replace=False)
                     moves[i] = [moves[i][j] for j in idxs]
 
-        all_moves = moves[0] + moves[1] + moves[2]
+        all_moves = moves[0] + moves[1] + moves[2] + moves[3]
 
         # ---- Evaluate moves ------------------------------------------ #
         # Top-K_BEST candidates are kept with a bounded min-heap instead of

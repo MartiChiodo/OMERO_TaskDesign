@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 import numpy as np
 import logging
 
@@ -27,7 +28,7 @@ def check_constraints(
     y: np.ndarray,
     z: np.ndarray,
     fixed_orders: dict[int, int] | None = None,
-) -> bool:
+    ) -> bool:
     """
     Verify that a candidate (x, y, z) solution satisfies all Stage-1 constraints.<
     """
@@ -74,9 +75,6 @@ def check_constraints(
 
 
     return True, num_constraints
-
-
-import numpy as np
 
 
 def _get_ws_pod_distance_matrix(state) -> np.ndarray:
@@ -145,19 +143,13 @@ def get_fixed_orders(orders, state, n_w: int) -> dict[int, int]:
     return fixed_orders
 
 
-def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManager, state, rng):
+def build_initial_solution(orders, orders_items, relevant_pairs_for_x,
+                           OptManager, state, rng,
+                           w_new_pod=1.0, w_dist=None, cand_cap=60):
     """
-    Build a feasible initial solution for Stage-1.
-
-    Strategy
-    --------
-    1. Pin orders that are already opened at a workstation (EC3) to that
-       workstation.
-    2. Assign the remaining ("free") orders in a first pass to satisfy the
-       lower bound on SKU load per workstation (EC5).
-    3. Assign any still-free orders in a second, greedy pass that tries to
-       minimise the number of newly activated (workstation, pod) pairs,
-       while respecting the upper SKU-load bound.
+    Seed and grow construction: cluster on the same workstation the orders
+    that share SKUs, picking for each SKU the closest already open pod, or,
+    when none is open, the closest pod that stocks it.
     """
     n_orders = len(orders)
     n_w      = OptManager.n_workstations
@@ -168,79 +160,123 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x, OptManage
     x = np.zeros((n_im,    n_p), dtype=np.float64)
     y = np.zeros((n_w,     n_p), dtype=np.float64)
 
-    # Use SKU-based bounds, consistent with check_constraints / EC5
-    sku_per_order = np.array([len(orders_items[m]) for m in range(n_orders)])
-    total_skus    = sku_per_order.sum()
-    lower_I       = np.floor(total_skus / n_w * 0.8)
-    upper_I       = np.ceil(total_skus / n_w * 1.2)
-    ws_load_skus  = np.zeros(n_w, dtype=int)   # tracks SKUs, not orders
+    dist = _get_ws_pod_distance_matrix(state)          # shape (n_w, n_p)
+    # Automatic scaling: opening a fresh pod weighs about one cost unit, so
+    # distance stays a tie breaker and never dominates the pod reuse term.
+    if w_dist is None:
+        w_dist = 0.5 / max(dist.max(), 1.0)
 
-    # Pre-compute order -> items lookup (order_index -> list of x-row indices)
-    items_of_order: dict[int, list[int]] = {}
+    # Lookup tables
+    items_of_order = defaultdict(list)                 # m maps to list of im
     for im, (_, m) in enumerate(relevant_pairs_for_x):
-        items_of_order.setdefault(m, []).append(im)
+        items_of_order[m].append(im)
 
-    def _assign_order(m, w):
-        """Assign order m to workstation w, updating z, x, y and ws_load_skus.
-        For each item of the order, reuse an already-open pod at that
-        workstation if one stocks the SKU, otherwise open a new one."""
+    skus_of_order = {m: {relevant_pairs_for_x[im][0] for im in ims}
+                     for m, ims in items_of_order.items()}
+
+    orders_by_sku = defaultdict(set)                   # i maps to set of m
+    for m, skus in skus_of_order.items():
+        for i in skus:
+            orders_by_sku[i].add(m)
+
+    pods_by_sku = {i: np.asarray(OptManager.pod_indices_by_sku[i])
+                   for i in orders_by_sku}
+
+    # Consistency: count SKUs exactly the way the cost function counts them.
+    sku_per_order = np.array([len(skus_of_order.get(m, ())) for m in range(n_orders)])
+    total_skus = sku_per_order.sum()
+    lower_I    = int(np.ceil(np.floor(total_skus / n_w * 0.8)))
+    upper_I    = np.ceil(total_skus / n_w * 1.2)
+    ws_load    = np.zeros(n_w, dtype=int)
+    covered    = [set() for _ in range(n_w)]           # SKUs covered by open pods at w
+
+    def _plan(m, w):
+        """Return (plan, cost) where plan is a list of (im, p) and cost counts
+        newly opened pods plus their weighted distance. Pods opened while
+        planning this very order are tracked, so two SKUs sitting on the same
+        pod are charged a single opening."""
+        opened, plan, cost = set(), [], 0.0
+        # SKUs with many candidate pods go last: the constrained ones choose first.
+        ims = sorted(items_of_order.get(m, []),
+                     key=lambda im: len(pods_by_sku[relevant_pairs_for_x[im][0]]))
+        for im in ims:
+            i    = relevant_pairs_for_x[im][0]
+            pods = pods_by_sku[i]
+            mask = y[w, pods] == 1
+            if opened:
+                mask = mask | np.isin(pods, list(opened))
+            if mask.any():                              # reuse an open pod, zero cost
+                cand = pods[mask]
+                p = int(cand[np.argmin(dist[w, cand])])
+            else:                                       # open a fresh pod
+                p = int(pods[np.argmin(dist[w, pods])])
+                opened.add(p)
+                cost += w_new_pod + w_dist * dist[w, p]
+            plan.append((im, p))
+        return plan, cost
+
+    def _apply(m, w):
+        plan, _ = _plan(m, w)
         z[m, w] = 1
-        ws_load_skus[w] += sku_per_order[m]
-        for im in items_of_order.get(m, []):
-            i = relevant_pairs_for_x[im][0]
-            pods = OptManager.pod_indices_by_sku[i]
-            p = next((p for p in pods if y[w, p] == 1), pods[0])
+        ws_load[w] += sku_per_order[m]
+        for im, p in plan:
             x[im, p] = 1
             y[w, p]  = 1
+            covered[w].add(relevant_pairs_for_x[im][0])
+        free.discard(m)
 
-    ### Step 1: fix already-opened orders to their current workstation (EC3)
+    # Step 1: pin the orders already opened at a workstation (EC3)
     fixed_orders = get_fixed_orders(orders, state, n_w)
-    fixed = set(fixed_orders.keys())
+    free = set(range(n_orders))
     for m, w in fixed_orders.items():
-        if z[m].sum() == 0:          # avoid double-assigning
-            _assign_order(m, w)
+        if z[m].sum() == 0:
+            _apply(m, w)
 
-    # Remaining orders in random order
-    free_orders = [m for m in range(n_orders) if m not in fixed]
-    rng.shuffle(free_orders)
+    # Step 2: seed and grow until the lower bound is met
+    def _seed_for(w):
+        """Cheapest free order to serve from w in terms of nearby pods.
+        Ties are broken in favour of the larger orders."""
+        pool = list(free)
+        if len(pool) > cand_cap:
+            pool = [pool[k] for k in rng.choice(len(pool), cand_cap, replace=False)]
+        return min(pool, key=lambda m: (_plan(m, w)[1] / max(sku_per_order[m], 1),
+                                        -sku_per_order[m]))
 
-    ### Step 2: first pass, satisfy the lower bound on each workstation 
-    min_load_skus = int(np.ceil(lower_I))
-    remaining     = free_orders.copy()
-    still_free    = []
+    def _grow_candidates(w):
+        """Only the orders sharing at least one SKU with the pods open at w."""
+        cand = set()
+        for i in covered[w]:
+            cand |= orders_by_sku[i]
+        cand &= free
+        if not cand:
+            return None
+        cand = list(cand)
+        if len(cand) > cand_cap:
+            cand = [cand[k] for k in rng.choice(len(cand), cand_cap, replace=False)]
+        return cand
 
     for w in range(n_w):
-        while ws_load_skus[w] < min_load_skus and remaining:
-            m = remaining.pop()
-            _assign_order(m, w)
-        still_free = remaining   # orders left after satisfying lower bounds
+        while ws_load[w] < lower_I and free:
+            cand = _grow_candidates(w) if covered[w] else None
+            if cand:
+                # Incremental cost normalised by the SKUs the order brings along.
+                m = min(cand, key=lambda m: _plan(m, w)[1] / max(sku_per_order[m], 1))
+            else:
+                m = _seed_for(w)
+            _apply(m, w)
 
-    #### Step 3: second pass, greedily minimise new pod activations 
-    for m in still_free:
+    # Step 3: leftovers, greedy assignment under the upper bound
+    for m in list(free):
         best_w, best_cost = None, float("inf")
-
         for w in range(n_w):
-            if ws_load_skus[w] + sku_per_order[m] > upper_I + 1e-6:
+            if ws_load[w] + sku_per_order[m] > upper_I + 1e-6:
                 continue
-
-            # Cost = number of items in order m that would require opening
-            # a brand-new (workstation, pod) pair at workstation w.
-            cost = sum(
-                0 if y[w, OptManager.pod_indices_by_sku[
-                    relevant_pairs_for_x[im][0]]].any() else 1
-                for im in items_of_order.get(m, [])
-            )
-
-            if cost < best_cost:
-                best_cost = cost
-                best_w = w
-
-        if best_w is None:
-            # No workstation can accept the order without breaking the
-            # upper bound: fall back to the least-loaded one.
-            best_w = int(np.argmin(ws_load_skus))
-
-        _assign_order(m, best_w)
+            c = _plan(m, w)[1]
+            if c < best_cost:
+                best_cost, best_w = c, w
+        if best_w is None:                              # no admissible workstation
+            best_w = int(np.argmin(ws_load))
+        _apply(m, best_w)
 
     return z, x, y
 
@@ -298,7 +334,7 @@ def local_search_stage1(
 
     ### MAIN LOOP
 
-    MAX_ITER = 100
+    MAX_ITER = 200
     MAX_NEIGH = 600
     max_no_improve = 10
     ACCEPT_WORSE_PROB = 0.4
