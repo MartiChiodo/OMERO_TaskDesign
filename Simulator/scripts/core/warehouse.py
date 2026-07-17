@@ -10,6 +10,8 @@ import math
 from scripts.core.enums import PodStatus, WorkstationPickingStatus, RobotStatus
 from scripts.core.entities import Pod, Workstation, Robot
 
+from math import erf, sqrt
+
 
 ### Layout constants
 # MARGIN: empty border around the pod grid, robots need room to move.
@@ -116,7 +118,7 @@ class Warehouse:
 
     
     ### ENTITY GENERATION
-
+    
     def _generate_pods(
         self,
         random_generator: Generator,
@@ -129,9 +131,50 @@ class Warehouse:
         """
         Generate pods.
 
-        SKUs are sampled from a truncated normal: catalogue centre ends
-        up in many pods (popular items), the extremes in few (niche ones).
+        SKU replication follows popularity: every SKU gets one copy, so that
+        coverage holds by construction, and the remaining storage slots are
+        shared out in proportion to the demand weight of each SKU.
         """
+
+        # The replication budget: slots left once every SKU has its own copy.
+        # B = 0 forces a perfect partition, and no popularity can show up
+        capacity = num_pods * num_skus_per_pod
+        if capacity < num_skus:
+            raise ValueError(
+                f"Infeasible: {num_pods} pods x {num_skus_per_pod} slots = {capacity} "
+                f"< {num_skus} SKUs, coverage cannot be met."
+            )
+        budget = capacity - num_skus
+
+        # Demand weight of each SKU: the same truncated normal the orders are
+        # drawn from, so storage and demand share one popularity pattern
+        mu, sigma = num_skus / 2.0, num_skus / 4.0
+        normal_cdf = np.vectorize(lambda z: 0.5 * (1.0 + erf(z / sqrt(2.0))))
+        edges = (np.arange(num_skus + 1) - 0.5 - mu) / sigma
+        weights = np.diff(normal_cdf(edges))
+        weights /= weights.sum()
+
+        # Copies per SKU: one for coverage, the rest by popularity. The largest
+        # remainder method keeps the total exactly equal to the budget
+        quota = budget * weights
+        copies = np.floor(quota).astype(int)
+        remainder = budget - copies.sum()
+        if remainder > 0:
+            copies[np.argsort(-(quota - np.floor(quota)))[:remainder]] += 1
+        copies = np.minimum(copies + 1, num_pods)
+
+        # Hand the copies out, most replicated SKUs first, always to the pods
+        # with the most room left: no pod overflows, no pod holds a duplicate
+        pod_items: list[set[int]] = [set() for _ in range(num_pods)]
+        free_slots = np.full(num_pods, num_skus_per_pod)
+
+        for sku_id in np.argsort(-copies):
+            # The noise lives in [0, 1), so it only shuffles pods that are
+            # equally free: without it, SKU index and grid position correlate
+            keys = free_slots + random_generator.random(num_pods)
+            for pod_id in np.argsort(-keys)[:copies[sku_id]]:
+                pod_items[pod_id].add(int(sku_id))
+                free_slots[pod_id] -= 1
 
         # Preallocate, pods are placed by id rather than appended
         pods = [None] * num_pods
@@ -146,36 +189,19 @@ class Warehouse:
                 x_position = MARGIN + row + 2 * (row // 2)
                 y_position = self.Y - MARGIN - col
 
-                # Rounded, clipped, deduplicated by the set below: the
-                # 0.7 factor keeps the surviving count near the target
-                samples = random_generator.normal(loc=num_skus/2, scale=num_skus/5, size=int(0.7*num_skus_per_pod))
-                samples = np.round(samples).astype(int)
-                pod_skus = samples[(samples >= 0) & (samples <= num_skus-1)]
-
                 pods[pod_id] = Pod(
                     pod_id=pod_id,
                     storage_location=self.coord2cell(x_position, y_position),
-                    items=set(pod_skus),
+                    items=pod_items[pod_id],
                     status=PodStatus.IDLE
                 )
 
-        # Coverage fix: a SKU stored nowhere would make its orders
-        # unservable, so park each missing one in the emptiest pod
-        all_skus = set()
-        for pod in pods:
-            all_skus.update(pod.items)
-
-        missing_skus = set(range(num_skus)) - all_skus
-        for sku_id in missing_skus:
-            pod = min(pods, key= lambda p: len(p.items))
-            pods[pod.pod_id].items.add(sku_id)
-
-        all_skus = set()
-        for pod in pods:
-            all_skus.update(pod.items)
-        assert len(all_skus) == num_skus, f"Only {len(all_skus)} skus have been assigned to at least one pod."
+        stored = set().union(*pod_items)
+        assert len(stored) == num_skus, f"Only {len(stored)} SKUs have been assigned to at least one pod."
 
         return pods
+
+
 
     def _generate_workstations(
         self,
@@ -308,35 +334,43 @@ class Warehouse:
         return (cell_id % self.X, math.floor(cell_id/self.X))
 
     @staticmethod
-    def manhattan_distance(
-        position_a: int,
-        position_b: int,
-    ) -> int:
-        """Compute Manhattan distance between two positions."""
+    def manhattan_distance(position_a: tuple[int, int], position_b: tuple[int, int]) -> float:
+        """Compute L1 distance: robot carrying a pod, travelling along the aisles."""
         return abs(position_a[0] - position_b[0]) + abs(position_a[1] - position_b[1])
+
+    @staticmethod
+    def euclidean_distance(position_a: tuple[int, int], position_b: tuple[int, int]) -> float:
+        """Compute L2 distance: unloaded robot, travelling underneath the pods."""
+        return sqrt((position_a[0] - position_b[0])**2 + (position_a[1] - position_b[1])**2)
 
     def travel_time(
         self,
-        position_a,
-        position_b,
+        position_a: tuple[int, int],
+        position_b: tuple[int, int],
         random_generator: Generator | None = None,
-    ) -> float:
+        metric_l1: bool = True,
+        ) -> float:
         """
         Estimate travel time between two positions.
 
-        Manhattan distance over robot speed, the natural metric on a
-        grid. Optional noise for realism.
+        Computed as the distance under the given metric, divided by robot speed.
+        Optional noise for realism.
         """
+        if metric_l1:
+            distance = self.manhattan_distance(position_a, position_b)
+        else:
+            distance = self.euclidean_distance(position_a, position_b)
 
-        nominal_time = self.manhattan_distance(position_a, position_b) / self.robot_speed
+        nominal_time = distance / self.robot_speed
 
         if random_generator is not None:
-            # Beta(2,10) on [0, 0.5*nominal_time], mean 0.0833*nominal_time:
-            # most trips barely late, big delays rare, never early
-            noise = random_generator.beta(a=2, b = 10)*0.5*nominal_time
+            # Noise is drawn from a Beta(2,10) with support [0, 0.5*nominal_time]
+            # Mean is 2/(2+10)*0.5*nominal_time = 0.0833*nominal_time
+            noise = random_generator.beta(a=2, b=10) * 0.5 * nominal_time
             return nominal_time + noise
 
         return nominal_time
+
 
 
     ### FAST ENTITY LOOKUP 

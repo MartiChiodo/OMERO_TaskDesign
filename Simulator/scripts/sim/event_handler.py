@@ -268,23 +268,27 @@ def start_task(event: Event, state, sim) -> None:
 
     # Send the pod towards its first stop
     first_visit = task.stops[0]
+    coord_pod = state.warehouse.cell2coord(pod.storage_location)
+    coord_robot = state.warehouse.cell2coord(robot.position)
     first_workstation = state.warehouse.get_workstation(first_visit.workstation_id)
-    travel_time = state.warehouse.travel_time(
-        state.warehouse.cell2coord(pod.storage_location),
-        state.warehouse.cell2coord(first_workstation.position),
-        sim.RANDOM_GENERATOR
-    )
+    coord_workstation = state.warehouse.cell2coord(first_workstation.position)
+    travel_time_robot = state.warehouse.travel_time(
+    coord_robot, coord_pod, sim.RANDOM_GENERATOR, metric_l1 = False
+        )   
+    travel_time_pod = state.warehouse.travel_time(
+        coord_pod, coord_workstation, sim.RANDOM_GENERATOR
+        )
     state.future_events.push(Event(
-        time=state.current_time + travel_time,
+        time=state.current_time + travel_time_pod + travel_time_robot,
         type=EventType.ARRIVAL_POD_WST,
         info=task
-    ))
+        ))
 
     idle_robots = sum(1 for r in state.warehouse.robots if r.status == RobotStatus.IDLE)
     logging.debug(
         "Task %i started: robot %i → pod %i → workstation %i for orders %s (arrival = %.1f s).   [idle robots = %i/%i]",
         task.task_id, task.robot_id, task.pod_id, first_visit.workstation_id,
-        first_visit.orders, state.current_time + travel_time,
+        first_visit.orders, state.current_time + travel_time_pod + travel_time_robot,
         idle_robots, len(state.warehouse.robots)
     )
 
@@ -893,7 +897,7 @@ def _sample_sku(gen, N):
             return id_s
   
         
-MAX_SIZE = 15
+MAX_SIZE = 30
 def _generate_order_size(gen, prob_single, geom_p):
     """Draw an order size: single item with probability prob_single,
     otherwise geometric, capped at MAX_SIZE."""
