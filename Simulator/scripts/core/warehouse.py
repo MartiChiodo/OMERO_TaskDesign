@@ -148,7 +148,7 @@ class Warehouse:
 
         # Demand weight of each SKU: the same truncated normal the orders are
         # drawn from, so storage and demand share one popularity pattern
-        mu, sigma = num_skus / 2.0, num_skus / 4.0
+        mu, sigma = num_skus / 2.0, num_skus / 6.0
         normal_cdf = np.vectorize(lambda z: 0.5 * (1.0 + erf(z / sqrt(2.0))))
         edges = (np.arange(num_skus + 1) - 0.5 - mu) / sigma
         weights = np.diff(normal_cdf(edges))

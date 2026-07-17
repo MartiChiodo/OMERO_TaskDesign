@@ -892,7 +892,7 @@ def _count_closed(state) -> int:
 def _sample_sku(gen, N):
     """Sample a SKU index from a truncated normal over [0, N)."""
     while True:
-        id_s = int(gen.normal(0.5 * N, N/4))
+        id_s = int(gen.normal(0.5 * N, N/6))
         if 0 <= id_s < N:
             return id_s
   
