@@ -18,6 +18,17 @@ z[m, w] : binary
     1 if order `m` is assigned to workstation `w`, 0 otherwise.
 """
 
+def _get_beta(state, k_threshold: int = 3) -> float:
+    """
+    Distance weight for the Stage-1 cost, calibrated on the warehouse layout.
+    Since serving k SKUs from a single pod saves k-1 visits, this weight makes
+    pod sharing always win from `k_threshold` SKUs upwards, while below that
+    threshold visits and travel distance trade off against each other.
+    """
+    d = _get_ws_pod_distance_matrix(state)
+    span = float(d.max() - d.min())
+    return (k_threshold - 1.5) / span if span > 0 else 0.0
+
 
 def check_constraints(
     orders,
@@ -115,14 +126,11 @@ def _get_ws_pod_distance_matrix(state) -> np.ndarray:
 
 def compute_objective(y: np.ndarray, state) -> float:
     """
-    Stage-1 objective: total number of (workstation, pod) visits, i.e.
-    sum(y), plus a small penalty proportional to the Manhattan distance of
-    each visit.
+    Stage-1 objective: number of (workstation, pod) visits, plus a distance
+    penalty weighted according to the layout (see _get_beta).
     """
-    num_visits = float(y.sum())
-    dist_matrix = _get_ws_pod_distance_matrix(state)
-    distance_penalty = float((y * dist_matrix).sum())
-    return num_visits + 0.01 * distance_penalty
+    dist = _get_ws_pod_distance_matrix(state)
+    return float(y.sum()) + _get_beta(state) * float((y * dist).sum())
 
 
 def get_fixed_orders(orders, state, n_w: int) -> dict[int, int]:
@@ -161,10 +169,8 @@ def build_initial_solution(orders, orders_items, relevant_pairs_for_x,
     y = np.zeros((n_w,     n_p), dtype=np.float64)
 
     dist = _get_ws_pod_distance_matrix(state)          # shape (n_w, n_p)
-    # Automatic scaling: opening a fresh pod weighs about one cost unit, so
-    # distance stays a tie breaker and never dominates the pod reuse term.
     if w_dist is None:
-        w_dist = 0.5 / max(dist.max(), 1.0)
+        w_dist = _get_beta(state)                      # same weight as the objective
 
     # Lookup tables
     items_of_order = defaultdict(list)                 # m maps to list of im
