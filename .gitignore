@@ -9,6 +9,7 @@ Simulator/run_counting_variables.py
 Simulator/job.sh
 comandi_cluster.txt
 __pycache__/
+Simulator\cute_plots_results.py
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
