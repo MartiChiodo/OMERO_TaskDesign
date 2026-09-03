@@ -138,7 +138,7 @@ def build_initial_x(rng: np.random.Generator, d, attempt_idx: int = 0) -> np.nda
     TU     = d.OptManager.TIME_UNIT
     D_ITEM = d.OptManager.DELTA_ITEM
     D_POD  = d.OptManager.DELTA_POD
-    budget = 2 * TU
+    budget = TU
     if D_ITEM > 0:
         max_first = max(1, int((budget - D_POD) // D_ITEM))
         max_later = max(1, int(budget // D_ITEM))

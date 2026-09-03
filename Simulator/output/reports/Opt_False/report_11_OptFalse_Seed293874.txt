@@ -2,8 +2,8 @@ Simulation with time-horizon = 3600.0 sec and warm-up = 0.0 sec.
 Optimization enabled = False
 
 Total number of items picked (throughtput) = 615.
-Average number of pod moving simultaneously = 19.80012468424611.
-Computational time spent for making decisions = 1.3730080127716064 sec.
+Average number of pod moving simultaneously = 19.800124684246114.
+Computational time spent for making decisions = 1.774531364440918 sec.
 
 ============================================================
   ORDERS BY SIZE

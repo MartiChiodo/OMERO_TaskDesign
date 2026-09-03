@@ -19,8 +19,8 @@ from .stage1_LNS import lns_stage1
 
 ### CONSTANTS
 OBATCH_SIZE = 250   # max orders pulled from the backlog per optimisation cycle
-TIME_UNIT   = 30    # seconds per discrete time period
-N_TIME      = 50    # number of discrete periods in the scheduling horizon
+TIME_UNIT   = 20    # seconds per discrete time period
+N_TIME      = 60    # number of discrete periods in the scheduling horizon
 
 
 class OptManager:
