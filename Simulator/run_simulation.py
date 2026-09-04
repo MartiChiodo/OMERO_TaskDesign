@@ -19,9 +19,6 @@ def load_experiment(experiment_id: str) -> dict:
 
 def main():
 
-    # EXPERIMENT TO SIMULATE
-    # EXPERIMENT_IDS = [1,2,3,4] + [11,12,13,14] + [21,22,23,24] + [31,32,33,34]
-
     # Cluster parallelization
     slurm_id = os.environ.get("SLURM_ARRAY_TASK_ID")
     if slurm_id is not None:
@@ -29,78 +26,76 @@ def main():
         EXPERIMENT_IDS = [int(slurm_id)]
     else:
         # Siamo in locale: lista manuale
-        EXPERIMENT_IDS  = [11]
+        EXPERIMENT_IDS  = [12]
 
-    # Seed: su cluster viene da variabile d'ambiente impostata nel job.sh (congelata al momento del submit)
-    # In locale usa il valore di default sotto, oppure imposta SIM_SEED manualmente
-    _seed_env = os.environ.get("SIM_SEED")
-    if _seed_env is not None:
-        SEED = int(_seed_env)
-    else:
-        SEED = 301060  
-
+    # Seed
+    SEEDS = [343310, 293874, 301060, 300871, 30201, 50102]  
     OPTIM = True
 
-    print(f"Usando SEED={SEED}, EXPERIMENT_IDS={EXPERIMENT_IDS}")
+    for SEED in SEEDS:
 
-    base_dir = os.path.dirname(__file__)
-    path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
-    path_to_reports = os.path.join(base_dir, "output", "reports", f"Opt_{OPTIM}")
-    os.makedirs(path_to_logs, exist_ok=True)
-    os.makedirs(path_to_reports, exist_ok=True)
+        print(f"Usando SEED={SEED}, EXPERIMENT_IDS={EXPERIMENT_IDS}")
 
-    for EXPERIMENT_ID in EXPERIMENT_IDS:
-        cfg = load_experiment(EXPERIMENT_ID)
+        base_dir = os.path.dirname(__file__)
+        path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
+        path_to_reports = os.path.join(base_dir, "output", "reports", f"Opt_{OPTIM}")
+        os.makedirs(path_to_logs, exist_ok=True)
+        os.makedirs(path_to_reports, exist_ok=True)
 
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
+        for EXPERIMENT_ID in EXPERIMENT_IDS:
+            cfg = load_experiment(EXPERIMENT_ID)
 
-        logging.basicConfig(
-            filename=os.path.join(path_to_logs, f"logs_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.log"),
-            encoding="utf-8",
-            level=logging.DEBUG,
-            datefmt='%Y-%m-%d %H:%M:%S',
-            filemode="w",
-            format="%(asctime)s %(levelname)s: %(message)s",
-        )
-        logging.getLogger('matplotlib').setLevel(logging.WARNING)
-        logging.getLogger("PIL").setLevel(logging.WARNING)
-        logging.getLogger("gurobipy").setLevel(logging.WARNING)
+            for handler in logging.root.handlers[:]:
+                logging.root.removeHandler(handler)
 
-        gen = numpy.random.default_rng(SEED)
-
-        sim = Simulator(
-            random_generator=gen,
-            config=SimulatorConfig(
-                order_gen_config=[
-                    float(cfg["interarrival_time"]),
-                    float(cfg["prob_1_item_order"]),
-                    float(cfg["geo_dist_param"])
-                ],
-                warm_up=float(cfg["warm_up"]),
-                time_horizon=None,
-                path_to_save_stat=os.path.join(path_to_reports, f"report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.txt"),
-                optimization_enabled=OPTIM,
-                optimization_interval=float(cfg["delta_t_opt"])
-            ),
-            warehouse_factory=lambda: Warehouse(
-                random_generator          = gen,
-                num_pods                  = int(cfg["num_pods"]),
-                num_skus                  = int(cfg["num_skus"]),
-                num_robots                = int(cfg["num_robots"]),
-                num_workstations          = int(cfg["num_workstations"]),
-                num_skus_per_pod          = int(cfg["num_skus_per_pod"]),
-                grid_rows                 = int(cfg["grid_rows"]),
-                grid_cols                 = int(cfg["grid_cols"]),
-                ws_order_capacity         = int(cfg["ws_order_capacity"]),
-                ws_released_task_capacity = int(cfg["ws_workload_capacity"]),
-                robot_speed               = float(cfg["robot_speed"]),
-                pod_process_time          = float(cfg["pod_process_time"]),
-                item_process_time         = float(cfg["item_process_time"])
+            logging.basicConfig(
+                filename=os.path.join(path_to_logs, f"logs_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.log"),
+                encoding="utf-8",
+                level=logging.DEBUG,
+                datefmt='%Y-%m-%d %H:%M:%S',
+                filemode="w",
+                format="%(asctime)s %(levelname)s: %(message)s",
             )
-        )
+            logging.getLogger('matplotlib').setLevel(logging.WARNING)
+            logging.getLogger("PIL").setLevel(logging.WARNING)
+            logging.getLogger("gurobipy").setLevel(logging.WARNING)
 
-        sim.run(float(cfg["time_horizon"]))
+            gen = numpy.random.default_rng(SEED)
+
+            sim = Simulator(
+                random_generator=gen,
+                config=SimulatorConfig(
+                    order_gen_config=[
+                        float(cfg["interarrival_time"]),
+                        float(cfg["prob_1_item_order"]),
+                        float(cfg["geo_dist_param"])
+                    ],
+                    warm_up=float(cfg["warm_up"]),
+                    time_horizon=None,
+                    path_to_save_stat=os.path.join(path_to_reports, f"report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.txt"),
+                    optimization_enabled=OPTIM,
+                    optimization_interval=float(cfg["delta_t_opt"])
+                ),
+                warehouse_factory=lambda: Warehouse(
+                    random_generator          = gen,
+                    num_pods                  = int(cfg["num_pods"]),
+                    num_skus                  = int(cfg["num_skus"]),
+                    num_robots                = int(cfg["num_robots"]),
+                    num_workstations          = int(cfg["num_workstations"]),
+                    num_skus_per_pod          = int(cfg["num_skus_per_pod"]),
+                    grid_rows                 = int(cfg["grid_rows"]),
+                    grid_cols                 = int(cfg["grid_cols"]),
+                    ws_order_capacity         = int(cfg["ws_order_capacity"]),
+                    ws_released_task_capacity = int(cfg["ws_workload_capacity"]),
+                    robot_speed               = float(cfg["robot_speed"]),
+                    pod_process_time          = float(cfg["pod_process_time"]),
+                    item_process_time         = float(cfg["item_process_time"])
+                )
+            )
+
+            sim.run(float(cfg["time_horizon"]))
+
+            del sim
 
 if __name__ == "__main__":
     main()

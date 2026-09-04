@@ -195,10 +195,12 @@ def start_task(event: Event, state, sim) -> None:
     """Give the most urgent runnable task to the nearest idle robot and send its
     pod to the first workstation, trying orders that are open before buffered ones."""
     if state.released_tasks.is_empty():
+        logging.debug("No released tasks.")
         return
 
     # no free robot, nothing to start
     if not any(r.status == RobotStatus.IDLE for r in state.warehouse.robots):
+        logging.debug("No idle robots.")
         return
 
     # how far into the buffer we accept an order (keep small: deep picks wait)
@@ -215,29 +217,51 @@ def start_task(event: Event, state, sim) -> None:
     task = None
     for depth in range(BUFFER_DEPTH + 1):
         skipped = []
+        n_not_servable = 0            # rejected by _servable at this depth
+        n_pod_busy = 0                # rejected because the pod is not IDLE
         while not state.released_tasks.is_empty():
             candidate = state.released_tasks.pop()
 
             # optimizer off: skip the check, just take by priority
             if sim.config.optimization_enabled and not _servable(candidate, depth):
+                n_not_servable += 1
                 skipped.append(candidate)
+                logging.debug(
+                    "Task %s not servable (pod %s) at depth %d "
+                    "(%d non-servable)",
+                    candidate.task_id, candidate.pod_id, depth, n_not_servable, n_pod_busy,
+                )
                 continue
 
             pod = state.warehouse.get_pod(candidate.pod_id)
             if pod.status == PodStatus.IDLE:
                 task = candidate
+                logging.debug(
+                    "Task %s selected (pod %s) at depth %d "
+                    "(%d non-servable, %d pod-busy skipped before it)",
+                    candidate.task_id, candidate.pod_id, depth, n_not_servable, n_pod_busy,
+                )
                 break
 
+            n_pod_busy += 1
+            logging.debug(
+                "Task %s skipped: pod %s not IDLE (status=%s)",
+                candidate.task_id, candidate.pod_id, pod.status.name,
+            )
             skipped.append(candidate)
 
         # put the rest back, priority order kept
-        for t in skipped:            
+        for t in skipped:
             state.released_tasks.push(t)
 
         if task is not None:
             break
 
     if task is None:
+        logging.debug(
+            "No task selected: no IDLE pod with a servable task within depth %d",
+            BUFFER_DEPTH,
+        )
         return
 
     pod = state.warehouse.get_pod(task.pod_id)

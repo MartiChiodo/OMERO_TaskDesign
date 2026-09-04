@@ -1,11 +1,6 @@
 from scripts.core.entities import Task, Visit
 
 
-# Only merge two pick windows into the same task if they are at most this far
-# apart. 
-WINDOW_GAP = 2
-
-
 def _first_pick_time(x_sol, im, N_TIME):
     # x_sol is cumulative (0001111), so the pick is the first t that turns to 1
     if x_sol[im, 0] > 0.5:
@@ -102,8 +97,20 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None):
                     stops=stops, priority=window0)
         return (window0, first0, task)
 
-    # Step 4: for each pod, sort its groups by window and cut a new task whenever
-    # two consecutive windows are more than WINDOW_GAP apart.
+    # Step 4: for each pod, sort its groups by window and cut a new task when the
+    # gap between two consecutive windows is longer than the time the pod would
+    # need to travel back to storage and out again. If the gap is shorter, the pod
+    # is kept out in a single task; if longer, splitting into two trips is feasible.
+    def round_trip(p_id, w_idx):
+        # storage(pod) -> workstation -> storage, in timesteps
+        pod = warehouse.pods[p_id]
+        ws  = warehouse.workstations[w_idx]
+        one_way = warehouse.travel_time(
+            warehouse.cell2coord(pod.storage_location),
+            warehouse.cell2coord(ws.position),
+        )
+        return 2.0 * one_way / data.OptManager.TIME_UNIT
+        
     by_pod = {}
     for (p_id, window, w), group in groups.items():
         by_pod.setdefault(p_id, []).append((window, w, group))
@@ -115,27 +122,42 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None):
         chunk = [entries[0]]
         for idx in range(1, len(entries)):
             prev_window = entries[idx - 1][0]
-            curr_window = entries[idx][0]
-            if curr_window - prev_window > WINDOW_GAP:
+            curr_window, curr_w, _ = entries[idx]
+            if curr_window - prev_window > round_trip(p_id, curr_w):
                 tasks_with_key.append(_make_task(p_id, chunk))
                 chunk = []
             chunk.append(entries[idx])
         tasks_with_key.append(_make_task(p_id, chunk))
 
-    # Step 5: order the tasks, give them ids, and rescale priority to [0, 300].
-    tasks_with_key.sort(key=lambda k: (k[0], k[1]))
-    tasks = [task for _, _, task in tasks_with_key]
 
+    # Step 5: refine task priorities with a travel-time lead, then sort and
+    # remap to [0, 300]. The base priority is the task's earliest first-pick
+    # time (first0); a pod far from its first workstation is nudged earlier so
+    # it can depart in time to arrive as planned.
+    tasks = []
+    for window0, first0, task in tasks_with_key:
+        pod = warehouse.pods[task.pod_id]
+        ws  = warehouse.workstations[task.stops[0].workstation_id]
+        travel_lead = (
+            1.1 * warehouse.travel_time(
+                warehouse.cell2coord(pod.storage_location),
+                warehouse.cell2coord(ws.position),
+            )
+        ) / data.OptManager.TIME_UNIT
+        task.priority = first0 - 0.25 * travel_lead
+        tasks.append(task)
+
+    # Sort by adjusted priority (ascending = more urgent first)
+    tasks.sort(key=lambda t: t.priority)
+
+    # Assign final task IDs and remap priorities to [0, 300]
     n_tasks = len(tasks)
     order_first_task = [N_TIME] * n_orders
     for new_id, task in enumerate(tasks):
         task.task_id  = data.state.task_counter + new_id
         task.priority = (new_id / (n_tasks - 1) * 300) if n_tasks > 1 else 0
 
-        # remember the earliest task each order appears in
-        involved = set()
-        for visit in task.stops:
-            involved.update(visit.orders)
+        involved = {o_id for v in task.stops for o_id in v.orders}
         for m, o in enumerate(data.orders):
             if o.order_id in involved:
                 order_first_task[m] = min(order_first_task[m], task.priority)
