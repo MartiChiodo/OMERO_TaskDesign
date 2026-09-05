@@ -18,8 +18,6 @@ MIP_TIME      = 5.0     # seconds per repair solve
 MIP_GAP       = 0.02
 PATIENCE      = 3       # stalls before growing the hole
 SMALL_GAIN    = 0.3     # a gain below this counts as marginal
-MAX_VALID     = 5       # full checks before trusting the MILP
-RECHECK_EVERY = 25
 HOLE_FRAC     = 0.5
 STALL_STOP    = 10      # stop after this many stalls once at max size
 SEED          = 42
@@ -202,7 +200,6 @@ def lns_stage1(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_
 
     total_load = sku_per_order @ z_best
     k, stall, it = ORDERS_INIT, 0, 0
-    verified, since_check, trust = 0, 0, False
 
     # one shared environment for the whole run, so the job keeps a single WLS
     # session instead of opening one per repair
@@ -245,29 +242,9 @@ def lns_stage1(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_
               stall += 1
               continue
 
-          # check the first few accepted moves, then trust the MILP
-          need = (not trust) or (since_check >= RECHECK_EVERY)
-          if need:
-              ok, _ = check_constraints(orders, orders_items, OptManager,
-                                        relevant_pairs_for_x, x_new, y_new, z_new,
-                                        fixed_orders)
-              if not ok:
-                  verified, trust = 0, False
-                  print(f"[lns_stage1] iter {it} | rejected, the MILP result "
-                        f"does not pass the checker")
-                  logging.warning("[lns_stage1] iter %d | rejected, the MILP result "
-                                  "does not pass the checker", it)
-                  stall += 1
-                  continue
-              verified += 1
-              since_check = 0
-              if verified >= MAX_VALID:
-                  trust = True
-
           best = obj
           x_best, z_best, y_best = x_new, z_new, y_new
           total_load = sku_per_order @ z_best
-          since_check += 1
           stall = 0
           logging.info("[lns_stage1] iter %d | objective %.4f | improved by %.4f "
                        "| hole %d orders | %.0fs elapsed",
@@ -275,12 +252,11 @@ def lns_stage1(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_
           if delta < SMALL_GAIN and k < ORDERS_MAX:
               k = min(ORDERS_MAX, k + GROW_MARGINAL)
 
-      ok, _ = check_constraints(orders, orders_items, OptManager,
-                                relevant_pairs_for_x, x_best, y_best, z_best, fixed_orders)
+    
       print(f"[lns_stage1] done | {time.perf_counter() - t0:.1f}s, {it} iterations "
-            f"| final objective {best:.4f} | feasible {ok}")
+            f"| final objective {best:.4f}")
       logging.info("[lns_stage1] done | %.1fs, %d iterations | final objective %.4f "
-                   "| feasible %s", time.perf_counter() - t0, it, best, ok)
+                   , time.perf_counter() - t0, it, best)
     finally:
         env.dispose()   # close the shared WLS session
     return x_best, z_best

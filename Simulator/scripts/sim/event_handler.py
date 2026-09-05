@@ -33,11 +33,11 @@ def arrival_order(event: Event, state, sim) -> None:
 
         # Order size follows Barnhart et al. 2024: single item with
         # probability p, otherwise geometric plus two
-        order_size = _generate_order_size(sim.RANDOM_GENERATOR,
+        order_size = _generate_order_size(sim.RANDOM_GENERATOR_ORDERS,
                                         sim.config.order_gen_config[1],
                                         sim.config.order_gen_config[2])
         sku_list = [
-            _sample_sku(sim.RANDOM_GENERATOR, state.warehouse.num_skus)
+            _sample_sku(sim.RANDOM_GENERATOR_ORDERS, state.warehouse.num_skus)
             for _ in range(order_size)
         ] 
 
@@ -226,11 +226,11 @@ def start_task(event: Event, state, sim) -> None:
             if sim.config.optimization_enabled and not _servable(candidate, depth):
                 n_not_servable += 1
                 skipped.append(candidate)
-                logging.debug(
-                    "Task %s not servable (pod %s) at depth %d "
-                    "(%d non-servable)",
-                    candidate.task_id, candidate.pod_id, depth, n_not_servable, n_pod_busy,
-                )
+                # logging.debug(
+                #     "Task %s not servable (pod %s) at depth %d "
+                #     "(%d non-servable)",
+                #     candidate.task_id, candidate.pod_id, depth, n_not_servable,
+                # )
                 continue
 
             pod = state.warehouse.get_pod(candidate.pod_id)

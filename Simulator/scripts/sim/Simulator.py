@@ -130,11 +130,12 @@ class Simulator:
 
     def __init__(
         self,
-        random_generator:  Generator,
+        seed:  int,
         config:            SimulatorConfig,
         warehouse_factory: Callable[[], Warehouse],
     ) -> None:
-        self.RANDOM_GENERATOR:  Generator                = random_generator
+        self.RANDOM_GENERATOR:  Generator                = np.random.default_rng(seed)
+        self.RANDOM_GENERATOR_ORDERS:  Generator         = np.random.default_rng(seed)
         self.config:            SimulatorConfig          = config
         self._warehouse_factory: Callable[[], Warehouse] = warehouse_factory
 
@@ -169,7 +170,7 @@ class Simulator:
         state    = self.state
         dispatch = self.build_dispatch()
 
-        state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = 150))
+        state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = 200))
         if self.config.optimization_enabled:
             state.future_events.push(Event(time=1, type=EventType.RUN_OPTIMIZER))
 

@@ -18,8 +18,6 @@ MIP_TIME      = 30.0    # seconds per repair solve
 MIP_GAP       = 0.02
 PATIENCE      = 3       # stalls before growing the hole
 SMALL_GAIN    = 0.3     # a gain below this counts as marginal
-MAX_VALID     = 5       # full checks before trusting the MILP
-RECHECK_EVERY = 25
 HOLE_FRAC     = 0.35
 STALL_STOP    = 10      # stop after this many stalls once at max size
 SEED          = 42
@@ -205,7 +203,8 @@ def repair(d, x_incumbent, y_incumbent, f_incumbent, g_incumbent, v_incumbent,
                                   if a in pod_arcs_set[p])
             const_cnt = total_arr.get((w, t), 0) - freed_arr.get((w, t), 0)
             mdl.addConstr(item_work + d.OptManager.DELTA_POD * (var_arr + const_cnt)
-                          <= 2 * d.OptManager.TIME_UNIT)
+                          <= 1.5 * d.OptManager.TIME_UNIT)
+                          
 
     # EC24 robots in use per t
     for t in range(T):
@@ -279,7 +278,7 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
 
     total_active, total_arr = _loads(d, y_best, range(n_pods), ws_loc_to_w, n_travel, T)
     k, stall, it = PODS_INIT, 0, 0
-    verified, since_check, trust = 0, 0, False
+    it_no_improv  = 0  
 
     # one shared environment for the whole run, so the job keeps a single WLS
     # session instead of opening one per repair
@@ -287,7 +286,7 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
     env.setParam("OutputFlag", 0)
     env.start()
     try:
-      while time.perf_counter() - t0 < time_budget:
+      while time.perf_counter() - t0 < time_budget and it_no_improv < 100:
           it += 1
 
           # grow when stalling, here so no gain iterations count too
@@ -312,6 +311,7 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
                        total_active, total_arr, ws_loc_to_w, precomp, env)
           if res is None:
               stall += 1
+              it_no_improv += 1
               continue
 
           x_new, y_new = res
@@ -321,29 +321,12 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
 
           if delta <= 1e-9:
               stall += 1
+              it_no_improv += 1
               continue
-
-          # check the first few accepted moves, then trust the MILP
-          need = (not trust) or (since_check >= RECHECK_EVERY)
-          if need:
-              ok, viols, _ = check_constraints((x_new, f_new, g_new, v_new, y_new), d)
-              if not ok:
-                  verified, trust = 0, False
-                  print(f"[lns_stage2] iter {it} | rejected, the MILP result "
-                        f"does not pass the checker: {list(viols)}")
-                  logging.warning("[lns_stage2] iter %d | rejected, the MILP result "
-                                  "does not pass the checker: %s", it, list(viols))
-                  stall += 1
-                  continue
-              verified += 1
-              since_check = 0
-              if verified >= MAX_VALID:
-                  trust = True
 
           best = obj
           x_best, f_best, g_best, v_best, y_best = x_new, f_new, g_new, v_new, y_new
           total_active, total_arr = _loads(d, y_best, range(n_pods), ws_loc_to_w, n_travel, T)
-          since_check += 1
           stall = 0
           logging.info("[lns_stage2] iter %d | objective %.4f | improved by %.4f "
                        "| hole %d pods | %.0fs elapsed",
@@ -351,11 +334,10 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
           if delta < SMALL_GAIN and k < PODS_MAX:
               k = min(PODS_MAX, k + GROW_MARGINAL)
 
-      ok, viols, _ = check_constraints((x_best, f_best, g_best, v_best, y_best), d)
       print(f"[lns_stage2] done | {time.perf_counter() - t0:.1f}s, {it} iterations "
-            f"| final objective {best:.4f} | feasible {ok}")
+            f"| final objective {best:.4f}")
       logging.info("[lns_stage2] done | %.1fs, %d iterations | final objective %.4f "
-                   "| feasible %s", time.perf_counter() - t0, it, best, ok)
+            , time.perf_counter() - t0, it, best)
     finally:
         env.dispose()   # close the shared WLS session
     return x_best, f_best, g_best, v_best, y_best

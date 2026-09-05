@@ -26,11 +26,11 @@ def main():
         EXPERIMENT_IDS = [int(slurm_id)]
     else:
         # Siamo in locale: lista manuale
-        EXPERIMENT_IDS  = [12]
+        EXPERIMENT_IDS  = [11,12,13,14,31,32,33,34,51,52,53,54]
 
     # Seed
     SEEDS = [343310, 293874, 301060, 300871, 30201, 50102]  
-    OPTIM = True
+    OPTIM = False
 
     for SEED in SEEDS:
 
@@ -63,7 +63,7 @@ def main():
             gen = numpy.random.default_rng(SEED)
 
             sim = Simulator(
-                random_generator=gen,
+                seed=SEED,
                 config=SimulatorConfig(
                     order_gen_config=[
                         float(cfg["interarrival_time"]),
@@ -95,7 +95,7 @@ def main():
 
             sim.run(float(cfg["time_horizon"]))
 
-            del sim
+            del sim, gen
 
 if __name__ == "__main__":
     main()
