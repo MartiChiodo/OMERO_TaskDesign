@@ -11,9 +11,9 @@ from .local_search_stage2 import (
 from .build_initial_x_stage2 import build_initial_x
 
 # config
-PODS_INIT     = 10      # pods freed per destroy at the start
+PODS_INIT     = 15      # pods freed per destroy at the start
 PODS_MAX      = 50      # max pods freed
-TIME_BUDGET   = 400.0   # total seconds
+TIME_BUDGET   = 300.0   # total seconds
 MIP_TIME      = 30.0    # seconds per repair solve
 MIP_GAP       = 0.02
 PATIENCE      = 3       # stalls before growing the hole
@@ -69,16 +69,28 @@ def _loads(d, y, pods_rel, ws_loc_to_w, n_travel, T):
     return active, arr
 
 
-def destroy_pods(d, rng, k):
-    # free k random pods, their items and the orders those items touch
+
+def destroy_pods(d, rng, k, freq, alpha=1.0, decay=None):
     n_pods = len(d.from_RelPod_to_PodId)
-    seed_rel = rng.choice(n_pods, size=min(k, n_pods), replace=False)
+    k = min(k, n_pods)
+
+    if decay is not None:
+        freq *= decay
+
+    # low freq -> high weight
+    w = 1.0 / (freq + 1.0) ** alpha
+    w /= w.sum()
+
+    seed_rel = rng.choice(n_pods, size=min(k,n_pods), replace=False, p=w)
+    freq[seed_rel] += 1.0
+
     freed_pods = {d.from_RelPod_to_PodId[int(r)] for r in np.atleast_1d(seed_rel)}
     freed_items = set()
     for p in freed_pods:
         for im in d.items_by_pod[p]:
             freed_items.add(int(im))
     affected = {int(d.relevant_pairs_for_x[im][1]) for im in freed_items}
+
     return freed_items, freed_pods, affected
 
 
@@ -279,6 +291,7 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
     total_active, total_arr = _loads(d, y_best, range(n_pods), ws_loc_to_w, n_travel, T)
     k, stall, it = PODS_INIT, 0, 0
     it_no_improv  = 0  
+    freq = np.zeros(len(d.from_RelPod_to_PodId), dtype=float)
 
     # one shared environment for the whole run, so the job keeps a single WLS
     # session instead of opening one per repair
@@ -301,7 +314,7 @@ def lns_stage2(d, time_budget=TIME_BUDGET, seed=SEED):
                            "at the largest hole (%d pods)", STALL_STOP, k)
               break
 
-          freed_items, freed_pods, affected = destroy_pods(d, rng, k)
+          freed_items, freed_pods, affected = destroy_pods(d, rng, k, freq, alpha=1.0, decay=0.99)
           if len(freed_items) > hole_cap:
               k = max(1, k - SHRINK_OVER)
               continue

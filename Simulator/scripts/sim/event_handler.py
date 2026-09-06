@@ -152,13 +152,6 @@ def open_order(event: Event, state, sim) -> None:
                     type=EventType.START_TASK
                 ))
         
-    # Trying to start a picking operation
-    if workstation.status == WorkstationPickingStatus.IDLE and workstation.picking_buffer:
-        state.future_events.push(Event(
-            time=state.current_time,
-            type=EventType.START_PICKING,
-            info=workstation.workstation_id
-        ))
                 
 
 def release_task(event: Event, state, sim) -> None:
@@ -395,7 +388,12 @@ def start_picking(event: Event, state, sim) -> None:
                   task.task_id, visit.workstation_id, visit.items, visit.orders)
 
     # Picking duration scales with the number of items at this visit
-    picking_time = workstation.estimated_picking_time(len(visit.items))
+    num_items_to_pick = 0
+    for o_id in workstation.opened_orders:
+        o = state.orders_in_system.get(o_id)
+        num_items_to_pick += len(o.items_pending & visit.items) 
+
+    picking_time =  workstation.pod_process_time + num_items_to_pick * workstation.item_process_time
     state.future_events.push(Event(
         time=state.current_time + picking_time,
         type=EventType.END_PICKING,
@@ -679,16 +677,14 @@ def run_optimizer(event: Event, state, sim) -> None:
         # Keep only the stops that still serve an open order
         original_ws_ids = {stop.workstation_id for stop in task.stops}
 
-        task.stops = [
-            stop
-            for stop in task.stops
-            if len(
-                stop.orders
-                & state.warehouse.workstations[
-                    stop.workstation_id
-                ].opened_orders
-            ) > 0
-        ]
+        new_stops = []
+        for stop in task.stops:
+            open_here = stop.orders & state.warehouse.workstations[stop.workstation_id].opened_orders
+            if open_here:
+                stop.orders = open_here
+                new_stops.append(stop)
+        task.stops = new_stops
+
 
         new_ws_ids = {stop.workstation_id for stop in task.stops}
 

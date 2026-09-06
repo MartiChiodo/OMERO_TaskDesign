@@ -27,9 +27,18 @@ GROW_MARGINAL = 5       # grow by this many when the gain is only marginal
 SHRINK_OVER   = 5       # shrink by this many when the hole overflows the cap
 
 
-def destroy_orders(rng, k, free_orders, items_of_order):
-    # free k random non fixed orders and their items
-    chosen = rng.choice(free_orders, size=min(k, len(free_orders)), replace=False)
+def destroy_orders(rng, k, free_orders, items_of_order, freq, alpha=1.0, decay=None):
+    if decay is not None:
+        freq *= decay
+
+    # weights over the free orders only; low freq -> high weight
+    w = 1.0 / (freq[free_orders] + 1.0) ** alpha
+    w /= w.sum()
+
+    chosen = rng.choice(free_orders, size=min(k, len(free_orders)),
+                        replace=False, p=w)
+    freq[chosen] += 1.0
+
     freed_orders = {int(m) for m in np.atleast_1d(chosen)}
     freed_items = set()
     for m in freed_orders:
@@ -200,6 +209,7 @@ def lns_stage1(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_
 
     total_load = sku_per_order @ z_best
     k, stall, it = ORDERS_INIT, 0, 0
+    freq = np.zeros(n_orders, dtype=float)
 
     # one shared environment for the whole run, so the job keeps a single WLS
     # session instead of opening one per repair
@@ -222,7 +232,9 @@ def lns_stage1(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_
                            "at the largest hole (%d orders)", STALL_STOP, k)
               break
 
-          freed_orders, freed_items = destroy_orders(rng, k, free_orders, items_of_order)
+          freed_orders, freed_items = destroy_orders(
+                rng, k, free_orders, items_of_order, freq,
+                alpha=1, decay=0.9)
           if len(freed_items) > hole_cap:
               k = max(1, k - SHRINK_OVER)
               continue

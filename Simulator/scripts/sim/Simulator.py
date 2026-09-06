@@ -93,7 +93,7 @@ def build_state(warehouse: Warehouse) -> SimulatorState:
         current_time=0.0,
         warehouse=warehouse,
         future_events=PriorityQueue(
-            key=lambda e: (e.time, e.type != EventType.RELEASE_TASK)
+            key=lambda e: (e.time, e.type != EventType.RELEASE_TASK, e.type != EventType.OPEN_ORDER)
         ),
         orders_in_system=PriorityQueue(
             key=lambda o: (o.status != OrderStatus.BACKLOG, o.arrival_time),

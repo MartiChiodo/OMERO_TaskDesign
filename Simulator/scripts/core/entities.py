@@ -186,13 +186,7 @@ class Workstation:
         """
         return len(self.released_tasks) + len(self.active_tasks) < self.released_task_capacity
 
-    def estimated_picking_time(self, num_items: int) -> float:
-        """
-        Estimate the time required to pick items from a pod.
-
-        Computed as: pod_process_time + num_items x item_process_time
-        """
-        return self.pod_process_time + num_items * self.item_process_time
+    
 
 
 ### EVENT CONTAINER
