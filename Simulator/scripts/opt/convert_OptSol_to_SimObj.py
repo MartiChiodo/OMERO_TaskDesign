@@ -1,256 +1,148 @@
-from collections import defaultdict
+from dataclasses import dataclass, field
+
 from scripts.core.entities import Task, Visit
 
 
+@dataclass
+class _Group:
+    """The items and orders one pod picks at one workstation within one opening
+    window. first_pick is the earliest pick timestep, kept to order stops and set
+    a task's priority."""
+    items:      set   = field(default_factory=set)
+    orders:     set   = field(default_factory=set)
+    first_pick: float = float("inf")
+
+    def add(self, item, order_id, t_pick):
+        self.items.add(item)
+        self.orders.add(order_id)
+        self.first_pick = min(self.first_pick, t_pick)
+
+    def merge(self, other):
+        self.items      |= other.items
+        self.orders     |= other.orders
+        self.first_pick  = min(self.first_pick, other.first_pick)
+
+
 def _first_pick_time(x_sol, im, N_TIME):
-    """
-    Return the timestep at which item `im` is first picked.
-    x_sol[im, t] is cumulative (0001111), so the pick happens at the first t
-    where x_sol[im, t] transitions from 0 to 1.
-    Returns None if the item is never picked within the horizon.
-    """
-    if x_sol[im, 0] > 0.5:
-        return 0
-    for t in range(1, N_TIME):
-        if x_sol[im, t] > 0.5 and x_sol[im, t - 1] < 0.5:
+    """x_sol is cumulative (0001111), so the pick is simply the first t at 1."""
+    for t in range(N_TIME):
+        if x_sol[im, t] > 0.5:
             return t
     return None
 
 
-def _compute_priority(stops, relevant_pairs_for_x, orders, item_to_time, N_TIME):
-    """
-    Return the earliest pick time among all items in the first stop of a task.
-    Falls back to N_TIME + 2 if no valid time is found.
-    """
-    pr = N_TIME + 2
-    first_stop = stops[0]
-    for i, m in relevant_pairs_for_x:
-        if i in first_stop.items and orders[m].order_id in first_stop.orders:
-            t = item_to_time.get((i, m))
-            if t is not None:
-                pr = min(pr, t)
-    return pr
+def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.0):
+    """Turn the Stage 2 solution into orders, an opening order per workstation,
+    and tasks. Tasks say which pod brings which items where; routing is left to
+    the simulator. y_sol is unused, kept only for a stable signature.
 
+    A task is one pod's run through orders that open close together in time. The
+    cut is driven by the order opening windows, not by pick timesteps: opening
+    order is the robust part of the plan, and cutting on it never splits a single
+    order (however many SKUs it spans) across two tasks of the same pod. For each
+    pod its groups are split into a new task whenever the gap between consecutive
+    opening windows exceeds gap_factor times the pod's round trip home: larger
+    keeps the pod out across bigger gaps, smaller sends it home sooner, and
+    because the threshold scales with distance a far pod (expensive to shuttle) is
+    kept out longer than a near one. Task priority is the earliest pick time of
+    the task, remapped to [0, 300] at the end."""
+    orders    = data.orders
+    N_TIME    = data.OptManager.N_TIME
+    TIME_UNIT = data.OptManager.TIME_UNIT
+    warehouse = data.state.warehouse
 
-def _build_task_stops(current_stops, pick_at):
-    """
-    Convert a list of (t_arrival, w_idx) pod stops into Visit objects,
-    keeping only stops where items are actually picked.
-    """
-    stops = []
-    for t_arr, w_idx in current_stops:
-        pick_data = pick_at.get((t_arr, w_idx))  # keyed by (t, w) after pod loop
-        if pick_data and pick_data["items"]:
-            stops.append(Visit(
-                workstation_id=w_idx,
-                orders=pick_data["orders"],
-                items=pick_data["items"],
-            ))
-    return stops
+    def travel_steps(p_id, w_idx):
+        """One-way storage(pod) -> workstation travel time, in timesteps."""
+        pod = warehouse.pods[p_id]
+        ws  = warehouse.workstations[w_idx]
+        return warehouse.travel_time(
+            warehouse.cell2coord(pod.storage_location),
+            warehouse.cell2coord(ws.position),
+        ) / TIME_UNIT
 
+    def build_task(p_id, chunk):
+        """Merge a chunk of same-pod groups into one Task: groups at the same
+        workstation collapse into one stop, stops are ordered by first pick, and
+        the priority is the task's earliest pick time."""
+        by_w = {}
+        for _window, w, group in chunk:
+            by_w.setdefault(w, _Group()).merge(group)
 
-def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol):
-    """
-    Convert Stage-2 binary decision variables into simulator objects.
+        stops_sorted = sorted(by_w.items(), key=lambda kv: kv[1].first_pick)
+        stops = [Visit(workstation_id=w, orders=g.orders, items=g.items)
+                 for w, g in stops_sorted]
 
-    Variables (all indexed over the optimisation horizon):
-      x_sol[im, t]    : cumulative; 1 if item `im` has been picked by time t
-      v_sol[m,  t]    : 1 if order m is open at time t
-      y_sol[rel_p, a] : 1 if pod rel_p traverses arc a
+        earliest_pick = stops_sorted[0][1].first_pick
+        return Task(task_id=None, pod_id=p_id, robot_id=None,
+                    stops=stops, priority=earliest_pick)
 
-    Returns:
-      orders               : list of Order objects
-      ordered_orders_by_w  : {ws_idx: [order_idx, ...]} sorted by start time
-      tasks                : list of Task objects ready for the simulator
-    """
-    n_orders             = len(data.orders)
-    relevant_pairs_for_x = data.relevant_pairs_for_x
-    N_TIME               = data.OptManager.N_TIME
-    warehouse            = data.state.warehouse   # single source of truth
-
-    
-    ### Step 1: workstation assignments and order start times
-
+    # 1. When does each order open (its window)? Drop orders that never open.
     orders_by_workstation = [lst.copy() for lst in data.orders_by_workstation]
-    order_start_time: dict[int, int] = {}
-
-    for m in range(n_orders):
+    order_start_time = {}
+    for m in range(len(orders)):
         w = data.order_to_ws[m]
-        if data.orders[m].order_id in warehouse.workstations[w].opened_orders:
-            # Already-open orders are available immediately
-            start_t = 0
-        else:
-            # First timestep where the order becomes active
-            start_t = next(
-                (t for t in range(N_TIME) if v_sol[m, t] > 0.5),
-                None,
-            )
-
-        if start_t is None:
-            # Order never activated — drop it from the workstation list
-            orders_by_workstation[w].remove(m)
-        else:
-            order_start_time[m] = start_t
-
-
-    ### Step 2: item → pod and item → pick-time lookups
-
-    order_to_ws = data.order_to_ws   # order_idx → ws_idx
-    item_to_pod = data.pod_of_item   # im → pod_id
-
-    # (sku_idx, order_idx) → timestep of first pick
-    item_to_time: dict[tuple[int, int], int] = {}
-    for im, (i, m) in enumerate(relevant_pairs_for_x):
-        t = _first_pick_time(x_sol, im, N_TIME)
-        if t is not None:
-            item_to_time[(i, m)] = t
-
-
-    ### Step 3: build pick_at index
-    # pick_at[(pod_id, t, w_idx)] → {items, orders} to service at that stop
-
-    pick_at: dict[tuple[int, int, int], dict] = defaultdict(
-        lambda: {"items": set(), "orders": set()}
-    )
-    for im, (i, m) in enumerate(relevant_pairs_for_x):
-        t = item_to_time.get((i, m))
-        w = order_to_ws.get(m)
-        if t is None or w is None:
+        if orders[m].order_id in warehouse.workstations[w].opened_orders:
+            order_start_time[m] = 0                       # already open
             continue
-        p_id = item_to_pod[im]
-        pick_at[(p_id, t, w)]["items"].add(i)
-        pick_at[(p_id, t, w)]["orders"].add(data.orders[m].order_id)
+        for t in range(N_TIME):                           # first active timestep
+            if v_sol[m, t] > 0.5:
+                order_start_time[m] = t
+                break
+        else:
+            orders_by_workstation[w].remove(m)            # never opens
 
+    # 2. Group every pick by (pod, opening window, workstation).
+    groups = {}
+    for im, (i, m) in enumerate(data.relevant_pairs_for_x):
+        if m not in order_start_time:
+            continue                                      # order was dropped
+        t_pick = _first_pick_time(x_sol, im, N_TIME)
+        if t_pick is None:
+            continue                                      # item never picked
+        key = (data.pod_of_item[im], order_start_time[m], data.order_to_ws[m])
+        groups.setdefault(key, _Group()).add(i, orders[m].order_id, t_pick)
 
-    ### Step 4: reconstruct pod trajectories from y_sol → Tasks
+    # 3. For each pod, walk its groups in opening-window order and split off a new
+    #    task when the gap between consecutive windows exceeds gap_factor times the
+    #    pod's round trip home. Orders that open close together stay in one run; a
+    #    big jump means the pod would sit out too long between them, so it goes
+    #    home and comes back as a new task.
+    by_pod = {}
+    for (p_id, window, w), group in groups.items():
+        by_pod.setdefault(p_id, []).append((window, w, group))
 
-    workstation_positions = set(data.OptManager._W)
-    storage_positions     = set(data.OptManager._L)
-    pos_to_ws = {
-        warehouse.workstations[w].position: w
-        for w in range(data.OptManager.n_workstations)
-    }
+    tasks = []
+    for p_id, entries in by_pod.items():
+        entries.sort(key=lambda e: (e[0], e[2].first_pick))   # by opening window
 
-    tasks: list[Task] = []
+        chunk = [entries[0]]
+        for prev, curr in zip(entries, entries[1:]):
+            window_gap = curr[0] - prev[0]
+            round_trip = travel_steps(p_id, prev[1]) + travel_steps(p_id, curr[1])
+            if window_gap > gap_factor * round_trip:
+                tasks.append(build_task(p_id, chunk))
+                chunk = []
+            chunk.append(curr)
+        tasks.append(build_task(p_id, chunk))
 
-    for rel_p, p_id in enumerate(data.from_RelPod_to_PodId):
-
-        # Collect all arcs traversed by this pod, sorted by departure time
-        traversed = sorted(
-            [
-                (src[1], src[0], dst[1], dst[0])   # (t_src, loc_src, t_dst, loc_dst)
-                for a_idx, (src, dst) in enumerate(data.OptManager.all_arcs)
-                if y_sol[rel_p, a_idx] > 0.5
-            ],
-            key=lambda k: k[0],
-        )
-
-        # Walk the trajectory and emit a Task each time the pod returns to storage.
-        # A "trip" is the sequence of workstation visits between two storage stays.
-        current_stops: list[tuple[int, int]] = []   # (t_arrival, w_idx)
-        in_trip = False
-
-        for t_src, loc_src, t_dst, loc_dst in traversed:
-
-            if loc_dst in workstation_positions:
-                # Pod arrives at a workstation — record the stop
-                w_idx = pos_to_ws[loc_dst]
-                current_stops.append((t_dst, w_idx))
-                in_trip = True
-
-            elif loc_dst in storage_positions and in_trip:
-                # Pod returns to storage — close the current trip as a Task
-                stops = []
-                for t_arr, w_idx in current_stops:
-                    pick_data = pick_at.get((p_id, t_arr, w_idx))
-                    if pick_data and pick_data["items"]:
-                        stops.append(Visit(
-                            workstation_id=w_idx,
-                            orders=pick_data["orders"],
-                            items=pick_data["items"],
-                        ))
-                if stops:
-                    pr = _compute_priority(
-                        stops, relevant_pairs_for_x, data.orders, item_to_time, N_TIME
-                    )
-                    tasks.append(Task(
-                        task_id=None,
-                        pod_id=p_id,
-                        robot_id=None,
-                        stops=stops,
-                        priority=pr,
-                    ))
-                current_stops = []
-                in_trip = False
-
-        # Handle a trip still open at end of horizon (pod never returned to storage)
-        if current_stops:
-            stops = []
-            for t_arr, w_idx in current_stops:
-                pick_data = pick_at.get((p_id, t_arr, w_idx))
-                if pick_data and pick_data["items"]:
-                    stops.append(Visit(
-                        workstation_id=w_idx,
-                        orders=pick_data["orders"],
-                        items=pick_data["items"],
-                    ))
-            if stops:
-                pr = _compute_priority(
-                    stops, relevant_pairs_for_x, data.orders, item_to_time, N_TIME
-                )
-                tasks.append(Task(
-                    task_id=None,
-                    pod_id=p_id,
-                    robot_id=None,
-                    stops=stops,
-                    priority=pr,
-                ))
-
-
-    ### Step 5: refine priorities using travel time and sort tasks
-
-    for task in tasks:
-        t_firstpick = task.priority
-        pod = warehouse.pods[task.pod_id]
-        ws  = warehouse.workstations[task.stops[0].workstation_id]
-        # Adjust: earlier pick time → higher priority; subtract travel lead time
-        travel_lead = (
-            1.1 * warehouse.travel_time(
-                warehouse.cell2coord(pod.storage_location),
-                warehouse.cell2coord(ws.position),
-            )
-        ) / data.OptManager.TIME_UNIT
-        task.priority = t_firstpick - 0.25 * travel_lead
-
-    # Sort tasks by adjusted priority (ascending = more urgent first)
+    # 4. Sort tasks by priority (earliest pick first), assign ids and remap
+    #    priorities to [0, 300]. Track the first task each order appears in.
     tasks.sort(key=lambda t: t.priority)
-
-    # Assign final integer task IDs and remap priorities to [0, 300]
-    n_tasks = len(tasks)
-    order_first_task = [N_TIME] * n_orders
-
+    order_first_task = [N_TIME] * len(orders)
     for new_id, task in enumerate(tasks):
-        task.task_id = data.state.task_counter + new_id
-        task.priority = (new_id / (n_tasks - 1) * 300) if n_tasks > 1 else 0
-
-        # Track the earliest task priority seen for each order
-        involved_orders = {o_id for v in task.stops for o_id in v.orders}
-        for m, o in enumerate(data.orders):
-            if o.order_id in involved_orders:
+        task.task_id  = data.state.task_counter + new_id
+        task.priority = new_id / (len(tasks) - 1) * 300 if len(tasks) > 1 else 0
+        involved = {o_id for v in task.stops for o_id in v.orders}
+        for m, o in enumerate(orders):
+            if o.order_id in involved:
                 order_first_task[m] = min(order_first_task[m], task.priority)
 
-
-    ### Step 6: sort orders within each workstation by (start_time, first_task)
-
+    # 5. At each workstation, open orders by opening time; task priority only
+    #    breaks ties.
     ordered_orders_by_w = {
-        w: sorted(
-            idxs,
-            key=lambda m: (
-                order_first_task[m],
-                order_start_time.get(m, N_TIME),   # safe fallback if missing
-            ),
-        )
+        w: sorted(idxs, key=lambda m: (order_start_time.get(m, N_TIME),
+                                       order_first_task[m]))
         for w, idxs in enumerate(orders_by_workstation)
     }
 
-    return data.orders, ordered_orders_by_w, tasks
+    return orders, ordered_orders_by_w, tasks

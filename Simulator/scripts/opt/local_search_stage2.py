@@ -687,7 +687,7 @@ def check_constraints(sol: tuple, d) -> tuple[bool, dict]:
             ]
             pod_arrivals = d.OptManager.DELTA_POD * y[:, travel_arrivals].sum()
             total = float(item_work + pod_arrivals)
-            if total > 2 * d.OptManager.TIME_UNIT + 1e-6:
+            if total > 2*d.OptManager.TIME_UNIT + 1e-6:
                 ec11.append({'w': w, 't': t, 'value': total})
     if ec11:
         viols['EC11'] = ec11

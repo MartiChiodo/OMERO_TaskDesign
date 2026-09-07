@@ -13,12 +13,14 @@ from scripts.opt.local_search_stage1 import local_search_stage1
 from scripts.opt.local_search_stage2 import local_search_stage2
 from scripts.opt.stage2_data import build_stage2_data
 from scripts.opt.convert_OptSol_to_SimObj import convert_OptSol_to_SimObj
+from .stage2_LNS import lns_stage2
+from .stage1_LNS import lns_stage1
 
 
 ### CONSTANTS
 OBATCH_SIZE = 250   # max orders pulled from the backlog per optimisation cycle
 TIME_UNIT   = 20    # seconds per discrete time period
-N_TIME      = 100    # number of discrete periods in the scheduling horizon
+N_TIME      = 50    # number of discrete periods in the scheduling horizon
 
 
 class OptManager:
@@ -301,7 +303,7 @@ class OptManager:
             return
 
         ### STAGE 1
-        x1, z1 = local_search_stage1(orders, orders_items, relevant_pairs_for_x, self, state, self.n_workstations)
+        x1, z1 = lns_stage1(orders, orders_items, relevant_pairs_for_x, self, state, self.n_workstations)
         logging.info("Stage 1 solved.")
 
         # Extract stage 1 solution: map each order to its workstation and each (item, order) to its pod
@@ -342,7 +344,7 @@ class OptManager:
                 from_PodId_to_RelPod = from_PodId_to_RelPod
             )
         
-        sol =  local_search_stage2(st2_data)
+        sol =  lns_stage2(st2_data)
         x, f, g, v, y = sol
         logging.info("Stage 2 solved.")
 

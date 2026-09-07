@@ -33,11 +33,11 @@ def arrival_order(event: Event, state, sim) -> None:
 
         # Order size follows Barnhart et al. 2024: single item with
         # probability p, otherwise geometric plus two
-        order_size = _generate_order_size(sim.RANDOM_GENERATOR,
+        order_size = _generate_order_size(sim.RANDOM_GENERATOR_ORDERS,
                                         sim.config.order_gen_config[1],
                                         sim.config.order_gen_config[2])
         sku_list = [
-            _sample_sku(sim.RANDOM_GENERATOR, state.warehouse.num_skus)
+            _sample_sku(sim.RANDOM_GENERATOR_ORDERS, state.warehouse.num_skus)
             for _ in range(order_size)
         ] 
 
@@ -152,13 +152,6 @@ def open_order(event: Event, state, sim) -> None:
                     type=EventType.START_TASK
                 ))
         
-    # Trying to start a picking operation
-    if workstation.status == WorkstationPickingStatus.IDLE and workstation.picking_buffer:
-        state.future_events.push(Event(
-            time=state.current_time,
-            type=EventType.START_PICKING,
-            info=workstation.workstation_id
-        ))
                 
 
 def release_task(event: Event, state, sim) -> None:
@@ -192,49 +185,76 @@ def release_task(event: Event, state, sim) -> None:
 
 
 def start_task(event: Event, state, sim) -> None:
-    """Assign the best executable released task to the nearest idle
-    robot and send the pod towards its first workstation."""
+    """Give the most urgent runnable task to the nearest idle robot and send its
+    pod to the first workstation, trying orders that are open before buffered ones."""
     if state.released_tasks.is_empty():
+        logging.debug("No released tasks.")
         return
-    
-    skipped_t = []
+
+    # no free robot, nothing to start
+    if not any(r.status == RobotStatus.IDLE for r in state.warehouse.robots):
+        logging.debug("No idle robots.")
+        return
+
+    # how far into the buffer we accept an order (keep small: deep picks wait)
+    BUFFER_DEPTH = 1
+    def _servable(candidate, depth):
+        for visit in candidate.stops:
+            ws = state.warehouse.workstations[visit.workstation_id]
+            available = ws.opened_orders.union(ws.order_buffer[:depth])
+            if any(order in available for order in visit.orders):
+                return True
+        return False
+
+    # try open orders first, then deeper; take the first task with a free pod
     task = None
+    for depth in range(BUFFER_DEPTH + 1):
+        skipped = []
+        n_not_servable = 0            # rejected by _servable at this depth
+        n_pod_busy = 0                # rejected because the pod is not IDLE
+        while not state.released_tasks.is_empty():
+            candidate = state.released_tasks.pop()
 
-    # Pop candidates in priority order until one is executable: its pod
-    # must be idle and, with the optimizer on, at least one of its
-    # orders must be open (or next in line) somewhere
-    loop_ended = len(state.released_tasks) == 0
-    while not loop_ended:
-        candidate = state.released_tasks.pop()
-        loop_ended = len(state.released_tasks) == 0
+            # optimizer off: skip the check, just take by priority
+            if sim.config.optimization_enabled and not _servable(candidate, depth):
+                n_not_servable += 1
+                skipped.append(candidate)
+                # logging.debug(
+                #     "Task %s not servable (pod %s) at depth %d "
+                #     "(%d non-servable)",
+                #     candidate.task_id, candidate.pod_id, depth, n_not_servable,
+                # )
+                continue
 
-        if sim.config.optimization_enabled:
-            valid = any(
-                o in state.warehouse.workstations[v.workstation_id].opened_orders.union(state.warehouse.workstations[v.workstation_id].order_buffer[:1])
-                for v in candidate.stops
-                for o in v.orders
+            pod = state.warehouse.get_pod(candidate.pod_id)
+            if pod.status == PodStatus.IDLE:
+                task = candidate
+                logging.debug(
+                    "Task %s selected (pod %s) at depth %d "
+                    "(%d non-servable, %d pod-busy skipped before it)",
+                    candidate.task_id, candidate.pod_id, depth, n_not_servable, n_pod_busy,
+                )
+                break
+
+            n_pod_busy += 1
+            logging.debug(
+                "Task %s skipped: pod %s not IDLE (status=%s)",
+                candidate.task_id, candidate.pod_id, pod.status.name,
             )
+            skipped.append(candidate)
 
-            if not valid:
-                logging.debug("Task %i blocked: no orders in %s is open yet.  [released tasks = %i]",
-                            candidate.task_id, {v.workstation_id : [o for o in v.orders] for v in candidate.stops}, len(state.released_tasks))
-                skipped_t.append(candidate)
-                continue   # next candidate
+        # put the rest back, priority order kept
+        for t in skipped:
+            state.released_tasks.push(t)
 
-        pod = state.warehouse.get_pod(candidate.pod_id)
-        if pod.status == PodStatus.IDLE:
-            task = candidate
+        if task is not None:
             break
 
-        logging.debug("Task %i blocked: pod %i not idle.  [released tasks = %i]",
-                    candidate.task_id, candidate.pod_id, len(state.released_tasks))
-        skipped_t.append(candidate)
-
-    # Skipped candidates go back in the queue, they may run later
-    for t in skipped_t:
-        state.released_tasks.push(t)
-
     if task is None:
+        logging.debug(
+            "No task selected: no IDLE pod with a servable task within depth %d",
+            BUFFER_DEPTH,
+        )
         return
 
     pod = state.warehouse.get_pod(task.pod_id)
@@ -249,53 +269,55 @@ def start_task(event: Event, state, sim) -> None:
     robot = state.warehouse.get_robot(robot_id)
     assert robot.status == RobotStatus.IDLE, f"Robot {robot_id} should be IDLE before task start"
 
-    # Lock both resources and bind the robot to the task
+    # lock pod and robot, bind the robot to the task
     state.active_tasks[task.task_id] = task
-    pod.status   = PodStatus.BUSY
-    robot.status = RobotStatus.BUSY
+    pod.status    = PodStatus.BUSY
+    robot.status  = RobotStatus.BUSY
     task.robot_id = robot_id
 
     sim.STAT_MANAGER.update_statistic(
         type='RB_FREQ',
-        info=[robot.robot_id, RobotStatus.BUSY, state.current_time]
+        info=[robot.robot_id, RobotStatus.BUSY, state.current_time],
     )
 
-    # Every workstation on the route now sees this task as active
+    # mark the task active at every workstation it visits
     for visit in task.stops:
         ws = state.warehouse.get_workstation(visit.workstation_id)
         ws.active_tasks.add(task.task_id)
         ws.released_tasks.discard(task.task_id)
 
-    # Send the pod towards its first stop
+    # arrival = robot to pod, then pod to workstation
     first_visit = task.stops[0]
-    coord_pod = state.warehouse.cell2coord(pod.storage_location)
-    coord_robot = state.warehouse.cell2coord(robot.position)
-    first_workstation = state.warehouse.get_workstation(first_visit.workstation_id)
-    coord_workstation = state.warehouse.cell2coord(first_workstation.position)
-    travel_time_robot = state.warehouse.travel_time(
-    coord_robot, coord_pod, sim.RANDOM_GENERATOR, metric_l1 = False
-        )   
-    travel_time_pod = state.warehouse.travel_time(
-        coord_pod, coord_workstation, sim.RANDOM_GENERATOR
-        )
+    first_ws    = state.warehouse.get_workstation(first_visit.workstation_id)
+
+    pod_cell   = state.warehouse.cell2coord(pod.storage_location)
+    robot_cell = state.warehouse.cell2coord(robot.position)
+    ws_cell    = state.warehouse.cell2coord(first_ws.position)
+
+    robot_to_pod = state.warehouse.travel_time(
+        robot_cell, pod_cell, sim.RANDOM_GENERATOR, metric_l1=False)
+    pod_to_ws = state.warehouse.travel_time(
+        pod_cell, ws_cell, sim.RANDOM_GENERATOR)
+
+    arrival_time = state.current_time + robot_to_pod + pod_to_ws
     state.future_events.push(Event(
-        time=state.current_time + travel_time_pod + travel_time_robot,
+        time=arrival_time,
         type=EventType.ARRIVAL_POD_WST,
-        info=task
-        ))
+        info=task,
+    ))
 
     idle_robots = sum(1 for r in state.warehouse.robots if r.status == RobotStatus.IDLE)
     logging.debug(
-        "Task %i started: robot %i → pod %i → workstation %i for orders %s (arrival = %.1f s).   [idle robots = %i/%i]",
+        "Task %i started: robot %i -> pod %i -> workstation %i for orders %s "
+        "(arrival = %.1f s).   [idle robots = %i/%i]",
         task.task_id, task.robot_id, task.pod_id, first_visit.workstation_id,
-        first_visit.orders, state.current_time + travel_time_pod + travel_time_robot,
-        idle_robots, len(state.warehouse.robots)
+        first_visit.orders, arrival_time, idle_robots, len(state.warehouse.robots),
     )
 
-    # Updating stats
+    # Update statistics
     sim.STAT_MANAGER.update_statistic(
         type='POD_AVG_MOVING',
-        info=[+1, state.current_time]
+        info=[+1, state.current_time],
     )
     
 
@@ -366,7 +388,12 @@ def start_picking(event: Event, state, sim) -> None:
                   task.task_id, visit.workstation_id, visit.items, visit.orders)
 
     # Picking duration scales with the number of items at this visit
-    picking_time = workstation.estimated_picking_time(len(visit.items))
+    num_items_to_pick = 0
+    for o_id in workstation.opened_orders:
+        o = state.orders_in_system.get(o_id)
+        num_items_to_pick += len(o.items_pending & visit.items) 
+
+    picking_time =  workstation.pod_process_time + num_items_to_pick * workstation.item_process_time
     state.future_events.push(Event(
         time=state.current_time + picking_time,
         type=EventType.END_PICKING,
@@ -650,16 +677,14 @@ def run_optimizer(event: Event, state, sim) -> None:
         # Keep only the stops that still serve an open order
         original_ws_ids = {stop.workstation_id for stop in task.stops}
 
-        task.stops = [
-            stop
-            for stop in task.stops
-            if len(
-                stop.orders
-                & state.warehouse.workstations[
-                    stop.workstation_id
-                ].opened_orders
-            ) > 0
-        ]
+        new_stops = []
+        for stop in task.stops:
+            open_here = stop.orders & state.warehouse.workstations[stop.workstation_id].opened_orders
+            if open_here:
+                stop.orders = open_here
+                new_stops.append(stop)
+        task.stops = new_stops
+
 
         new_ws_ids = {stop.workstation_id for stop in task.stops}
 
