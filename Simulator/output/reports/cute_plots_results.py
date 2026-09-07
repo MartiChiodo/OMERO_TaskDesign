@@ -19,9 +19,9 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "plot_results")
 # Keys are numeric scenario IDs (used in CSVs and for grouping); values are the
 # labels shown in tables and plots. Missing IDs fall back to their number.
 SCENARIO_LABELS = {
-    11: "Small warehouse \n Small orders \n Low arrival rate", 12: "Small warehouse \n Large orders \n Low arrival rate", 13: "Small warehouse \n Small orders \n High arrival rate", 14: "Small warehouse \n Large orders \n High arrival rate",
-    31: "Medium warehouse \n Small orders \n Low arrival rate", 32: "Medium warehouse \n Large orders \n Low arrival rate", 33: "Medium warehouse \n Small orders \n High arrival rate", 34: "Medium warehouse \n Large orders \n High arrival rate",
-    51: "Large warehouse \n Small orders \n Low arrival rate", 52: "Large warehouse \n Large orders \n Low arrival rate", 53: "Large warehouse \n Small orders \n High arrival rate", 54: "Large warehouse \n Large orders \n High arrival rate",
+    11: "S·so·lr", 12: "S·lo·lr", 13: "S·so·hr", 14: "S·lo·hr",
+    31: "M·so·lr", 32: "M·lo·lr", 33: "M·so·hr", 34: "M·lo·hr",
+    51: "L·so·lr", 52: "L·lo·lr", 53: "L·so·hr", 54: "L·lo·hr",
 }
 
 
@@ -143,7 +143,7 @@ def build_latex_table(data: dict[str, pd.DataFrame], metric: Metric) -> str:
         r"& \multicolumn{2}{c}{\textbf{Without optimisation}} & "
         r"& \multicolumn{2}{c}{\textbf{With optimisation}} \\",
         r"\cmidrule(lr){2-3}\cmidrule(lr){5-6}",
-        rf"\textbf{{ID}} & {header_cell('Mean', unit)} & {header_cell('Std', unit)} & "
+        rf"\textbf{{Configuration}} & {header_cell('Mean', unit)} & {header_cell('Std', unit)} & "
         rf"& {header_cell('Mean', unit)} & {header_cell('Std', unit)} \\",
         r"\midrule",
     ]

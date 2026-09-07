@@ -30,7 +30,8 @@ def main():
 
     # Seed
     SEEDS = [343310, 293874, 301060, 300871, 30201, 50102]  
-    OPTIM = False
+    SEEDS = [987034, 570183, 789124, 612937]
+    OPTIM = True
 
     for SEED in SEEDS:
 

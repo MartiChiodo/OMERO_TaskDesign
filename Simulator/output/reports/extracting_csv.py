@@ -3,6 +3,9 @@ import re
 from glob import glob
 import pandas as pd
 
+import math
+from scipy.stats import t
+
 ### Folders
 REPORT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
@@ -82,6 +85,63 @@ def save_flow_csv(flow_data, filename):
                         key=lambda col: col.map(sort_key) if col.name == "OrderSize" else col)
     df.to_csv(os.path.join(REPORT_FOLDER, filename), index=False)
 
+
+### Two-stage replication sizing (Law, Simulation Modeling & Analysis)
+def two_stage_replications(throughput, filename,
+                           alpha=0.05, gamma=0.05, beta=None):
+    """
+    For each scenario, use the pilot replications (the seeds already run)
+    to estimate how many replications are needed.
+
+    alpha  -> significance level (0.05 => 95% confidence)
+    gamma  -> relative precision (e.g. 0.05 = 5%); used when beta is None
+    beta   -> absolute precision (same units as throughput); overrides gamma
+    """
+    rows = []
+    for scenario, seed_values in throughput.items():
+        vals = list(seed_values.values())
+        n0 = len(vals)
+        if n0 < 2:
+            continue  # need at least 2 reps to estimate variance
+
+        mean_val = sum(vals) / n0
+        var = sum((x - mean_val) ** 2 for x in vals) / (n0 - 1)
+        std = math.sqrt(var)
+
+        # target half-width
+        if beta is not None:
+            target = beta                                   # absolute
+        else:
+            target = (gamma / (1 + gamma)) * abs(mean_val)  # relative
+
+        # iterative search: smallest n >= n0 whose half-width <= target
+        n = n0
+        while True:
+            t_crit = t.ppf(1 - alpha / 2, df=n - 1)
+            half_width = t_crit * std / math.sqrt(n)
+            if half_width <= target or n > 100:
+                break
+            n += 1
+
+        # half-width already achieved with the pilot
+        t0 = t.ppf(1 - alpha / 2, df=n0 - 1)
+        hw_pilot = t0 * std / math.sqrt(n0)
+
+        rows.append({
+            "Scenario": scenario,
+            "n0": n0,
+            "Mean": round(mean_val, 2),
+            "StdDev": round(std, 2),
+            "HalfWidth_pilot": round(hw_pilot, 2),
+            "Target": round(target, 2),
+            "N_required": n,
+            "Extra_needed": max(0, n - n0),
+        })
+
+    df = pd.DataFrame(rows).sort_values("Scenario")
+    df.to_csv(os.path.join(REPORT_FOLDER, filename), index=False)
+    return df
+
 ### Main
 for mode in ["Opt_False", "Opt_True"]:
     mode_folder = os.path.join(REPORT_FOLDER, mode)
@@ -93,5 +153,7 @@ for mode in ["Opt_False", "Opt_True"]:
     save_matrix_csv(comp_time, f"{mode}_computational_time.csv")
     save_matrix_csv(throughput, f"{mode}_throughput.csv")
     save_flow_csv(flow_data, f"{mode}_mean_flow_time.csv")
+    two_stage_replications(throughput, f"{mode}_replications_throughput.csv",
+                           alpha=0.05, gamma=0.05)  # 95% conf, 5% relative
 
 print("\nCSV files created successfully.")
