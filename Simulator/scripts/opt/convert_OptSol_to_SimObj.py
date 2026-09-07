@@ -5,9 +5,9 @@ from scripts.core.entities import Task, Visit
 
 @dataclass
 class _Group:
-    """The items and orders one pod picks at one workstation at one pick time.
-    first_pick is that pick timestep, kept to order stops and set a task's
-    priority."""
+    """The items and orders one pod picks at one workstation within one opening
+    window. first_pick is the earliest pick timestep, kept to order stops and set
+    a task's priority."""
     items:      set   = field(default_factory=set)
     orders:     set   = field(default_factory=set)
     first_pick: float = float("inf")
@@ -31,18 +31,21 @@ def _first_pick_time(x_sol, im, N_TIME):
     return None
 
 
-def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.1):
+def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.0):
     """Turn the Stage 2 solution into orders, an opening order per workstation,
     and tasks. Tasks say which pod brings which items where; routing is left to
     the simulator. y_sol is unused, kept only for a stable signature.
 
-    A task is one pod's run through picks that happen close together in time. For
-    each pod its groups are split into a new task whenever the gap between two
-    consecutive pick times exceeds gap_factor times the pod's round trip home:
-    larger keeps the pod out across bigger gaps, smaller sends it home sooner, and
+    A task is one pod's run through orders that open close together in time. The
+    cut is driven by the order opening windows, not by pick timesteps: opening
+    order is the robust part of the plan, and cutting on it never splits a single
+    order (however many SKUs it spans) across two tasks of the same pod. For each
+    pod its groups are split into a new task whenever the gap between consecutive
+    opening windows exceeds gap_factor times the pod's round trip home: larger
+    keeps the pod out across bigger gaps, smaller sends it home sooner, and
     because the threshold scales with distance a far pod (expensive to shuttle) is
-    kept out longer than a near one. Task priority is just the earliest pick time
-    of the task, remapped to [0, 300] at the end."""
+    kept out longer than a near one. Task priority is the earliest pick time of
+    the task, remapped to [0, 300] at the end."""
     orders    = data.orders
     N_TIME    = data.OptManager.N_TIME
     TIME_UNIT = data.OptManager.TIME_UNIT
@@ -52,7 +55,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.1):
         """One-way storage(pod) -> workstation travel time, in timesteps."""
         pod = warehouse.pods[p_id]
         ws  = warehouse.workstations[w_idx]
-        return 1.1*warehouse.travel_time(
+        return warehouse.travel_time(
             warehouse.cell2coord(pod.storage_location),
             warehouse.cell2coord(ws.position),
         ) / TIME_UNIT
@@ -62,7 +65,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.1):
         workstation collapse into one stop, stops are ordered by first pick, and
         the priority is the task's earliest pick time."""
         by_w = {}
-        for _t_pick, w, group in chunk:
+        for _window, w, group in chunk:
             by_w.setdefault(w, _Group()).merge(group)
 
         stops_sorted = sorted(by_w.items(), key=lambda kv: kv[1].first_pick)
@@ -88,7 +91,7 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.1):
         else:
             orders_by_workstation[w].remove(m)            # never opens
 
-    # 2. Group every pick by (pod, pick time, workstation).
+    # 2. Group every pick by (pod, opening window, workstation).
     groups = {}
     for im, (i, m) in enumerate(data.relevant_pairs_for_x):
         if m not in order_start_time:
@@ -96,27 +99,27 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.1):
         t_pick = _first_pick_time(x_sol, im, N_TIME)
         if t_pick is None:
             continue                                      # item never picked
-        key = (data.pod_of_item[im], t_pick, data.order_to_ws[m])
+        key = (data.pod_of_item[im], order_start_time[m], data.order_to_ws[m])
         groups.setdefault(key, _Group()).add(i, orders[m].order_id, t_pick)
 
-    # 3. For each pod, walk its groups in pick-time order and split off a new task
-    #    when the gap between consecutive pick times exceeds gap_factor times the
-    #    pod's round trip home. Picks close in time stay in one run; a big jump
-    #    means the pod would sit out too long between them, so it goes home and
-    #    comes back as a new task.
+    # 3. For each pod, walk its groups in opening-window order and split off a new
+    #    task when the gap between consecutive windows exceeds gap_factor times the
+    #    pod's round trip home. Orders that open close together stay in one run; a
+    #    big jump means the pod would sit out too long between them, so it goes
+    #    home and comes back as a new task.
     by_pod = {}
-    for (p_id, t_pick, w), group in groups.items():
-        by_pod.setdefault(p_id, []).append((t_pick, w, group))
+    for (p_id, window, w), group in groups.items():
+        by_pod.setdefault(p_id, []).append((window, w, group))
 
     tasks = []
     for p_id, entries in by_pod.items():
-        entries.sort(key=lambda e: e[0])                  # by pick time
+        entries.sort(key=lambda e: (e[0], e[2].first_pick))   # by opening window
 
         chunk = [entries[0]]
         for prev, curr in zip(entries, entries[1:]):
-            pick_gap   = curr[0] - prev[0]
+            window_gap = curr[0] - prev[0]
             round_trip = travel_steps(p_id, prev[1]) + travel_steps(p_id, curr[1])
-            if pick_gap > gap_factor * round_trip:
+            if window_gap > gap_factor * round_trip:
                 tasks.append(build_task(p_id, chunk))
                 chunk = []
             chunk.append(curr)
@@ -137,7 +140,8 @@ def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.1):
     # 5. At each workstation, open orders by opening time; task priority only
     #    breaks ties.
     ordered_orders_by_w = {
-        w: sorted(idxs, key=lambda m: ((order_first_task[m]), order_start_time.get(m, N_TIME)))
+        w: sorted(idxs, key=lambda m: (order_start_time.get(m, N_TIME),
+                                       order_first_task[m]))
         for w, idxs in enumerate(orders_by_workstation)
     }
 

@@ -19,9 +19,9 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "plot_results")
 # Keys are numeric scenario IDs (used in CSVs and for grouping); values are the
 # labels shown in tables and plots. Missing IDs fall back to their number.
 SCENARIO_LABELS = {
-    11: "S·so·lr", 12: "S·lo·lr", 13: "S·so·hr", 14: "S·lo·hr",
-    31: "M·so·lr", 32: "M·lo·lr", 33: "M·so·hr", 34: "M·lo·hr",
-    51: "L·so·lr", 52: "L·lo·lr", 53: "L·so·hr", 54: "L·lo·hr",
+    11: "Small warehouse \n Small orders \n Low arrival rate", 12: "Small warehouse \n Large orders \n Low arrival rate", 13: "Small warehouse \n Small orders \n High arrival rate", 14: "Small warehouse \n Large orders \n High arrival rate",
+    31: "Medium warehouse \n Small orders \n Low arrival rate", 32: "Medium warehouse \n Large orders \n Low arrival rate", 33: "Medium warehouse \n Small orders \n High arrival rate", 34: "Medium warehouse \n Large orders \n High arrival rate",
+    51: "Large warehouse \n Small orders \n Low arrival rate", 52: "Large warehouse \n Large orders \n Low arrival rate", 53: "Large warehouse \n Small orders \n High arrival rate", 54: "Large warehouse \n Large orders \n High arrival rate",
 }
 
 
@@ -53,7 +53,7 @@ MODE_TITLES = {"Opt_False": "Without optimisation", "Opt_True": "With optimisati
 
 METRICS = [
     Metric("throughput", "Throughput",
-           unit="", better="max", ylim=(550, 900)),
+           unit="", better="max", ylim=(550, 950)),
     Metric("mean_flow_time", "Mean flow time (s)",
            unit=r"\second", better="min", ylim=(400, 1400)),
     Metric("average_pods", "Average number of pods moving",
@@ -161,8 +161,12 @@ def build_latex_table(data: dict[str, pd.DataFrame], metric: Metric) -> str:
         mean_true, std_true = true_values.mean(), true_values.std(ddof=1)
         cell_false, cell_true = mean_cells(mean_false, mean_true, better)
 
+        # Multi-line label inside a single cell via \makecell.
+        parts = [p.strip() for p in scenario_label(scenario).split("\n")]
+        label = parts[0] if len(parts) == 1 else r"\makecell{" + r" \\ ".join(parts) + "}"
+
         lines.append(
-            rf"{scenario_label(scenario)} & {cell_false} & {std_false:.2f} & "
+            rf"{label} & {cell_false} & {std_false:.2f} & "
             rf"& {cell_true} & {std_true:.2f} \\"
         )
 
@@ -218,6 +222,7 @@ def create_boxplots(data: dict[str, pd.DataFrame], metric: Metric) -> None:
     folder = os.path.join(OUTPUT_DIR, metric.folder)
     os.makedirs(folder, exist_ok=True)
 
+    # SCENARIO_GROUPS = {"all" : [11,12,13,14,31,32,33,34,51,52,53,54]}
     for group, scenarios in SCENARIO_GROUPS.items():
         fig, ax = plt.subplots(figsize=(6.3, 3.5))
         draw_group_boxplot(ax, data, scenarios)

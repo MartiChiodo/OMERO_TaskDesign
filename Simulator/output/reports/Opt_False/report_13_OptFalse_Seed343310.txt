@@ -3,7 +3,7 @@ Optimization enabled = False
 
 Total number of items picked (throughtput) = 633.
 Average number of pod moving simultaneously = 19.88893754538467.
-Computational time spent for making decisions = 1.4228923320770264 sec.
+Computational time spent for making decisions = 2.369384527206421 sec.
 
 ============================================================
   ORDERS BY SIZE
