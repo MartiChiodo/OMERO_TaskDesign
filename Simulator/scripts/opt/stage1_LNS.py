@@ -68,22 +68,22 @@ def repair(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_w,
     mdl.Params.MIPGap = mip_gap
 
     # decision variables, only for the freed part
-    assign_var = mdl.addVars(sorted(freed_orders), range(n_w),
+    z_var = mdl.addVars(sorted(freed_orders), range(n_w),
                              vtype=GRB.BINARY, name="assign")   # order -> workstation
-    pick_var = {}                                               # item  -> pod
+    x_var = {}                                               # item  -> pod
     for item in freed_items:
         for pod in admissible_pods[item]:
-            pick_var[item, pod] = mdl.addVar(vtype=GRB.BINARY)
-            pick_var[item, pod].Start = float(x_incumbent[item, pod])
+            x_var[item, pod] = mdl.addVar(vtype=GRB.BINARY)
+            x_var[item, pod].Start = float(x_incumbent[item, pod])
     for order in freed_orders:
         for w in range(n_w):
-            assign_var[order, w].Start = float(z_incumbent[order, w])
+            z_var[order, w].Start = float(z_incumbent[order, w])
 
-    visit_var = {}                                             # pod visited at ws
+    y_var = {}                                             # pod visited at ws
     for pod in touched_pods:
         for w in range(n_w):
-            visit_var[w, pod] = mdl.addVar(lb=0.0, ub=1.0)
-            visit_var[w, pod].Start = float(y_incumbent[w, pod])
+            y_var[w, pod] = mdl.addVar(lb=0.0, ub=1.0)
+            y_var[w, pod].Start = float(y_incumbent[w, pod])
 
     # CONSTANT injection 1: a FIXED item that uses a touched pod still forces its
     # visit. Since that item's pick/assign are constants (not variables), EC4
@@ -95,20 +95,15 @@ def repair(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_w,
         if x_incumbent[item, pod_used] > 0.5 and pod_used in touched_pods_set:
             _, order = relevant_pairs_for_x[item]
             ws_fixed = int(np.argmax(z_incumbent[order]))
-            visit_var[ws_fixed, pod_used].lb = 1.0
-
-    def pick_value(item, pod):
-        # a variable if the item is freed, otherwise the incumbent constant
-        return pick_var[item, pod] if (item, pod) in pick_var \
-            else float(x_incumbent[item, pod])
+            y_var[ws_fixed, pod_used].lb = 1.0
 
     # EC1 each freed order goes to exactly one workstation
     for order in freed_orders:
-        mdl.addConstr(gp.quicksum(assign_var[order, w] for w in range(n_w)) == 1.0)
+        mdl.addConstr(gp.quicksum(z_var[order, w] for w in range(n_w)) == 1.0)
 
     # EC2 each freed item is picked from exactly one admissible pod
     for item in freed_items:
-        mdl.addConstr(gp.quicksum(pick_var[item, pod]
+        mdl.addConstr(gp.quicksum(x_var[item, pod]
                                   for pod in admissible_pods[item]) == 1.0)
 
     # EC4 if a freed item is picked from pod at a workstation, that pod is visited
@@ -117,7 +112,7 @@ def repair(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_w,
         for pod in admissible_pods[item]:
             for w in range(n_w):
                 mdl.addConstr(
-                    visit_var[w, pod] >= pick_var[item, pod] + assign_var[order, w] - 1.0)
+                    y_var[w, pod] >= x_var[item, pod] + z_var[order, w] - 1.0)
 
     # EC5 workload balance. CONSTANT injection 2: the fixed orders contribute a
     # constant load per workstation (total minus the freed orders' incumbent
@@ -130,13 +125,13 @@ def repair(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_w,
         fixed_load[int(np.argmax(z_incumbent[order]))] -= sku_per_order[order]
     for w in range(n_w):
         load = fixed_load[w] + gp.quicksum(
-            sku_per_order[order] * assign_var[order, w] for order in freed_orders)
+            sku_per_order[order] * z_var[order, w] for order in freed_orders)
         mdl.addConstr(load <= load_hi)
         mdl.addConstr(load >= load_lo)
 
     # objective: minimise pod visits weighted by distance, over the freed visits
     mdl.setObjective(
-        gp.quicksum(cost_matrix[w, pod] * visit_var[w, pod]
+        gp.quicksum(cost_matrix[w, pod] * y_var[w, pod]
                     for pod in touched_pods for w in range(n_w)),
         GRB.MINIMIZE)
 
@@ -149,18 +144,18 @@ def repair(orders, orders_items, relevant_pairs_for_x, OptManager, state, n_w,
         for item in freed_items:
             x_new[item, :] = 0.0
             for pod in admissible_pods[item]:
-                if pick_var[item, pod].X > 0.5:
+                if x_var[item, pod].X > 0.5:
                     x_new[item, pod] = 1.0
         z_new = z_incumbent.copy()
         for order in freed_orders:
             z_new[order, :] = 0.0
             for w in range(n_w):
-                if assign_var[order, w].X > 0.5:
+                if z_var[order, w].X > 0.5:
                     z_new[order, w] = 1.0
         y_new = y_incumbent.copy()
         for pod in touched_pods:
             for w in range(n_w):
-                y_new[w, pod] = 1.0 if visit_var[w, pod].X > 0.5 else 0.0
+                y_new[w, pod] = 1.0 if y_var[w, pod].X > 0.5 else 0.0
         return x_new, z_new, y_new
     finally:
         mdl.dispose()          # release the model (and its WLS session) each iteration
