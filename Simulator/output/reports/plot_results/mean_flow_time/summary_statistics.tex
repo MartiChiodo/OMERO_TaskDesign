@@ -2,21 +2,21 @@
 \toprule
 & \multicolumn{2}{c}{\textbf{Without optimisation}} & & \multicolumn{2}{c}{\textbf{With optimisation}} \\
 \cmidrule(lr){2-3}\cmidrule(lr){5-6}
-\textbf{ID} & \textbf{Mean} [\unit{\second}] & \textbf{Std} [\unit{\second}] & & \textbf{Mean} [\unit{\second}] & \textbf{Std} [\unit{\second}] \\
+\textbf{Configuration} & \textbf{Mean} [\unit{\second}] & \textbf{Std} [\unit{\second}] & & \textbf{Mean} [\unit{\second}] & \textbf{Std} [\unit{\second}] \\
 \midrule
-\makecell{Small warehouse \\ Small orders \\ Low arrival rate} & 974.18 & 65.83 & & \textbf{927.86} & 32.23 \\
-\makecell{Small warehouse \\ Large orders \\ Low arrival rate} & 1157.61 & 23.92 & & \textbf{990.19} & 42.31 \\
-\makecell{Small warehouse \\ Small orders \\ High arrival rate} & 1250.75 & 41.07 & & \textbf{983.34} & 22.54 \\
-\makecell{Small warehouse \\ Large orders \\ High arrival rate} & 1387.18 & 52.60 & & \textbf{1062.51} & 33.76 \\
+S·so·lr & 961.47 & 58.69 & & \textbf{927.23} & 24.35 \\
+S·lo·lr & 1134.65 & 68.00 & & \textbf{988.77} & 38.67 \\
+S·so·hr & 1239.07 & 47.79 & & \textbf{982.29} & 18.50 \\
+S·lo·hr & 1368.51 & 65.34 & & \textbf{1063.18} & 33.60 \\
 \addlinespace
-\makecell{Medium warehouse \\ Small orders \\ Low arrival rate} & \textbf{591.55} & 41.13 & & 871.76 & 55.01 \\
-\makecell{Medium warehouse \\ Large orders \\ Low arrival rate} & \textbf{852.69} & 57.78 & & 1025.02 & 35.64 \\
-\makecell{Medium warehouse \\ Small orders \\ High arrival rate} & 986.82 & 62.79 & & \textbf{959.64} & 34.00 \\
-\makecell{Medium warehouse \\ Large orders \\ High arrival rate} & 1164.13 & 47.84 & & \textbf{1074.81} & 35.05 \\
+M·so·lr & \textbf{583.30} & 38.87 & & 859.83 & 56.61 \\
+M·lo·lr & \textbf{842.46} & 72.30 & & 1021.05 & 30.00 \\
+M·so·hr & 975.36 & 61.92 & & \textbf{957.14} & 37.15 \\
+M·lo·hr & 1157.45 & 52.42 & & \textbf{1075.11} & 51.11 \\
 \addlinespace
-\makecell{Large warehouse \\ Small orders \\ Low arrival rate} & \textbf{446.31} & 25.71 & & 882.53 & 46.29 \\
-\makecell{Large warehouse \\ Large orders \\ Low arrival rate} & \textbf{719.60} & 50.01 & & 1069.80 & 32.60 \\
-\makecell{Large warehouse \\ Small orders \\ High arrival rate} & \textbf{869.83} & 40.34 & & 968.64 & 28.82 \\
-\makecell{Large warehouse \\ Large orders \\ High arrival rate} & \textbf{1087.61} & 39.58 & & 1135.89 & 50.14 \\
+L·so·lr & \textbf{460.79} & 44.48 & & 870.75 & 55.14 \\
+L·lo·lr & \textbf{722.10} & 79.37 & & 1066.95 & 27.28 \\
+L·so·hr & \textbf{870.98} & 56.08 & & 970.36 & 25.44 \\
+L·lo·hr & \textbf{1073.10} & 70.12 & & 1127.67 & 41.01 \\
 \bottomrule
 \end{tabular}

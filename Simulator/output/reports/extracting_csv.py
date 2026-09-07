@@ -154,6 +154,6 @@ for mode in ["Opt_False", "Opt_True"]:
     save_matrix_csv(throughput, f"{mode}_throughput.csv")
     save_flow_csv(flow_data, f"{mode}_mean_flow_time.csv")
     two_stage_replications(throughput, f"{mode}_replications_throughput.csv",
-                           alpha=0.05, gamma=0.05)  # 95% conf, 5% relative
+                           alpha=0.05, gamma=0.02)  # 95% conf, 5% relative
 
 print("\nCSV files created successfully.")
