@@ -32,20 +32,7 @@ def _first_pick_time(x_sol, im, N_TIME):
 
 
 def convert_OptSol_to_SimObj(data, x_sol, v_sol, y_sol=None, gap_factor=1.0):
-    """Turn the Stage 2 solution into orders, an opening order per workstation,
-    and tasks. Tasks say which pod brings which items where; routing is left to
-    the simulator. y_sol is unused, kept only for a stable signature.
 
-    A task is one pod's run through orders that open close together in time. The
-    cut is driven by the order opening windows, not by pick timesteps: opening
-    order is the robust part of the plan, and cutting on it never splits a single
-    order (however many SKUs it spans) across two tasks of the same pod. For each
-    pod its groups are split into a new task whenever the gap between consecutive
-    opening windows exceeds gap_factor times the pod's round trip home: larger
-    keeps the pod out across bigger gaps, smaller sends it home sooner, and
-    because the threshold scales with distance a far pod (expensive to shuttle) is
-    kept out longer than a near one. Task priority is the earliest pick time of
-    the task, remapped to [0, 300] at the end."""
     orders    = data.orders
     N_TIME    = data.OptManager.N_TIME
     TIME_UNIT = data.OptManager.TIME_UNIT
