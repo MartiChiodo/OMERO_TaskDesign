@@ -31,7 +31,7 @@ def main():
     # Seed
     SEEDS = [343310, 293874, 301060, 300871, 30201, 50102]  
     SEEDS = [987034, 570183, 789124, 612937]
-    OPTIM = True
+    OPTIM = False
 
     for SEED in SEEDS:
 
@@ -73,6 +73,7 @@ def main():
                     ],
                     warm_up=float(cfg["warm_up"]),
                     time_horizon=None,
+                    initial_backlog_size = int(cfg["initial_backlog_size"]),
                     path_to_save_stat=os.path.join(path_to_reports, f"report_{EXPERIMENT_ID}_Opt{OPTIM}_Seed{SEED}.txt"),
                     optimization_enabled=OPTIM,
                     optimization_interval=float(cfg["delta_t_opt"])

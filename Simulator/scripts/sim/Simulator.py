@@ -43,11 +43,13 @@ class SimulatorConfig:
 
     order_gen_config    : list[float]   [orders_per_hour, prob_1_item_order, geo_dist_param].
     warm_up             : float         Seconds discarded from statistics at run start. Default 0.
+    initial_backlog_size: int           Initial size of the backlog.
     path_to_save_stat   : str           Path in where to save report file.s
     optimization_enabled: bool          Optimisation-based assignment if True. Default False.
     """
     order_gen_config:        list[float]
     time_horizon:            float
+    initial_backlog_size:    int
     warm_up:                 float = 0.0
     path_to_save_stat:       str = "Simulator/output/report.txt"
     optimization_enabled:    bool  = False
@@ -170,7 +172,7 @@ class Simulator:
         state    = self.state
         dispatch = self.build_dispatch()
 
-        state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = 200))
+        state.future_events.push(Event(time=1e-8, type=EventType.ARRIVAL_ORDER, info = self.config.initial_backlog_size))
         if self.config.optimization_enabled:
             state.future_events.push(Event(time=1, type=EventType.RUN_OPTIMIZER))
 
