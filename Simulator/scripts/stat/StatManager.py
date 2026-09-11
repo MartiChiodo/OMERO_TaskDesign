@@ -95,7 +95,7 @@ class StatManager:
         end_time = state.current_time
 
         report = self.build_report(sim_config, end_time, state)
-        print(report)
+        # print(report)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as f:
             f.write(report)

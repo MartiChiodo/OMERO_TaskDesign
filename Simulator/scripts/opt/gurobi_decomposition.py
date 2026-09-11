@@ -12,7 +12,7 @@ from scripts.opt.convert_OptSol_to_SimObj import convert_OptSol_to_SimObj
 
 
 def gurobi_benchmark(OptManager, sim, state,
-                     time_limit=15*60, mip_gap=0.05):
+                     time_limit=15*60, mip_gap=0.01):
     """
     Full two-stage decomposition solved with everything variable, used as a
     reference to measure the LNS optimality gap.
@@ -30,6 +30,8 @@ def gurobi_benchmark(OptManager, sim, state,
     model1 = None
     model2 = None
     env = gp.Env()              # one WLS session, released in finally
+
+    rng = np.random.default_rng()   
 
     try:
         ###- setup
@@ -69,12 +71,14 @@ def gurobi_benchmark(OptManager, sim, state,
         ###  STAGE 1  - ORDER->WS and ITEM->POD assignment
 
         logging.info("[benchmark] Building stage-1 model ...")
+        print("[benchmark] Building stage-1 model ...")
         t_build1 = time.perf_counter()
         model1 = gp.Model('benchmark_stage1', env=env)
         model1.Params.OutputFlag = 0
         if time_limit is not None:
             model1.Params.TimeLimit = time_limit
         model1.Params.MIPGap = mip_gap
+        model1.Params.Seed = rng.integers(0, 10**3)
 
         # z1[m,w] order->ws ; x1[im,p] item->pod ; y1[w,p] pod visits ws
         z1 = model1.addVars(n_orders, n_w, vtype=GRB.BINARY, name="assign")
@@ -131,11 +135,13 @@ def gurobi_benchmark(OptManager, sim, state,
 
         build1_time = time.perf_counter() - t_build1
         logging.info("[benchmark] Stage-1 built in %.2f s. Solving ...", build1_time)
+        print(f"[benchmark] Stage-1 built in {build1_time} s. Solving ...")
 
         t_solve1 = time.perf_counter()
         model1.optimize()
         solve1_time = time.perf_counter() - t_solve1
         logging.info("[benchmark] Stage-1 status %s   [2:OPT 3:INFEAS 9:TIME]", model1.Status)
+        print(f"[benchmark] Stage-1 status {model1.Status}   [2:OPT 3:INFEAS 9:TIME]")
 
         if model1.Status == GRB.INFEASIBLE:
             model1.computeIIS()
@@ -148,6 +154,10 @@ def gurobi_benchmark(OptManager, sim, state,
                      "obj = %.4f, bound = %.4f, gap = %.2f%%",
                      build1_time + solve1_time, build1_time, solve1_time,
                      model1.ObjVal, model1.ObjBound, 100.0 * model1.MIPGap)
+        print(f"[benchmark] Stage-1 solved in {build1_time + solve1_time:.2f} s  "
+                    f"(build {build1_time:.2f} s, solve {solve1_time:.2f} s)  "
+                    f"obj = {model1.ObjVal:.4f}, bound = {model1.ObjBound:.4f}, "
+                    f"gap = {100.0 * model1.MIPGap:.2f}%")
 
         #  extract stage-1 solution
         z1_sol = {(m, w): z1[m, w].X for m in range(n_orders) for w in range(n_w)}
@@ -176,12 +186,14 @@ def gurobi_benchmark(OptManager, sim, state,
         ###  STAGE 2  - SCHEDULING   (from repair2, everything variable)
 
         logging.info("[benchmark] Building stage-2 model ...")
+        print(f"\n[benchmark] Building stage-2 model ...")
         t_build2 = time.perf_counter()
         model2 = gp.Model('benchmark_stage2', env=env)
         model2.Params.OutputFlag = 0
         if time_limit is not None:
             model2.Params.TimeLimit = time_limit
         model2.Params.MIPGap = mip_gap
+        model2.Params.Seed = rng.integers(0, 10**3)
 
         x2 = model2.addVars(len(relevant_pairs_for_x), T, vtype=GRB.BINARY, name="x2")
         y2 = model2.addVars(n_rel_pods, n_a, vtype=GRB.BINARY, name="y2")
@@ -302,11 +314,13 @@ def gurobi_benchmark(OptManager, sim, state,
 
         build2_time = time.perf_counter() - t_build2
         logging.info("[benchmark] Stage-2 built in %.2f s. Solving ...", build2_time)
+        print(f"[benchmark] Stage-2 built in {build2_time} s. Solving ...")
 
         t_solve2 = time.perf_counter()
         model2.optimize()
         solve2_time = time.perf_counter() - t_solve2
         logging.info("[benchmark] Stage-2 status %s   [2:OPT 3:INFEAS 9:TIME]", model2.Status)
+        print(f"[benchmark] Stage-2 status {model2.Status}   [2:OPT 3:INFEAS 9:TIME]")
 
         if model2.Status == GRB.INFEASIBLE:
             model2.computeIIS()
@@ -321,6 +335,10 @@ def gurobi_benchmark(OptManager, sim, state,
                      "obj = %.4f, bound = %.4f, gap = %.2f%%",
                      build2_time + solve2_time, build2_time, solve2_time,
                      benchmark_obj, benchmark_bound, 100.0 * model2.MIPGap)
+        print(f"[benchmark] Stage-2 solved in {build2_time + solve2_time:.2f} s  "
+            f"(build {build2_time:.2f} s, solve {solve2_time:.2f} s)  "
+            f"obj = {model2.ObjVal:.4f}, bound = {model2.ObjBound:.4f}, "
+            f"gap = {100.0 * model2.MIPGap:.2f}%")
 
         # extract solution while the model is still alive
         x2_sol = model2.getAttr(GRB.Attr.X, x2)
@@ -351,6 +369,10 @@ def gurobi_benchmark(OptManager, sim, state,
                      build1_time + solve1_time,
                      build2_time + solve2_time,
                      total_time - build1_time - solve1_time - build2_time - solve2_time)
+        print(f"[benchmark] DONE in {total_time:.2f} s total  "
+                f"(stage-1 {build1_time + solve1_time:.2f} s + "
+                f"stage-2 {build2_time + solve2_time:.2f} s + "
+                f"overhead {total_time - build1_time - solve1_time - build2_time - solve2_time:.2f} s)")
 
         return orders, ordered_orders_by_w, tasks
 

@@ -15,6 +15,8 @@ from scripts.sim.Simulator import Simulator, SimulatorConfig
 EXPERIMENT_IDS = [11, 12, 13, 14, 31, 32, 33, 34, 51, 52, 53, 54]
 SEEDS = [343310, 293874, 301060, 300871, 30201,
          50102, 987034, 570183, 789124, 612937]
+SEEDS = [343310]*4 + [293874]*4 + [789124]*4 + [987034]*4
+EXPERIMENT_IDS = [0]
 OPTIM = True
 
 
@@ -63,8 +65,8 @@ def run_one(experiment_id: int, seed: int) -> None:
     cfg = load_experiment(experiment_id)
 
     base_dir = os.path.dirname(__file__)
-    path_to_logs = os.path.join(base_dir, "output", "logs", f"Opt_{OPTIM}")
-    path_to_reports = os.path.join(base_dir, "output", "reports", f"Opt_{OPTIM}")
+    path_to_logs = os.path.join(base_dir, "output", "logs", "exact_solver", f"Opt_{OPTIM}")
+    path_to_reports = os.path.join(base_dir, "output", "reports", "exact_solver", f"Opt_{OPTIM}")
     os.makedirs(path_to_logs, exist_ok=True)
     os.makedirs(path_to_reports, exist_ok=True)
 
@@ -84,7 +86,7 @@ def run_one(experiment_id: int, seed: int) -> None:
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("gurobipy").setLevel(logging.WARNING)
 
-    print(f"Running EXPERIMENT_ID={experiment_id}, SEED={seed}, OPTIM={OPTIM}", flush=True)
+    print(f"\n\nRunning EXPERIMENT_ID={experiment_id}, SEED={seed}, OPTIM={OPTIM}", flush=True)
 
     gen = numpy.random.default_rng(seed)
 
