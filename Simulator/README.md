@@ -21,9 +21,11 @@ Tesi_LM/Simulator/
     ├── opt/
     │   ├── policies.py                    # Heuristic assignment policies (used when optimizer is disabled)
     |   ├── OptManager.py                  # Time-space network definition
-    |   ├── local_search_stage1.py         # Implementation of a local search heuristic to solve the assignment problem
-    |   ├── local_search_stafe2.py         # Implementation of a local search heuristic to solve the sequencing problem
-    |   ├── stage2_data.py                 # Contain the main data structure to fed the sequencing problem
+    |   ├── local_search_stage1.py         # First implementation of a local search heuristic to solve the assignment problem
+    |   ├── stage1_LNS.py                  # LNS implementation for the assignment problem (stage 1)
+    |   ├── local_search_stage2.py         # First implementation of a local search heuristic to solve the scheduling problem
+    |   ├── stage2_LNS.py                  # LNS implementation for the scheduling problem (stage 2)
+    |   ├── stage2_data.py                 # Contain the main data structure to fed the scheduling problem
     |   ├── build_initial_x_stage2.py      # Contains the function to build a feasible initial solution for the stage 2 problem
     |   └── convert_OptSol_to_SimObj.py    # Contais a function to convert the decision variables into objects (`Task`) to fed the simulator
     │  

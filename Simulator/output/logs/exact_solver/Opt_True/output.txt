@@ -1,0 +1,258 @@
+This process will run 16 (config, seed) pair(s): [(0, 343310), (0, 343310), (0, 343310), (0, 343310), (0, 293874), (0, 293874), (0, 293874), (0, 293874), (0, 789124), (0, 789124), (0, 789124), (0, 789124), (0, 987034), (0, 987034), (0, 987034), (0, 987034)]
+
+
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.03150680009275675 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 27.99 s  (build 0.03 s, solve 27.96 s)  obj = 34.2000, bound = 34.2000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.4560209000483155 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.63 s  (build 5.46 s, solve 900.18 s)  obj = 67.2919, bound = 90.8781, gap = 35.05%
+[benchmark] DONE in 933.82 s total  (stage-1 27.99 s + stage-2 905.63 s + overhead 0.20 s)
+
+
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.03035720018669963 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 38.91 s  (build 0.03 s, solve 38.88 s)  obj = 34.2000, bound = 34.2000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.04044339992106 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.27 s  (build 5.04 s, solve 900.23 s)  obj = 61.5176, bound = 91.0722, gap = 48.04%
+[benchmark] DONE in 944.57 s total  (stage-1 38.91 s + stage-2 905.27 s + overhead 0.39 s)
+
+
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.06549709988757968 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 47.99 s  (build 0.07 s, solve 47.93 s)  obj = 34.2000, bound = 34.0000, gap = 0.58%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 10.196859900373966 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 910.55 s  (build 10.20 s, solve 900.35 s)  obj = 79.9577, bound = 91.0344, gap = 13.85%
+[benchmark] DONE in 958.77 s total  (stage-1 47.99 s + stage-2 910.55 s + overhead 0.23 s)
+
+
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.0319862999022007 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 40.94 s  (build 0.03 s, solve 40.91 s)  obj = 34.2000, bound = 34.0000, gap = 0.58%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.034687099978328 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.28 s  (build 5.03 s, solve 900.25 s)  obj = 69.8396, bound = 90.9530, gap = 30.23%
+[benchmark] DONE in 946.41 s total  (stage-1 40.94 s + stage-2 905.28 s + overhead 0.19 s)
+
+
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.027954199817031622 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 13.89 s  (build 0.03 s, solve 13.86 s)  obj = 33.0000, bound = 33.0000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 4.989761900156736 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.18 s  (build 4.99 s, solve 900.19 s)  obj = 58.2786, bound = 90.9981, gap = 56.14%
+[benchmark] DONE in 919.26 s total  (stage-1 13.89 s + stage-2 905.18 s + overhead 0.18 s)
+
+
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.028240999672561884 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 15.89 s  (build 0.03 s, solve 15.86 s)  obj = 33.0000, bound = 33.0000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.063363099936396 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.32 s  (build 5.06 s, solve 900.26 s)  obj = 27.4077, bound = 90.9463, gap = 231.83%
+[benchmark] DONE in 921.40 s total  (stage-1 15.89 s + stage-2 905.32 s + overhead 0.19 s)
+
+
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.030107699800282717 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 17.40 s  (build 0.03 s, solve 17.37 s)  obj = 33.0000, bound = 33.0000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.219821600243449 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.54 s  (build 5.22 s, solve 900.32 s)  obj = 70.6263, bound = 91.0030, gap = 28.85%
+[benchmark] DONE in 923.14 s total  (stage-1 17.40 s + stage-2 905.54 s + overhead 0.20 s)
+
+
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.025844100397080183 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 17.08 s  (build 0.03 s, solve 17.05 s)  obj = 33.0000, bound = 32.7000, gap = 0.91%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.111891100183129 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.34 s  (build 5.11 s, solve 900.22 s)  obj = 38.9035, bound = 90.9898, gap = 133.89%
+[benchmark] DONE in 922.59 s total  (stage-1 17.08 s + stage-2 905.34 s + overhead 0.18 s)
+
+
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.027055199723690748 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 36.24 s  (build 0.03 s, solve 36.21 s)  obj = 31.1000, bound = 31.1000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 4.608615899924189 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 904.86 s  (build 4.61 s, solve 900.25 s)  obj = 71.7219, bound = 82.2606, gap = 14.69%
+[benchmark] DONE in 941.33 s total  (stage-1 36.24 s + stage-2 904.86 s + overhead 0.23 s)
+
+
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.030209700111299753 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 52.73 s  (build 0.03 s, solve 52.70 s)  obj = 31.1000, bound = 31.1000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.121623300015926 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.53 s  (build 5.12 s, solve 900.41 s)  obj = 60.3262, bound = 82.2509, gap = 36.34%
+[benchmark] DONE in 958.49 s total  (stage-1 52.73 s + stage-2 905.53 s + overhead 0.23 s)
+
+
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.029279800131917 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 22.97 s  (build 0.03 s, solve 22.95 s)  obj = 31.1000, bound = 31.1000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.078247599769384 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.37 s  (build 5.08 s, solve 900.29 s)  obj = 65.9661, bound = 82.2507, gap = 24.69%
+[benchmark] DONE in 928.60 s total  (stage-1 22.97 s + stage-2 905.37 s + overhead 0.26 s)
+
+
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.0297111002728343 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 22.69 s  (build 0.03 s, solve 22.66 s)  obj = 31.1000, bound = 31.1000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 4.78039629990235 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.01 s  (build 4.78 s, solve 900.23 s)  obj = 68.1902, bound = 82.2632, gap = 20.64%
+[benchmark] DONE in 927.90 s total  (stage-1 22.69 s + stage-2 905.01 s + overhead 0.20 s)
+
+
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.0714531997218728 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 27.84 s  (build 0.07 s, solve 27.77 s)  obj = 30.6000, bound = 30.3000, gap = 0.98%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 6.276317400392145 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 906.59 s  (build 6.28 s, solve 900.32 s)  obj = 80.2631, bound = 82.2112, gap = 2.43%
+[benchmark] DONE in 934.67 s total  (stage-1 27.84 s + stage-2 906.59 s + overhead 0.24 s)
+
+
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.025900000240653753 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 25.37 s  (build 0.03 s, solve 25.34 s)  obj = 30.6000, bound = 30.6000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.040951299946755 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.31 s  (build 5.04 s, solve 900.27 s)  obj = 79.9470, bound = 82.2063, gap = 2.83%
+[benchmark] DONE in 930.93 s total  (stage-1 25.37 s + stage-2 905.31 s + overhead 0.25 s)
+
+
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.026899799704551697 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 30.86 s  (build 0.03 s, solve 30.83 s)  obj = 30.6000, bound = 30.6000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.0299340998753905 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.59 s  (build 5.03 s, solve 900.56 s)  obj = 77.9220, bound = 82.2043, gap = 5.50%
+[benchmark] DONE in 936.69 s total  (stage-1 30.86 s + stage-2 905.59 s + overhead 0.24 s)
+
+
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+Set parameter Username
+Set parameter LicenseID to value 2781442
+Academic license - for non-commercial use only - expires 2027-02-20
+[benchmark] Building stage-1 model ...
+[benchmark] Stage-1 built in 0.028340399730950594 s. Solving ...
+[benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-1 solved in 33.95 s  (build 0.03 s, solve 33.93 s)  obj = 30.6000, bound = 30.6000, gap = 0.00%
+
+[benchmark] Building stage-2 model ...
+[benchmark] Stage-2 built in 5.140534900128841 s. Solving ...
+[benchmark] Stage-2 status 9   [2:OPT 3:INFEAS 9:TIME]
+[benchmark] Stage-2 solved in 905.48 s  (build 5.14 s, solve 900.34 s)  obj = 73.6782, bound = 82.1870, gap = 11.55%
+[benchmark] DONE in 939.68 s total  (stage-1 33.95 s + stage-2 905.48 s + overhead 0.24 s)
+(TesiEnv) PS C:\Users\chiod\Documents\OMERO_TaskDesign> 
