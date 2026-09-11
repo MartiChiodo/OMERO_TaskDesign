@@ -224,18 +224,18 @@ for mode in ["Opt_False", "Opt_True"]:
                            alpha=0.05, gamma=0.02)  # 95% conf, 5% relative
 
     # appendix LaTeX tables, one per (metric, mode), built from the dataframes above
-    mode_label = "with optimisation" if mode == "Opt_True" else "without optimisation"
+    mode_label = "Optimizer" if mode == "Opt_True" else "Greedy policies"
     matrix_to_latex(
         df_thr, f"{mode}_throughput.tex",
-        caption=f"Per-replication throughput (items picked), {mode_label}.",
+        caption=f"{mode_label}: per-replication throughput (items picked).",
         label=f"tab:app_throughput_{mode.lower()}", value_fmt="{:.0f}")
     matrix_to_latex(
         df_pods, f"{mode}_average_pods.tex",
-        caption=f"Per-replication average number of pods moving simultaneously, {mode_label}.",
+        caption=f"{mode_label}: per-replication average number of pods moving simultaneously.",
         label=f"tab:app_pods_{mode.lower()}", value_fmt="{:.2f}")
     matrix_to_latex(
         df_time, f"{mode}_computational_time.tex",
-        caption=f"Per-replication computational time for decision making (s), {mode_label}.",
+        caption=f"{mode_label}: per-replication computational time for decision making (s).",
         label=f"tab:app_time_{mode.lower()}", value_fmt="{:.1f}")
 
 print(f"\nCSV files written to:   {CSV_FOLDER}")

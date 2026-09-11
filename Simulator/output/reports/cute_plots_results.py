@@ -59,11 +59,11 @@ class Metric:
 
 
 MODES = ["Opt_False", "Opt_True"]
-MODE_TITLES = {"Opt_False": "Without optimisation", "Opt_True": "With optimisation"}
+MODE_TITLES = {"Opt_False": "Greedy policies", "Opt_True": "Optimizer"}
 
 METRICS = [
     Metric("throughput", "Throughput",
-           unit="", better="max", ylim=(550, 950)),
+           unit="", better="max", ylim=(550, 970)),
     Metric("mean_flow_time", "Mean flow time (s)",
            unit=r"\second", better="min", ylim=(400, 1500)),
     Metric("average_pods", "Average number of pods moving",

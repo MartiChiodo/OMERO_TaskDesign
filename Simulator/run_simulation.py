@@ -16,7 +16,7 @@ EXPERIMENT_IDS = [11, 12, 13, 14, 31, 32, 33, 34, 51, 52, 53, 54]
 SEEDS = [343310, 293874, 301060, 300871, 30201,
          50102, 987034, 570183, 789124, 612937,
          189463, 846208, 470129, 130944]
-OPTIM = True
+OPTIM = False
 
 
 def load_experiment(experiment_id: int) -> dict:
