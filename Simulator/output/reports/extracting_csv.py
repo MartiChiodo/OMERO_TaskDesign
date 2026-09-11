@@ -130,14 +130,17 @@ def matrix_to_latex(df, filename, caption, label, value_fmt="{:.1f}"):
     body = "\n".join(body_lines)
 
     tex = (
-        "\\begin{table}[htb]\n\\centering\n"
-        "\\small\n"
-        f"\\caption{{{caption}}}\n\\label{{{label}}}\n"
-        f"\\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}\n\\toprule\n"
-        f"{header} \\\\\n\\midrule\n"
-        f"{body}\n\\bottomrule\n"
-        "\\end{tabular}\n\\end{table}\n"
-    )
+            "\\begin{table}[htb]\n\\centering\n"
+            "\\small\n"
+            f"\\caption{{{caption}}}\n\\label{{{label}}}\n"
+            "\\resizebox{\\textwidth}{!}{%\n"          # <-- apre resizebox
+            f"\\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}\n\\toprule\n"
+            f"{header} \\\\\n\\midrule\n"
+            f"{body}\n\\bottomrule\n"
+            "\\end{tabular}%\n"                          # <-- % dopo tabular
+            "}\n"                                        # <-- chiude resizebox
+            "\\end{table}\n"
+        )
     with open(os.path.join(TEX_FOLDER, filename), "w", encoding="utf-8") as f:
         f.write(tex)
 
