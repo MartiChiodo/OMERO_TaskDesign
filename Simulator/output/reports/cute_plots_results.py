@@ -150,8 +150,8 @@ def build_latex_table(data: dict[str, pd.DataFrame], metric: Metric) -> str:
     lines = [
         r"\begin{tabular}{@{}c cc c cc@{}}",
         r"\toprule",
-        r"& \multicolumn{2}{c}{\textbf{Without optimisation}} & "
-        r"& \multicolumn{2}{c}{\textbf{With optimisation}} \\",
+        r"& \multicolumn{2}{c}{\textbf{Greedy policies}} & "
+        r"& \multicolumn{2}{c}{\textbf{Optimizer}} \\",
         r"\cmidrule(lr){2-3}\cmidrule(lr){5-6}",
         rf"\textbf{{Configuration}} & {header_cell('Mean', unit)} & {header_cell('Std', unit)} & "
         rf"& {header_cell('Mean', unit)} & {header_cell('Std', unit)} \\",
