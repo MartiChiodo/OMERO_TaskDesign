@@ -1,0 +1,67 @@
+2026-09-11 11:34:55 INFO: Warehouse initialization | grid=5x10, physical=14x15, num_skus=500, num_robots=5, num_ws=3
+2026-09-11 11:34:55 INFO: Warehouse initialized | 50 pods  (average number of skus per pod = 30.00), 3 workstations, 5 robots
+2026-09-11 11:34:55 INFO: [OptManager] Building time-space network ...
+2026-09-11 11:34:55 INFO: [OptManager] Network ready: 2650 nodes, 14602 travelling arcs, 2597 idle arcs.
+2026-09-11 11:34:55 INFO: 
+=============================================
+2026-09-11 11:34:55 INFO:   START SIMULATION  {TIME HORIZON = 00:00:02}
+2026-09-11 11:34:55 DEBUG:    EVENT NUM 1     current_time = 00:00:00   ARRIVAL_ORDER         [queue size = 1]
+2026-09-11 11:34:55 DEBUG: Order 0 arrived: items_required = [191].     [orders_in_system = 1]
+2026-09-11 11:34:55 DEBUG: Order 1 arrived: items_required = [255].     [orders_in_system = 2]
+2026-09-11 11:34:55 DEBUG: Order 2 arrived: items_required = [165, 384].     [orders_in_system = 3]
+2026-09-11 11:34:55 DEBUG: Order 3 arrived: items_required = [138].     [orders_in_system = 4]
+2026-09-11 11:34:55 DEBUG: Order 4 arrived: items_required = [196].     [orders_in_system = 5]
+2026-09-11 11:34:55 DEBUG: Order 5 arrived: items_required = [253].     [orders_in_system = 6]
+2026-09-11 11:34:55 DEBUG: Order 6 arrived: items_required = [256, 188, 183].     [orders_in_system = 7]
+2026-09-11 11:34:55 DEBUG: Order 7 arrived: items_required = [296].     [orders_in_system = 8]
+2026-09-11 11:34:55 DEBUG: Order 8 arrived: items_required = [276, 177].     [orders_in_system = 9]
+2026-09-11 11:34:55 DEBUG: Order 9 arrived: items_required = [178, 297, 252].     [orders_in_system = 10]
+2026-09-11 11:34:55 DEBUG: Order 10 arrived: items_required = [422, 325].     [orders_in_system = 11]
+2026-09-11 11:34:55 DEBUG: Order 11 arrived: items_required = [275].     [orders_in_system = 12]
+2026-09-11 11:34:55 DEBUG: Order 12 arrived: items_required = [226, 241].     [orders_in_system = 13]
+2026-09-11 11:34:55 DEBUG: Order 13 arrived: items_required = [331].     [orders_in_system = 14]
+2026-09-11 11:34:55 DEBUG: Order 14 arrived: items_required = [217].     [orders_in_system = 15]
+2026-09-11 11:34:55 DEBUG: Order 15 arrived: items_required = [167, 221].     [orders_in_system = 16]
+2026-09-11 11:34:55 DEBUG: Order 16 arrived: items_required = [155].     [orders_in_system = 17]
+2026-09-11 11:34:55 DEBUG: Order 17 arrived: items_required = [474, 226, 222].     [orders_in_system = 18]
+2026-09-11 11:34:55 DEBUG: Order 18 arrived: items_required = [252].     [orders_in_system = 19]
+2026-09-11 11:34:55 DEBUG: Order 19 arrived: items_required = [246, 368, 219].     [orders_in_system = 20]
+2026-09-11 11:34:55 DEBUG: Order 20 arrived: items_required = [248].     [orders_in_system = 21]
+2026-09-11 11:34:55 DEBUG: Order 21 arrived: items_required = [188].     [orders_in_system = 22]
+2026-09-11 11:34:55 DEBUG: Order 22 arrived: items_required = [434, 368].     [orders_in_system = 23]
+2026-09-11 11:34:55 DEBUG: Order 23 arrived: items_required = [232, 195].     [orders_in_system = 24]
+2026-09-11 11:34:55 DEBUG: Order 24 arrived: items_required = [365, 182].     [orders_in_system = 25]
+2026-09-11 11:34:55 DEBUG: Order 25 arrived: items_required = [278].     [orders_in_system = 26]
+2026-09-11 11:34:55 DEBUG: Order 26 arrived: items_required = [329].     [orders_in_system = 27]
+2026-09-11 11:34:55 DEBUG: Order 27 arrived: items_required = [282].     [orders_in_system = 28]
+2026-09-11 11:34:55 DEBUG: Order 28 arrived: items_required = [181].     [orders_in_system = 29]
+2026-09-11 11:34:55 DEBUG: Order 29 arrived: items_required = [280, 153].     [orders_in_system = 30]
+2026-09-11 11:34:55 DEBUG: Order 30 arrived: items_required = [383].     [orders_in_system = 31]
+2026-09-11 11:34:55 DEBUG: Order 31 arrived: items_required = [151, 145, 263, 253].     [orders_in_system = 32]
+2026-09-11 11:34:55 DEBUG: Order 32 arrived: items_required = [102].     [orders_in_system = 33]
+2026-09-11 11:34:55 DEBUG: Order 33 arrived: items_required = [298, 184, 242].     [orders_in_system = 34]
+2026-09-11 11:34:55 DEBUG: Order 34 arrived: items_required = [322].     [orders_in_system = 35]
+2026-09-11 11:34:55 DEBUG: Order 35 arrived: items_required = [134, 281, 280].     [orders_in_system = 36]
+2026-09-11 11:34:55 DEBUG: Order 36 arrived: items_required = [165].     [orders_in_system = 37]
+2026-09-11 11:34:55 DEBUG: Order 37 arrived: items_required = [298].     [orders_in_system = 38]
+2026-09-11 11:34:55 DEBUG: Order 38 arrived: items_required = [205, 203].     [orders_in_system = 39]
+2026-09-11 11:34:55 DEBUG: Order 39 arrived: items_required = [174].     [orders_in_system = 40]
+2026-09-11 11:34:55 DEBUG: Order 40 arrived: items_required = [330].     [orders_in_system = 41]
+2026-09-11 11:34:55 DEBUG: Order 41 arrived: items_required = [282, 362].     [orders_in_system = 42]
+2026-09-11 11:34:55 DEBUG: Order 42 arrived: items_required = [171, 237].     [orders_in_system = 43]
+2026-09-11 11:34:55 DEBUG: Order 43 arrived: items_required = [263].     [orders_in_system = 44]
+2026-09-11 11:34:55 DEBUG: Order 44 arrived: items_required = [175, 129].     [orders_in_system = 45]
+2026-09-11 11:34:55 DEBUG: Order 45 arrived: items_required = [351, 260, 295].     [orders_in_system = 46]
+2026-09-11 11:34:55 DEBUG: Order 46 arrived: items_required = [281].     [orders_in_system = 47]
+2026-09-11 11:34:55 DEBUG: Order 47 arrived: items_required = [165, 379, 270, 267].     [orders_in_system = 48]
+2026-09-11 11:34:55 DEBUG: Order 48 arrived: items_required = [369].     [orders_in_system = 49]
+2026-09-11 11:34:55 DEBUG: Order 49 arrived: items_required = [154].     [orders_in_system = 50]
+2026-09-11 11:34:55 DEBUG:    EVENT NUM 2     current_time = 00:00:01   RUN_OPTIMIZER         [queue size = 1]
+2026-09-11 11:34:55 INFO: [benchmark] instance size: 50 orders, 83 item-order pairs, 50 pods, 3 workstations, 17199 arcs, T=50
+2026-09-11 11:34:55 INFO: [benchmark] Building stage-1 model ...
+2026-09-11 11:34:55 INFO: [benchmark] Stage-1 built in 0.07 s. Solving ...
+2026-09-11 11:35:23 INFO: [benchmark] Stage-1 status 2   [2:OPT 3:INFEAS 9:TIME]
+2026-09-11 11:35:23 INFO: [benchmark] Stage-1 solved in 27.84 s  (build 0.07 s, solve 27.77 s)  obj = 30.6000, bound = 30.3000, gap = 0.98%
+2026-09-11 11:35:23 INFO: [benchmark] Building stage-2 model ...
+2026-09-11 11:35:24 INFO: [benchmark] Stage-2 variables: x2=4150, y2=292383 (17 pods x 17199 arcs), f2/g2/v2=2500 each
+2026-09-11 11:35:29 INFO: [benchmark] Stage-2 built in 6.28 s. Solving ...

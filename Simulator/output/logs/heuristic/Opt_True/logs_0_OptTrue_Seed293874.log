@@ -1,0 +1,215 @@
+2026-09-11 01:32:04 INFO: Warehouse initialization | grid=5x10, physical=14x15, num_skus=500, num_robots=5, num_ws=3
+2026-09-11 01:32:04 INFO: Warehouse initialized | 50 pods  (average number of skus per pod = 30.00), 3 workstations, 5 robots
+2026-09-11 01:32:04 INFO: [OptManager] Building time-space network ...
+2026-09-11 01:32:04 INFO: [OptManager] Network ready: 2650 nodes, 14602 travelling arcs, 2597 idle arcs.
+2026-09-11 01:32:04 INFO: 
+=============================================
+2026-09-11 01:32:04 INFO:   START SIMULATION  {TIME HORIZON = 00:00:02}
+2026-09-11 01:32:04 DEBUG:    EVENT NUM 1     current_time = 00:00:00   ARRIVAL_ORDER         [queue size = 1]
+2026-09-11 01:32:04 DEBUG: Order 0 arrived: items_required = [228, 90].     [orders_in_system = 1]
+2026-09-11 01:32:04 DEBUG: Order 1 arrived: items_required = [183].     [orders_in_system = 2]
+2026-09-11 01:32:04 DEBUG: Order 2 arrived: items_required = [318].     [orders_in_system = 3]
+2026-09-11 01:32:04 DEBUG: Order 3 arrived: items_required = [66, 250, 253].     [orders_in_system = 4]
+2026-09-11 01:32:04 DEBUG: Order 4 arrived: items_required = [417].     [orders_in_system = 5]
+2026-09-11 01:32:04 DEBUG: Order 5 arrived: items_required = [236, 178].     [orders_in_system = 6]
+2026-09-11 01:32:04 DEBUG: Order 6 arrived: items_required = [225].     [orders_in_system = 7]
+2026-09-11 01:32:04 DEBUG: Order 7 arrived: items_required = [159].     [orders_in_system = 8]
+2026-09-11 01:32:04 DEBUG: Order 8 arrived: items_required = [202, 265].     [orders_in_system = 9]
+2026-09-11 01:32:04 DEBUG: Order 9 arrived: items_required = [347].     [orders_in_system = 10]
+2026-09-11 01:32:04 DEBUG: Order 10 arrived: items_required = [306, 450, 252].     [orders_in_system = 11]
+2026-09-11 01:32:04 DEBUG: Order 11 arrived: items_required = [174, 292].     [orders_in_system = 12]
+2026-09-11 01:32:04 DEBUG: Order 12 arrived: items_required = [391, 248].     [orders_in_system = 13]
+2026-09-11 01:32:04 DEBUG: Order 13 arrived: items_required = [193, 374, 305].     [orders_in_system = 14]
+2026-09-11 01:32:04 DEBUG: Order 14 arrived: items_required = [124, 390, 167, 192].     [orders_in_system = 15]
+2026-09-11 01:32:04 DEBUG: Order 15 arrived: items_required = [375].     [orders_in_system = 16]
+2026-09-11 01:32:04 DEBUG: Order 16 arrived: items_required = [259].     [orders_in_system = 17]
+2026-09-11 01:32:04 DEBUG: Order 17 arrived: items_required = [236, 390].     [orders_in_system = 18]
+2026-09-11 01:32:04 DEBUG: Order 18 arrived: items_required = [215].     [orders_in_system = 19]
+2026-09-11 01:32:04 DEBUG: Order 19 arrived: items_required = [132, 316, 173].     [orders_in_system = 20]
+2026-09-11 01:32:04 DEBUG: Order 20 arrived: items_required = [146, 276].     [orders_in_system = 21]
+2026-09-11 01:32:04 DEBUG: Order 21 arrived: items_required = [222, 150].     [orders_in_system = 22]
+2026-09-11 01:32:04 DEBUG: Order 22 arrived: items_required = [312, 226].     [orders_in_system = 23]
+2026-09-11 01:32:04 DEBUG: Order 23 arrived: items_required = [132, 355].     [orders_in_system = 24]
+2026-09-11 01:32:04 DEBUG: Order 24 arrived: items_required = [299].     [orders_in_system = 25]
+2026-09-11 01:32:04 DEBUG: Order 25 arrived: items_required = [225, 236].     [orders_in_system = 26]
+2026-09-11 01:32:04 DEBUG: Order 26 arrived: items_required = [453, 316].     [orders_in_system = 27]
+2026-09-11 01:32:04 DEBUG: Order 27 arrived: items_required = [240].     [orders_in_system = 28]
+2026-09-11 01:32:04 DEBUG: Order 28 arrived: items_required = [166].     [orders_in_system = 29]
+2026-09-11 01:32:04 DEBUG: Order 29 arrived: items_required = [205, 408].     [orders_in_system = 30]
+2026-09-11 01:32:04 DEBUG: Order 30 arrived: items_required = [258].     [orders_in_system = 31]
+2026-09-11 01:32:04 DEBUG: Order 31 arrived: items_required = [346, 327].     [orders_in_system = 32]
+2026-09-11 01:32:04 DEBUG: Order 32 arrived: items_required = [256, 310].     [orders_in_system = 33]
+2026-09-11 01:32:04 DEBUG: Order 33 arrived: items_required = [209, 367].     [orders_in_system = 34]
+2026-09-11 01:32:04 DEBUG: Order 34 arrived: items_required = [154].     [orders_in_system = 35]
+2026-09-11 01:32:04 DEBUG: Order 35 arrived: items_required = [334, 224, 181].     [orders_in_system = 36]
+2026-09-11 01:32:04 DEBUG: Order 36 arrived: items_required = [104, 374].     [orders_in_system = 37]
+2026-09-11 01:32:04 DEBUG: Order 37 arrived: items_required = [375].     [orders_in_system = 38]
+2026-09-11 01:32:04 DEBUG: Order 38 arrived: items_required = [369, 215, 359, 240].     [orders_in_system = 39]
+2026-09-11 01:32:04 DEBUG: Order 39 arrived: items_required = [286].     [orders_in_system = 40]
+2026-09-11 01:32:04 DEBUG: Order 40 arrived: items_required = [210, 264].     [orders_in_system = 41]
+2026-09-11 01:32:04 DEBUG: Order 41 arrived: items_required = [277, 119].     [orders_in_system = 42]
+2026-09-11 01:32:04 DEBUG: Order 42 arrived: items_required = [207, 332].     [orders_in_system = 43]
+2026-09-11 01:32:04 DEBUG: Order 43 arrived: items_required = [184, 197].     [orders_in_system = 44]
+2026-09-11 01:32:04 DEBUG: Order 44 arrived: items_required = [272].     [orders_in_system = 45]
+2026-09-11 01:32:04 DEBUG: Order 45 arrived: items_required = [360, 392, 270, 375].     [orders_in_system = 46]
+2026-09-11 01:32:04 DEBUG: Order 46 arrived: items_required = [295].     [orders_in_system = 47]
+2026-09-11 01:32:04 DEBUG: Order 47 arrived: items_required = [283, 272].     [orders_in_system = 48]
+2026-09-11 01:32:04 DEBUG: Order 48 arrived: items_required = [237].     [orders_in_system = 49]
+2026-09-11 01:32:04 DEBUG: Order 49 arrived: items_required = [170, 237].     [orders_in_system = 50]
+2026-09-11 01:32:04 DEBUG:    EVENT NUM 2     current_time = 00:00:01   RUN_OPTIMIZER         [queue size = 1]
+2026-09-11 01:32:04 INFO: Solving stage 1 ... 
+2026-09-11 01:32:04 INFO: 
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+2026-09-11 01:32:05 INFO: [lns_stage1] initial objective 52.1000
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 4 | objective 47.8000 | improved by 4.3000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 5 | objective 46.5000 | improved by 1.3000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 6 | objective 45.1000 | improved by 1.4000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 7 | objective 43.0000 | improved by 2.1000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 9 | objective 41.1000 | improved by 1.9000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 11 | objective 39.8000 | improved by 1.3000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 12 | objective 38.6000 | improved by 1.2000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:05 INFO: [lns_stage1] iter 15 | objective 37.1000 | improved by 1.5000 | hole 20 orders | 0s elapsed
+2026-09-11 01:32:07 INFO: [lns_stage1] done | 2.7s, 180 iterations | final objective 37.1000 
+2026-09-11 01:32:07 INFO: Stage 1 solved.
+2026-09-11 01:32:07 INFO: Solving stage 2 ... 
+2026-09-11 01:32:07 INFO: 
+[lns_stage2] start | 92 item order pairs, 20 pods, 3 workstations, 50 time steps | budget 200s
+2026-09-11 01:32:08 INFO: [lns_stage2] initial objective 54.5215
+2026-09-11 01:32:09 INFO: [lns_stage2] iter 3 | objective 62.1735 | improved by 7.6520 | hole 9 pods | 2s elapsed
+2026-09-11 01:32:10 INFO: [lns_stage2] iter 5 | objective 66.0955 | improved by 3.9220 | hole 6 pods | 3s elapsed
+2026-09-11 01:32:12 INFO: [lns_stage2] iter 6 | objective 70.3845 | improved by 4.2890 | hole 6 pods | 5s elapsed
+2026-09-11 01:32:13 INFO: [lns_stage2] iter 7 | objective 72.3252 | improved by 1.9407 | hole 6 pods | 6s elapsed
+2026-09-11 01:32:14 INFO: [lns_stage2] iter 8 | objective 74.4571 | improved by 2.1319 | hole 6 pods | 7s elapsed
+2026-09-11 01:32:14 INFO: [lns_stage2] iter 9 | objective 76.2112 | improved by 1.7541 | hole 6 pods | 7s elapsed
+2026-09-11 01:32:15 INFO: [lns_stage2] iter 10 | objective 77.2321 | improved by 1.0209 | hole 6 pods | 8s elapsed
+2026-09-11 01:32:16 INFO: [lns_stage2] iter 11 | objective 78.0505 | improved by 0.8184 | hole 6 pods | 8s elapsed
+2026-09-11 01:32:17 INFO: [lns_stage2] iter 13 | objective 78.3315 | improved by 0.2810 | hole 6 pods | 10s elapsed
+2026-09-11 01:32:19 INFO: [lns_stage2] iter 14 | objective 81.4854 | improved by 3.1539 | hole 9 pods | 12s elapsed
+2026-09-11 01:32:20 INFO: [lns_stage2] iter 15 | objective 82.0202 | improved by 0.5348 | hole 9 pods | 13s elapsed
+2026-09-11 01:32:20 INFO: [lns_stage2] iter 16 | objective 82.0984 | improved by 0.0782 | hole 9 pods | 13s elapsed
+2026-09-11 01:32:21 INFO: [lns_stage2] iter 18 | objective 82.5771 | improved by 0.4787 | hole 9 pods | 14s elapsed
+2026-09-11 01:32:22 INFO: [lns_stage2] iter 19 | objective 82.7815 | improved by 0.2044 | hole 9 pods | 15s elapsed
+2026-09-11 01:32:25 INFO: [lns_stage2] iter 26 | objective 83.7616 | improved by 0.9801 | hole 8 pods | 18s elapsed
+2026-09-11 01:32:26 INFO: [lns_stage2] iter 27 | objective 85.3949 | improved by 1.6333 | hole 8 pods | 19s elapsed
+2026-09-11 01:32:28 INFO: [lns_stage2] iter 30 | objective 85.4190 | improved by 0.0241 | hole 5 pods | 21s elapsed
+2026-09-11 01:32:32 INFO: [lns_stage2] iter 40 | objective 85.4431 | improved by 0.0241 | hole 9 pods | 24s elapsed
+2026-09-11 01:32:34 INFO: [lns_stage2] iter 47 | objective 86.2107 | improved by 0.7676 | hole 8 pods | 27s elapsed
+2026-09-11 01:32:37 INFO: [lns_stage2] iter 48 | objective 86.8624 | improved by 0.6517 | hole 8 pods | 30s elapsed
+2026-09-11 01:32:39 INFO: [lns_stage2] iter 51 | objective 87.0047 | improved by 0.1423 | hole 8 pods | 32s elapsed
+2026-09-11 01:32:40 INFO: [lns_stage2] iter 54 | objective 87.0930 | improved by 0.0883 | hole 8 pods | 33s elapsed
+2026-09-11 01:33:18 INFO: [lns_stage2] iter 170 | objective 87.1912 | improved by 0.0982 | hole 8 pods | 71s elapsed
+2026-09-11 01:33:23 INFO: [lns_stage2] iter 186 | objective 88.1752 | improved by 0.9840 | hole 8 pods | 76s elapsed
+2026-09-11 01:33:40 INFO: [lns_stage2] iter 239 | objective 88.3483 | improved by 0.1731 | hole 6 pods | 93s elapsed
+2026-09-11 01:33:48 INFO: [lns_stage2] iter 264 | objective 88.3744 | improved by 0.0261 | hole 7 pods | 101s elapsed
+2026-09-11 01:34:13 INFO: [lns_stage2] iter 340 | objective 88.4145 | improved by 0.0401 | hole 9 pods | 126s elapsed
+2026-09-11 01:34:30 INFO: [lns_stage2] iter 392 | objective 88.4265 | improved by 0.0120 | hole 5 pods | 143s elapsed
+2026-09-11 01:35:22 INFO: [lns_stage2] done | 194.5s, 548 iterations | final objective 88.4265 
+2026-09-11 01:35:22 INFO: Stage 2 solved.
+2026-09-11 01:35:22 DEBUG: Order 17 will be opened at workstation 0. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 15 will be opened at workstation 0. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 21 will be opened at workstation 0. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 37 will be opened at workstation 0. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 44 queued at workstation 0. [order_queue len = 1]
+2026-09-11 01:35:22 DEBUG: Order 9 queued at workstation 0. [order_queue len = 2]
+2026-09-11 01:35:22 DEBUG: Order 27 queued at workstation 0. [order_queue len = 3]
+2026-09-11 01:35:22 DEBUG: Order 34 queued at workstation 0. [order_queue len = 4]
+2026-09-11 01:35:22 DEBUG: Order 42 queued at workstation 0. [order_queue len = 5]
+2026-09-11 01:35:22 DEBUG: Order 11 queued at workstation 0. [order_queue len = 6]
+2026-09-11 01:35:22 DEBUG: Order 41 queued at workstation 0. [order_queue len = 7]
+2026-09-11 01:35:22 DEBUG: Order 46 queued at workstation 0. [order_queue len = 8]
+2026-09-11 01:35:22 DEBUG: Order 48 queued at workstation 0. [order_queue len = 9]
+2026-09-11 01:35:22 DEBUG: Order 40 queued at workstation 0. [order_queue len = 10]
+2026-09-11 01:35:22 DEBUG: Order 6 queued at workstation 0. [order_queue len = 11]
+2026-09-11 01:35:22 DEBUG: Order 14 queued at workstation 0. [order_queue len = 12]
+2026-09-11 01:35:22 DEBUG: Order 25 queued at workstation 0. [order_queue len = 13]
+2026-09-11 01:35:22 DEBUG: Order 45 queued at workstation 0. [order_queue len = 14]
+2026-09-11 01:35:22 DEBUG: Order 30 queued at workstation 0. [order_queue len = 15]
+2026-09-11 01:35:22 DEBUG: Order 0 will be opened at workstation 1. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 1 will be opened at workstation 1. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 16 will be opened at workstation 1. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 28 will be opened at workstation 1. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 19 queued at workstation 1. [order_queue len = 1]
+2026-09-11 01:35:22 DEBUG: Order 24 queued at workstation 1. [order_queue len = 2]
+2026-09-11 01:35:22 DEBUG: Order 31 queued at workstation 1. [order_queue len = 3]
+2026-09-11 01:35:22 DEBUG: Order 2 queued at workstation 1. [order_queue len = 4]
+2026-09-11 01:35:22 DEBUG: Order 32 queued at workstation 1. [order_queue len = 5]
+2026-09-11 01:35:22 DEBUG: Order 39 queued at workstation 1. [order_queue len = 6]
+2026-09-11 01:35:22 DEBUG: Order 18 queued at workstation 1. [order_queue len = 7]
+2026-09-11 01:35:22 DEBUG: Order 33 queued at workstation 1. [order_queue len = 8]
+2026-09-11 01:35:22 DEBUG: Order 38 queued at workstation 1. [order_queue len = 9]
+2026-09-11 01:35:22 DEBUG: Order 43 queued at workstation 1. [order_queue len = 10]
+2026-09-11 01:35:22 DEBUG: Order 8 will be opened at workstation 2. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 47 will be opened at workstation 2. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 12 will be opened at workstation 2. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 20 will be opened at workstation 2. [opened orders = 0 / 4]
+2026-09-11 01:35:22 DEBUG: Order 22 queued at workstation 2. [order_queue len = 1]
+2026-09-11 01:35:22 DEBUG: Order 4 queued at workstation 2. [order_queue len = 2]
+2026-09-11 01:35:22 DEBUG: Order 7 queued at workstation 2. [order_queue len = 3]
+2026-09-11 01:35:22 DEBUG: Order 29 queued at workstation 2. [order_queue len = 4]
+2026-09-11 01:35:22 DEBUG: Order 49 queued at workstation 2. [order_queue len = 5]
+2026-09-11 01:35:22 DEBUG: Order 23 queued at workstation 2. [order_queue len = 6]
+2026-09-11 01:35:22 DEBUG: Order 5 queued at workstation 2. [order_queue len = 7]
+2026-09-11 01:35:22 DEBUG: Order 13 queued at workstation 2. [order_queue len = 8]
+2026-09-11 01:35:22 DEBUG: Order 10 queued at workstation 2. [order_queue len = 9]
+2026-09-11 01:35:22 DEBUG: Order 26 queued at workstation 2. [order_queue len = 10]
+2026-09-11 01:35:22 DEBUG: Order 35 queued at workstation 2. [order_queue len = 11]
+2026-09-11 01:35:22 DEBUG: Order 36 queued at workstation 2. [order_queue len = 12]
+2026-09-11 01:35:22 DEBUG: Order 3 queued at workstation 2. [order_queue len = 13]
+2026-09-11 01:35:22 WARNING: Task designing ended. Optimizer designed 37 tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 3     current_time = 00:00:01   RELEASE_TASK          [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Task 0 released: pod 46 required by workstation(s) [1].  [released tasks = 1]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 4     current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 17 (skus required = {236, 390}) opened at workstation 0.   [open_orders = 1/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 5     current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 15 (skus required = {375}) opened at workstation 0.   [open_orders = 2/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 6     current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 21 (skus required = {150, 222}) opened at workstation 0.   [open_orders = 3/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 7     current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 37 (skus required = {375}) opened at workstation 0.   [open_orders = 4/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 8     current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 0 (skus required = {90, 228}) opened at workstation 1.   [open_orders = 1/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 9     current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 1 (skus required = {183}) opened at workstation 1.   [open_orders = 2/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 10    current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 16 (skus required = {259}) opened at workstation 1.   [open_orders = 3/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 11    current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 28 (skus required = {166}) opened at workstation 1.   [open_orders = 4/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 12    current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 8 (skus required = {265, 202}) opened at workstation 2.   [open_orders = 1/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 13    current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 47 (skus required = {272, 283}) opened at workstation 2.   [open_orders = 2/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 14    current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 12 (skus required = {248, 391}) opened at workstation 2.   [open_orders = 3/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 15    current_time = 00:00:01   OPEN_ORDER            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Order 20 (skus required = {146, 276}) opened at workstation 2.   [open_orders = 4/4]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 16    current_time = 00:00:01   START_TASK            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: Task 0 selected (pod 46) at depth 0 (0 non-servable, 0 pod-busy skipped before it)
+2026-09-11 01:35:22 DEBUG: Task 0 started: robot 1 -> pod 46 -> workstation 1 for orders {0, 1, 28, 16} (arrival = 30.9 s).   [idle robots = 4/5]
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 17    current_time = 00:00:01   START_TASK            [queue size = 50]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 18    current_time = 00:00:01   START_TASK            [queue size = 49]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 19    current_time = 00:00:01   START_TASK            [queue size = 48]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 20    current_time = 00:00:01   START_TASK            [queue size = 47]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 21    current_time = 00:00:01   START_TASK            [queue size = 46]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 22    current_time = 00:00:01   START_TASK            [queue size = 45]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 23    current_time = 00:00:01   START_TASK            [queue size = 44]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 24    current_time = 00:00:01   START_TASK            [queue size = 43]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 25    current_time = 00:00:01   START_TASK            [queue size = 42]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 26    current_time = 00:00:01   START_TASK            [queue size = 41]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 27    current_time = 00:00:01   START_TASK            [queue size = 40]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 DEBUG:    EVENT NUM 28    current_time = 00:00:01   START_TASK            [queue size = 39]
+2026-09-11 01:35:22 DEBUG: No released tasks.
+2026-09-11 01:35:22 INFO:   END SIMULATION.
+
+2026-09-11 01:35:22 INFO: Writing statistics report ...
+2026-09-11 01:35:22 INFO: Report saved to: c:\Users\chiod\Documents\OMERO_TaskDesign\Simulator\output\reports\heuristic\Opt_True\report_0_OptTrue_Seed293874.txt

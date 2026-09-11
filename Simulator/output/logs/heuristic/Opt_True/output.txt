@@ -1,0 +1,183 @@
+This process will run 20 (config, seed) pair(s): [(0, 343310), (0, 343310), (0, 343310), (0, 343310), (0, 343310), (0, 293874), (0, 293874), (0, 293874), (0, 293874), (0, 293874), (0, 789124), (0, 789124), (0, 789124), (0, 789124), (0, 789124), (0, 987034), (0, 987034), (0, 987034), (0, 987034), (0, 987034)]
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 4.5s, 220 iterations | final objective 36.8000
+
+[lns_stage2] start | 92 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 27.2858
+[lns_stage2] done | 200.2s, 623 iterations | final objective 88.7528
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 5.7s, 305 iterations | final objective 35.7000
+
+[lns_stage2] start | 92 item order pairs, 18 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 39.5446
+[lns_stage2] done | 200.1s, 522 iterations | final objective 89.3409
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 8.8s, 372 iterations | final objective 37.7000
+
+[lns_stage2] start | 92 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 23.8561
+[lns_stage2] done | 200.0s, 613 iterations | final objective 89.0101
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 10.8s, 531 iterations | final objective 38.0000
+
+[lns_stage2] start | 92 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 30.6823
+[lns_stage2] done | 77.6s, 244 iterations | final objective 89.1798
+Running EXPERIMENT_ID=0, SEED=343310, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 5.5s, 296 iterations | final objective 37.7000
+
+[lns_stage2] start | 92 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 26.5175
+[lns_stage2] done | 200.3s, 605 iterations | final objective 88.8124
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 3.6s, 217 iterations | final objective 35.4000
+
+[lns_stage2] start | 92 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 23.5612
+[lns_stage2] done | 164.5s, 495 iterations | final objective 88.9937
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 4.5s, 282 iterations | final objective 37.6000
+
+[lns_stage2] start | 92 item order pairs, 20 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 40.9779
+[lns_stage2] done | 102.6s, 287 iterations | final objective 89.1493
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 3.3s, 187 iterations | final objective 38.0000
+
+[lns_stage2] start | 92 item order pairs, 21 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 50.3985
+[lns_stage2] done | 113.2s, 327 iterations | final objective 88.9844
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 5.1s, 323 iterations | final objective 38.3000
+
+[lns_stage2] start | 92 item order pairs, 21 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 34.3961
+[lns_stage2] done | 134.2s, 359 iterations | final objective 88.6449
+Running EXPERIMENT_ID=0, SEED=293874, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 52.1000
+[lns_stage1] done | 2.7s, 180 iterations | final objective 37.1000
+
+[lns_stage2] start | 92 item order pairs, 20 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 54.5215
+[lns_stage2] done | 194.5s, 548 iterations | final objective 88.4265
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 51.0000
+[lns_stage1] done | 5.0s, 351 iterations | final objective 35.3000
+
+[lns_stage2] start | 83 item order pairs, 17 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 39.8639
+[lns_stage2] done | 194.1s, 559 iterations | final objective 80.1735
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 51.0000
+[lns_stage1] done | 3.5s, 205 iterations | final objective 36.7000
+
+[lns_stage2] start | 83 item order pairs, 18 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 39.4673
+[lns_stage2] done | 158.3s, 351 iterations | final objective 79.8333
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 51.0000
+[lns_stage1] done | 4.4s, 232 iterations | final objective 37.4000
+
+[lns_stage2] start | 83 item order pairs, 18 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 38.5561
+[lns_stage2] done | 200.1s, 518 iterations | final objective 79.9755
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 51.0000
+[lns_stage1] done | 7.4s, 497 iterations | final objective 33.5000
+
+[lns_stage2] start | 83 item order pairs, 18 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial solution is infeasible: ['max_active_pods']
+[lns_stage2] initial objective 39.0500
+[lns_stage2] done | 200.2s, 577 iterations | final objective 80.2591
+Running EXPERIMENT_ID=0, SEED=789124, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 51.0000
+[lns_stage1] done | 3.4s, 220 iterations | final objective 36.4000
+
+[lns_stage2] start | 83 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 28.5058
+[lns_stage2] done | 121.2s, 329 iterations | final objective 79.4601
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 44.2000
+[lns_stage1] done | 3.6s, 249 iterations | final objective 32.4000
+
+[lns_stage2] start | 83 item order pairs, 18 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 46.6229
+[lns_stage2] done | 200.4s, 629 iterations | final objective 80.5891
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 44.2000
+[lns_stage1] done | 4.6s, 273 iterations | final objective 34.1000
+
+[lns_stage2] start | 83 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 54.0136
+[lns_stage2] done | 122.8s, 374 iterations | final objective 80.7004
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 44.2000
+[lns_stage1] done | 4.8s, 323 iterations | final objective 33.6000
+
+[lns_stage2] start | 83 item order pairs, 19 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 51.5018
+[lns_stage2] done | 110.3s, 346 iterations | final objective 80.7913
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 44.2000
+[lns_stage1] done | 3.4s, 212 iterations | final objective 33.7000
+
+[lns_stage2] start | 83 item order pairs, 18 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 32.2617
+[lns_stage2] done | 86.3s, 248 iterations | final objective 80.6372
+Running EXPERIMENT_ID=0, SEED=987034, OPTIM=True
+
+[lns_stage1] start | 50 orders, 50 pods, 3 workstations (50 free to move) | budget 30s
+[lns_stage1] initial objective 44.2000
+[lns_stage1] done | 3.3s, 200 iterations | final objective 36.5000
+
+[lns_stage2] start | 83 item order pairs, 20 pods, 3 workstations, 50 time steps | budget 200s
+[lns_stage2] initial objective 49.3590
+[lns_stage2] done | 80.5s, 240 iterations | final objective 80.3328
+(TesiEnv) PS C:\Users\chiod\Documents\OMERO_TaskDesign> 

@@ -826,8 +826,8 @@ def run_optimizer(event: Event, state, sim) -> None:
 
     ### Solve and dispatch
     st = time.time()
-    orders, ordered_orders_by_w, tasks = sim.OPT_MANAGER.solve_task_design_and_assignment(sim, state)
-    # orders, ordered_orders_by_w, tasks = gurobi_benchmark(sim.OPT_MANAGER, sim, state)
+    # orders, ordered_orders_by_w, tasks = sim.OPT_MANAGER.solve_task_design_and_assignment(sim, state)
+    orders, ordered_orders_by_w, tasks = gurobi_benchmark(sim.OPT_MANAGER, sim, state)
     sim.STAT_MANAGER.decisions_computing_time += time.time() - st
     
 
