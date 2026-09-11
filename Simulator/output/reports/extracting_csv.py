@@ -141,6 +141,56 @@ def matrix_to_latex(df, filename, caption, label, value_fmt="{:.1f}"):
     with open(os.path.join(TEX_FOLDER, filename), "w", encoding="utf-8") as f:
         f.write(tex)
 
+### LaTeX table for flow time: only the 'Total' row per configuration
+def flow_total_to_latex(flow_data, filename, caption, label, value_fmt="{:.1f}"):
+    """
+    Build a scenario x seed LaTeX table for the flow time, using only the
+    'Total' row of each configuration (overall mean flow time, all order sizes).
+    Same shape as the other matrix tables: one row per configuration, seeds on
+    the columns.
+    """
+    # keep only the Total rows: scenario -> {seed: value}
+    totals = {}
+    for (scenario, order_size), seed_values in flow_data.items():
+        if order_size == "Total":
+            totals[scenario] = seed_values
+
+    if not totals:
+        print(f"[flow_total_to_latex] no Total rows found, {filename} not written")
+        return
+
+    df = pd.DataFrame.from_dict(totals, orient="index")
+    df.index.name = "Scenario"
+    df = df.sort_index().reindex(sorted(df.columns), axis=1)
+
+    seeds = list(df.columns)
+    col_spec = "l" + "r" * len(seeds)
+    header = " & ".join(["\\textbf{Config.}"] + [f"\\texttt{{{s}}}" for s in seeds])
+
+    body_lines = []
+    for scenario, row in df.iterrows():
+        cells = [f"\\texttt{{{scenario_label(scenario)}}}"]
+        for s in seeds:
+            v = row[s]
+            cells.append("--" if pd.isna(v) else value_fmt.format(v))
+        body_lines.append(" & ".join(cells) + r" \\")
+    body = "\n".join(body_lines)
+
+    tex = (
+            "\\begin{table}[htb]\n\\centering\n"
+            "\\small\n"
+            f"\\caption{{{caption}}}\n\\label{{{label}}}\n"
+            "\\resizebox{\\textwidth}{!}{%\n"          # <-- apre resizebox
+            f"\\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}\n\\toprule\n"
+            f"{header} \\\\\n\\midrule\n"
+            f"{body}\n\\bottomrule\n"
+            "\\end{tabular}%\n"                          # <-- % dopo tabular
+            "}\n"                                        # <-- chiude resizebox
+            "\\end{table}\n"
+        )
+    with open(os.path.join(TEX_FOLDER, filename), "w", encoding="utf-8") as f:
+        f.write(tex)
+
 
 ### Two-stage replication sizing (Law, Simulation Modeling & Analysis)
 def two_stage_replications(throughput, filename,
@@ -221,7 +271,7 @@ for mode in ["Opt_False", "Opt_True"]:
     save_flow_csv(flow_data, f"{mode}_mean_flow_time.csv")
 
     two_stage_replications(throughput, f"{mode}_replications_throughput.csv",
-                           alpha=0.05, gamma=0.02)  # 95% conf, 5% relative
+                           alpha=0.05, gamma=0.02)  # 95% conf, 2% relative
 
     # appendix LaTeX tables, one per (metric, mode), built from the dataframes above
     mode_label = "Optimizer" if mode == "Opt_True" else "Greedy policies"
@@ -233,10 +283,11 @@ for mode in ["Opt_False", "Opt_True"]:
         df_pods, f"{mode}_average_pods.tex",
         caption=f"{mode_label}: per-replication average number of pods moving simultaneously.",
         label=f"tab:app_pods_{mode.lower()}", value_fmt="{:.2f}")
-    matrix_to_latex(
-        df_time, f"{mode}_computational_time.tex",
-        caption=f"{mode_label}: per-replication computational time for decision making (s).",
-        label=f"tab:app_time_{mode.lower()}", value_fmt="{:.1f}")
+    # flow time table: only the Total row per configuration
+    flow_total_to_latex(
+        flow_data, f"{mode}_flow_time.tex",
+        caption=f"{mode_label}: per-replication average flow time (s), total over all order sizes.",
+        label=f"tab:app_flowtime_{mode.lower()}", value_fmt="{:.1f}")
 
 print(f"\nCSV files written to:   {CSV_FOLDER}")
 print(f"LaTeX tables written to: {TEX_FOLDER}")
