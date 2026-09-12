@@ -21,15 +21,15 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "plot_results")
 # Keys are numeric scenario IDs (used in CSVs and for grouping); values are the
 # labels shown in tables and plots. Missing IDs fall back to their number.
 SCENARIO_LABELS_BOXPLOT = {
-    11: "Small warehouse \n Small orders \n Low arrival rate", 12: "Small warehouse \n Large orders \n Low arrival rate", 13: "Small warehouse \n Small orders \n High arrival rate", 14: "Small warehouse \n Large orders \n High arrival rate",
-    31: "Medium warehouse \n Small orders \n Low arrival rate", 32: "Medium warehouse \n Large orders \n Low arrival rate", 33: "Medium warehouse \n Small orders \n High arrival rate", 34: "Medium warehouse \n Large orders \n High arrival rate",
-    51: "Large warehouse \n Small orders \n Low arrival rate", 52: "Large warehouse \n Large orders \n Low arrival rate", 53: "Large warehouse \n Small orders \n High arrival rate", 54: "Large warehouse \n Large orders \n High arrival rate",
+    11: "Small warehouse \n Few lines \n Low arrival rate", 12: "Small warehouse \n Many lines \n Low arrival rate", 13: "Small warehouse \n Few lines \n High arrival rate", 14: "Small warehouse \n Many lines \n High arrival rate",
+    31: "Medium warehouse \n Few lines \n Low arrival rate", 32: "Medium warehouse \n Many lines \n Low arrival rate", 33: "Medium warehouse \n Few lines \n High arrival rate", 34: "Medium warehouse \n Many lines \n High arrival rate",
+    51: "Large warehouse \n Few lines \n Low arrival rate", 52: "Large warehouse \n Many lines \n Low arrival rate", 53: "Large warehouse \n Few lines \n High arrival rate", 54: "Large warehouse \n Many lines \n High arrival rate",
 }
 
 SCENARIO_LABELS_TABLES = {
-    11: "S·so·lr", 12: "S·lo·lr", 13: "S·so·hr", 14: "S·lo·hr",
-    31: "M·so·lr", 32: "M·lo·lr", 33: "M·so·hr", 34: "M·lo·hr",
-    51: "L·so·lr", 52: "L·lo·lr", 53: "L·so·hr", 54: "L·lo·hr",
+    11: "S·fl·lr", 12: "S·ml·lr", 13: "S·fl·hr", 14: "S·ml·hr",
+    31: "M·fl·lr", 32: "M·ml·lr", 33: "M·fl·hr", 34: "M·ml·hr",
+    51: "L·fl·lr", 52: "L·ml·lr", 53: "L·fl·hr", 54: "L·ml·hr",
 }
 
 def scenario_label(scenario: int, boxplot = True) -> str:

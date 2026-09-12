@@ -17,9 +17,9 @@ os.makedirs(TEX_FOLDER, exist_ok=True)
 
 ### Scenario short labels (same notation as the summary tables in the body)
 SCENARIO_LABELS_TABLES = {
-    11: "S·so·lr", 12: "S·lo·lr", 13: "S·so·hr", 14: "S·lo·hr",
-    31: "M·so·lr", 32: "M·lo·lr", 33: "M·so·hr", 34: "M·lo·hr",
-    51: "L·so·lr", 52: "L·lo·lr", 53: "L·so·hr", 54: "L·lo·hr",
+    11: "S·fl·lr", 12: "S·ml·lr", 13: "S·fl·hr", 14: "S·ml·hr",
+    31: "M·fl·lr", 32: "M·ml·lr", 33: "M·fl·hr", 34: "M·ml·hr",
+    51: "L·fl·lr", 52: "L·ml·lr", 53: "L·fl·hr", 54: "L·ml·hr",
 }
 
 def scenario_label(scenario) -> str:
